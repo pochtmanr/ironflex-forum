@@ -1,0 +1,6 @@
+[dotenv@17.2.2] injecting env (14) from .env -- tip: ⚙️  suppress all logs with { quiet: true }
+🚀 Forum server running on http://localhost:5001
+📝 CORS enabled for: http://localhost:3000
+💾 Using SQLite database
+✅ Added parent_post_id column to posts table
+✅ SQLite database initialized successfully
