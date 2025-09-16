@@ -13,8 +13,9 @@ import {
 
 dotenv.config();
 
-const app = express();
 const PORT = process.env.PORT || 5001;
+
+const app = express();
 
 // Middleware
 app.use(cors({

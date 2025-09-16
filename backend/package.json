@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "nodemon src/forum-server.ts",
     "build": "tsc",
-    "start": "node dist/forum-server.js",
+    "start": "npm run build && node dist/forum-server.js",
+    "start:prod": "node -r ts-node/register src/forum-server.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
