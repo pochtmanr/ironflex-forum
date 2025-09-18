@@ -2,8 +2,52 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
-import { initializeDatabase, dbAll, dbGet, dbRun, dbInsert, getForumStats } from './config/database-sqlite';
+import { pool, testConnection } from './config/database';
 import { verifyIdToken } from './config/firebase';
+
+// MySQL helper functions
+const dbGet = async (sql: string, params?: any[]): Promise<any> => {
+  const [rows] = await pool.execute(sql, params);
+  return Array.isArray(rows) ? rows[0] : rows;
+};
+
+const dbAll = async (sql: string, params?: any[]): Promise<any[]> => {
+  const [rows] = await pool.execute(sql, params);
+  return Array.isArray(rows) ? rows : [];
+};
+
+const dbRun = async (sql: string, params?: any[]): Promise<any> => {
+  const [result] = await pool.execute(sql, params);
+  return result;
+};
+
+const dbInsert = async (sql: string, params?: any[]): Promise<{ lastID: number }> => {
+  const [result] = await pool.execute(sql, params) as any;
+  return { lastID: result.insertId };
+};
+
+const getForumStats = async () => {
+  try {
+    const topics = await dbGet('SELECT COUNT(*) as count FROM topics WHERE is_active = 1');
+    const posts = await dbGet('SELECT COUNT(*) as count FROM posts WHERE is_active = 1');
+    const users = await dbGet('SELECT COUNT(DISTINCT user_id) as count FROM topics');
+
+    return {
+      total_topics: topics.count,
+      total_posts: posts.count,
+      total_users: users.count,
+      latest_username: null
+    };
+  } catch (error) {
+    console.error('Error getting forum stats:', error);
+    return {
+      total_topics: 0,
+      total_posts: 0,
+      total_users: 0,
+      latest_username: null
+    };
+  }
+};
 import { 
   uploadSingle, 
   uploadMultiple, 
@@ -24,8 +68,8 @@ app.use(cors({
 }));
 app.use(express.json());
 
-// Initialize database
-initializeDatabase().catch(console.error);
+// Test database connection
+testConnection().catch(console.error);
 
 // Serve uploaded images statically
 app.use('/api/uploads', express.static(path.join(__dirname, '..', 'uploads')));
@@ -600,5 +644,5 @@ app.delete('/api/content/trainings/:id', requireAdmin, async (req, res) => {
 app.listen(PORT, () => {
   console.log(`🚀 Forum server running on http://localhost:${PORT}`);
   console.log(`📝 CORS enabled for: ${process.env.CLIENT_URL || 'http://localhost:3000'}`);
-  console.log(`💾 Using SQLite database`);
+  console.log(`💾 Using MySQL database at ${process.env.DB_HOST}:${process.env.DB_PORT}`);
 });
