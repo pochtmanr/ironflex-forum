@@ -27,35 +27,40 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
     setUploading(true);
     
     try {
-      const formData = new FormData();
+      const uploadPromises = Array.from(files).slice(0, maxImages).map(async (file) => {
+        const formData = new FormData();
+        formData.append('file', file); // fileserver expects 'file' field name
+        
+        const response = await fetch('https://bucket.theholylabs.com/upload', {
+          method: 'POST',
+          body: formData,
+        });
+        
+        if (response.ok) {
+          const result = await response.json();
+          return {
+            filename: result.filename,
+            url: `/uploads/${result.filename}`, // relative URL since we'll prefix with bucket domain
+            size: file.size
+          };
+        } else {
+          const error = await response.json();
+          throw new Error(error.error || 'Upload failed');
+        }
+      });
+
+      // Upload all files in parallel
+      const newImages = await Promise.all(uploadPromises);
       
-      // Add files to form data
-      Array.from(files).slice(0, maxImages).forEach(file => {
-        formData.append('images', file);
-      });
-
-      const response = await fetch('https://blog.theholylabs.com/api/upload/images', {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        const newImages = result.images as UploadedImage[];
-        
-        setUploadedImages(prev => [...prev, ...newImages]);
-        
-        // Convert to full URLs for the parent component
-        const imageUrls = newImages.map(img => `https://bucket.theholylabs.com${img.url}`);
-        onImagesUploaded(imageUrls);
-      } else {
-        const error = await response.json();
-        console.error('Upload failed:', error);
-        alert('Ошибка загрузки изображений: ' + (error.error || 'Неизвестная ошибка'));
-      }
+      setUploadedImages(prev => [...prev, ...newImages]);
+      
+      // Convert to full URLs for the parent component
+      const imageUrls = newImages.map(img => `https://bucket.theholylabs.com${img.url}`);
+      onImagesUploaded(imageUrls);
+      
     } catch (error) {
       console.error('Upload error:', error);
-      alert('Ошибка загрузки изображений');
+      alert('Ошибка загрузки изображений: ' + (error instanceof Error ? error.message : 'Неизвестная ошибка'));
     } finally {
       setUploading(false);
     }
