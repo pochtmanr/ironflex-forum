@@ -6,6 +6,8 @@ import FormattedText from './FormattedText';
 import SimpleReplyForm from './SimpleReplyForm';
 import RichHtml from './RichHtml';
 
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://69.197.134.25:5004/api';
+
 interface Topic {
   id: number;
   title: string;
@@ -63,7 +65,7 @@ const TopicView: React.FC = () => {
     if (!topicId) return;
 
     try {
-      const response = await fetch(`http://localhost:5001/api/forum/topics/${topicId}?page=${page}`);
+      const response = await fetch(`${API_BASE_URL}/forum/topics/${topicId}?page=${page}`);
       if (response.ok) {
         const data = await response.json();
         setTopic(data.topic);
@@ -83,7 +85,7 @@ const TopicView: React.FC = () => {
     if (!currentUser) return;
 
     try {
-      const response = await fetch('http://localhost:5001/api/forum/like', {
+      const response = await fetch(`${API_BASE_URL}/forum/like`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -113,7 +115,7 @@ const TopicView: React.FC = () => {
     try {
       const mediaLinks = uploadedImages.join('\n').trim();
       
-      const response = await fetch(`http://localhost:5001/api/forum/topics/${topicId}/posts`, {
+      const response = await fetch(`${API_BASE_URL}/forum/topics/${topicId}/posts`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -7,6 +7,8 @@ import ImageUpload from './ImageUpload';
 import RichTextEditor from './RichTextEditor';
 import FormattedText from './FormattedText';
 
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://69.197.134.25:5004/api';
+
 interface Category {
   id: number;
   name: string;
@@ -84,7 +86,7 @@ const CreateTopic: React.FC = () => {
     setLoading(true);
 
     try {
-      const response = await fetch('http://localhost:5001/api/forum/topics', {
+      const response = await fetch(`${API_BASE_URL}/forum/topics`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

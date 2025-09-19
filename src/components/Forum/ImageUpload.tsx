@@ -1,5 +1,7 @@
 import React, { useState, useCallback } from 'react';
 
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://69.197.134.25:5004/api';
+
 interface UploadedImage {
   filename: string;
   url: string;
@@ -34,7 +36,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
         formData.append('images', file);
       });
 
-      const response = await fetch('http://localhost:5001/api/upload/images', {
+      const response = await fetch(`${API_BASE_URL}/upload/images`, {
         method: 'POST',
         body: formData,
       });
@@ -46,7 +48,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
         setUploadedImages(prev => [...prev, ...newImages]);
         
         // Convert to full URLs for the parent component
-        const imageUrls = newImages.map(img => `http://localhost:5001${img.url}`);
+        const imageUrls = newImages.map(img => `${API_BASE_URL.replace('/api', '')}${img.url}`);
         onImagesUploaded(imageUrls);
       } else {
         const error = await response.json();
@@ -163,7 +165,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
               <div key={index} className="relative group">
                 <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden">
                   <img
-                    src={`http://localhost:5001${image.url}`}
+                    src={`${API_BASE_URL.replace('/api', '')}${image.url}`}
                     alt={`Uploaded ${index + 1}`}
                     className="w-full h-full object-cover"
                   />

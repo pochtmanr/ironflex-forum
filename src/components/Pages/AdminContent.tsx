@@ -4,6 +4,8 @@ import { contentAPI, tokenManager } from '../../services/api';
 import RichTextEditor from '../Forum/RichTextEditor';
 import MediaRenderer from '../Forum/MediaRenderer';
 
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://69.197.134.25:5004/api';
+
 type Tab = 'articles' | 'trainings';
 
 const AdminContent: React.FC = () => {
@@ -37,7 +39,7 @@ const AdminContent: React.FC = () => {
           const formData = new FormData();
           formData.append('image', file);
 
-          const response = await fetch('http://localhost:5001/api/upload/image', {
+          const response = await fetch(`${API_BASE_URL}/upload/image`, {
             method: 'POST',
             body: formData,
           });
