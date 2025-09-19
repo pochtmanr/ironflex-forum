@@ -1,7 +1,7 @@
 import React, { useState, useRef, forwardRef, useImperativeHandle } from 'react';
 import EmojiInputEditor, { EmojiInputEditorRef } from './EmojiInputEditor';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://69.197.134.25:5004/api';
+const API_BASE_URL = process.env.REACT_APP_API_URL || '/api';
 
 interface SimpleReplyFormProps {
   onSubmit: (content: string, uploadedImages: string[]) => void;

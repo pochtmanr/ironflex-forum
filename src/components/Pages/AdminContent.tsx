@@ -4,7 +4,7 @@ import { contentAPI, tokenManager } from '../../services/api';
 import RichTextEditor from '../Forum/RichTextEditor';
 import MediaRenderer from '../Forum/MediaRenderer';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://69.197.134.25:5004/api';
+const API_BASE_URL = process.env.REACT_APP_API_URL || '/api';
 
 type Tab = 'articles' | 'trainings';
 

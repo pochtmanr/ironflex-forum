@@ -7,7 +7,7 @@ import ImageUpload from './ImageUpload';
 import RichTextEditor from './RichTextEditor';
 import FormattedText from './FormattedText';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://69.197.134.25:5004/api';
+const API_BASE_URL = process.env.REACT_APP_API_URL || '/api';
 
 interface Category {
   id: number;
