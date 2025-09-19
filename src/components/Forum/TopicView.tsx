@@ -67,8 +67,9 @@ const TopicView: React.FC = () => {
       if (response.ok) {
         const data = await response.json();
         setTopic(data.topic);
-        setPosts(data.posts);
-        setTotalPages(data.pagination.pages);
+        setPosts(data.posts || []);
+        // Handle missing pagination data from simple-server
+        setTotalPages(data.pagination?.pages || data.pagination?.totalPages || 1);
       } else {
         console.error('Error loading topic');
       }
