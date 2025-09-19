@@ -1,0 +1,192 @@
+/* Topic Specific Styles */
+
+/* Post Details */
+.postdetails {
+    font-size: 10px;
+    color: #666;
+    line-height: 14px;
+    text-align: center;
+    padding: 10px 5px;
+}
+
+.postdetails a {
+    color: #2C5197;
+    text-decoration: none;
+    font-weight: bold;
+}
+
+.postdetails a:hover {
+    text-decoration: underline;
+}
+
+/* Post Color/Content */
+.postcolor {
+    padding: 10px;
+    line-height: 18px;
+}
+
+.post-content {
+    margin-top: 10px;
+}
+
+.post-content h2 {
+    border-bottom: 2px solid #2C5197;
+    padding-bottom: 5px;
+    margin-bottom: 15px;
+}
+
+.post-content h3 {
+    color: #2C5197;
+    font-size: 14px;
+    margin: 20px 0 10px 0;
+    padding: 5px 0;
+    border-bottom: 1px solid #E8E8E8;
+}
+
+.post-content h4 {
+    color: #2C5197;
+    font-size: 12px;
+    margin: 15px 0 8px 0;
+}
+
+.post-content ul,
+.post-content ol {
+    margin: 10px 0 10px 20px;
+}
+
+.post-content li {
+    margin: 5px 0;
+    line-height: 16px;
+}
+
+.post-content p {
+    margin: 10px 0;
+}
+
+.post-content strong {
+    font-weight: bold;
+    color: #2C5197;
+}
+
+.post-content em {
+    font-style: italic;
+    color: #666;
+}
+
+/* Post Date */
+.postdate {
+    font-size: 10px;
+    color: #666;
+    margin-left: 10px;
+}
+
+/* Dark Row for post actions */
+.darkrow2 {
+    background: #E8E8E8;
+    color: #666;
+    font-size: 10px;
+    padding: 5px 8px;
+    border-top: 1px solid #CCC;
+}
+
+/* Quick Reply Form */
+.borderwrap textarea {
+    font-family: Verdana, Arial, sans-serif;
+    font-size: 11px;
+    border: 1px solid #CCC;
+    padding: 5px;
+}
+
+.borderwrap input[type="submit"],
+.borderwrap input[type="button"] {
+    margin-right: 10px;
+}
+
+/* Icons */
+img {
+    vertical-align: middle;
+}
+
+/* Post content styling improvements */
+.post-content hr {
+    border: 0;
+    border-top: 1px solid #E8E8E8;
+    margin: 20px 0;
+}
+
+.post-content blockquote {
+    background: #F8F8F8;
+    border-left: 4px solid #2C5197;
+    padding: 10px 15px;
+    margin: 15px 0;
+    font-style: italic;
+    color: #666;
+}
+
+.post-content code {
+    background: #F0F0F0;
+    border: 1px solid #DDD;
+    padding: 2px 4px;
+    font-family: "Courier New", monospace;
+    font-size: 11px;
+}
+
+.post-content pre {
+    background: #F8F8F8;
+    border: 1px solid #DDD;
+    padding: 10px;
+    overflow-x: auto;
+    font-family: "Courier New", monospace;
+    font-size: 11px;
+    margin: 10px 0;
+}
+
+/* Table styling within posts */
+.post-content table {
+    border-collapse: collapse;
+    margin: 10px 0;
+    width: 100%;
+}
+
+.post-content table th,
+.post-content table td {
+    border: 1px solid #DDD;
+    padding: 8px;
+    text-align: left;
+}
+
+.post-content table th {
+    background: #F0F0F0;
+    font-weight: bold;
+}
+
+/* Responsive adjustments for topics */
+@media (max-width: 768px) {
+    .postdetails {
+        text-align: left;
+        padding: 5px;
+    }
+    
+    .postcolor {
+        padding: 5px;
+    }
+    
+    .post-content h2 {
+        font-size: 14px;
+    }
+    
+    .post-content h3 {
+        font-size: 12px;
+    }
+    
+    .post-content h4 {
+        font-size: 11px;
+    }
+    
+    .borderwrap textarea {
+        width: 100% !important;
+        height: 120px;
+    }
+}
+
+

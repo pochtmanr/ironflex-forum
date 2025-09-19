@@ -1,0 +1,72 @@
+/* Carousel CSS */
+
+.carousel,
+.jcarousel {
+    position: relative;
+    overflow: hidden;
+    margin: 10px 0;
+}
+
+.carousel-item {
+    display: none;
+    padding: 10px;
+}
+
+.carousel-item:first-child {
+    display: block;
+}
+
+.carousel-controls {
+    position: absolute;
+    top: 50%;
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    pointer-events: none;
+    transform: translateY(-50%);
+}
+
+.carousel-prev,
+.carousel-next {
+    background: rgba(0, 0, 0, 0.5);
+    color: white;
+    border: none;
+    padding: 10px 15px;
+    cursor: pointer;
+    font-size: 18px;
+    pointer-events: auto;
+    border-radius: 3px;
+    transition: background 0.3s;
+}
+
+.carousel-prev:hover,
+.carousel-next:hover {
+    background: rgba(0, 0, 0, 0.8);
+}
+
+.carousel-prev {
+    margin-left: 10px;
+}
+
+.carousel-next {
+    margin-right: 10px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .carousel-controls {
+        position: relative;
+        top: auto;
+        transform: none;
+        justify-content: center;
+        gap: 20px;
+        margin-top: 10px;
+    }
+    
+    .carousel-prev,
+    .carousel-next {
+        margin: 0;
+    }
+}
+
+

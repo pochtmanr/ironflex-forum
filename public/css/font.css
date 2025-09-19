@@ -1,0 +1,62 @@
+/* Font CSS */
+
+@import url('https://fonts.googleapis.com/css2?family=Verdana:wght@400;700&display=swap');
+
+body {
+    font-family: Verdana, Arial, sans-serif;
+    font-size: 11px;
+}
+
+.h1, h1 {
+    font-family: Verdana, Arial, sans-serif;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+.h2, h2 {
+    font-family: Verdana, Arial, sans-serif;
+    font-size: 13px;
+    font-weight: bold;
+}
+
+.h3, h3 {
+    font-family: Verdana, Arial, sans-serif;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+/* Specific forum fonts */
+.maintitle {
+    font-family: Verdana, Arial, sans-serif;
+    font-size: 11px;
+    font-weight: bold;
+}
+
+.formsubtitle {
+    font-family: Verdana, Arial, sans-serif;
+    font-size: 11px;
+    font-weight: bold;
+}
+
+.postdetails {
+    font-family: Verdana, Arial, sans-serif;
+    font-size: 10px;
+}
+
+.desc {
+    font-family: Verdana, Arial, sans-serif;
+    font-size: 10px;
+}
+
+/* Input and form fonts */
+input, textarea, select {
+    font-family: Verdana, Arial, sans-serif;
+    font-size: 11px;
+}
+
+/* Link fonts */
+a {
+    font-family: inherit;
+}
+
+

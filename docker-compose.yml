@@ -1,0 +1,197 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "5000:5000"
+    environment:
+      - FLASK_ENV=production
+      - VPN_SERVER_ADDRESS=vpn.theholylabs.com
+      - FIREBASE_SERVICE_ACCOUNT_PATH=/app/firebase.json
+    volumes:
+      - /home/administrator/backend/firebase.json:/app/firebase.json:ro
+    depends_on:
+      - fileserver
+    networks:
+      - my_custom_network
+
+  fileserver:
+    build:
+      context: ./fileserver
+      dockerfile: Dockerfile
+    ports:
+      - "3001:3001"
+    volumes:
+      - /home/administrator/uploads:/app/uploads
+    environment:
+      - PORT=3001
+    restart: unless-stopped
+    networks:
+      - my_custom_network
+
+  mailserver:
+    image: docker.io/mailserver/docker-mailserver:latest
+    container_name: mailserver
+    hostname: mail.theholylabs.com
+    env_file: mailserver.env
+    ports:
+      - "25:25"
+      - "143:143"
+      - "465:465"
+      - "587:587"
+      - "993:993"
+    volumes:
+      - /home/administrator/docker-data/dms/mail-data/:/var/mail/
+      - /home/administrator/docker-data/dms/mail-state/:/var/mail-state/
+      - /home/administrator/docker-data/dms/mail-logs/:/var/log/mail/
+      - /home/administrator/docker-data/dms/config/:/tmp/docker-mailserver/
+      - /home/administrator/docker-data/dms/config/opendkim/keys/:/etc/opendkim/keys/
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+    restart: always
+    stop_grace_period: 1m
+    cap_add:
+      - NET_ADMIN
+    healthcheck:
+      test: "ss -lntp | grep -E ':25|:143|:465|:587|:993' || exit 1"
+      timeout: 45s
+      interval: 30s
+      retries: 3
+    networks:
+      - my_custom_network
+
+  ipsec-vpn:
+    image: hwdsl2/ipsec-vpn-server:latest
+    container_name: ipsec-vpn
+    # Use host networking so UDP 500/4500 are reachable directly
+    network_mode: "host"
+    privileged: true
+    cap_add:
+      - NET_ADMIN
+    environment:
+      - VPN_IPSEC_PSK=ipsec-vpn-key
+      - VPN_USER=dima
+      - VPN_PASSWORD=rabbit
+    volumes:
+      - /lib/modules:/lib/modules:ro
+    restart: unless-stopped
+
+  webmail:
+    image: hardware/rainloop
+    container_name: webmail
+    ports:
+      - "8081:8888"
+    volumes:
+      - webmail_data:/rainloop/data
+    restart: unless-stopped
+    networks:
+      - my_custom_network
+
+  payments:
+    build:
+      context: ./payments
+      dockerfile: Dockerfile
+    ports:
+      - "5002:5001"
+    env_file:
+      - /home/administrator/payments/.env  # or just `.env` if it's in the root
+    networks:
+      - my_custom_network
+
+  smtp-service:
+    build:
+      context: ./smtp-service
+      dockerfile: Dockerfile
+    ports:
+      - "5003:5001"
+    environment:
+      - SMTP_HOST=${SMTP_HOST:-smtp.gmail.com}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_SECURE=${SMTP_SECURE:-false}
+      - SMTP_USERNAME=${SMTP_USERNAME:-}
+      - SMTP_PASSWORD=${SMTP_PASSWORD:-}
+      - SMTP_FROM_EMAIL=${SMTP_FROM_EMAIL:-}
+      - SMTP_FROM_NAME=${SMTP_FROM_NAME:-Email Service}
+    restart: unless-stopped
+    networks:
+      - my_custom_network
+
+  blog-backend:
+    build:
+      context: ./blog-backend
+      dockerfile: Dockerfile
+    ports:
+      - "5004:5001"
+    environment:
+      - NODE_ENV=production
+      - PORT=5001
+      - CLIENT_URL=${CLIENT_URL:-http://localhost:3000}
+      - FILESERVER_URL=http://fileserver:3001
+    volumes:
+      - ./blog-backend/uploads:/app/uploads
+    depends_on:
+      - fileserver
+    restart: unless-stopped
+    networks:
+      - my_custom_network
+
+  n8n:
+    image: n8nio/n8n:1.78.1
+    container_name: n8n
+    ports:
+      - "5678:5678"
+    environment:
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER=admin
+      - N8N_BASIC_AUTH_PASSWORD=admin123
+      - N8N_HOST=dev.theholylabs.com
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      - WEBHOOK_URL=https://dev.theholylabs.com/
+      - GENERIC_TIMEZONE=UTC
+    volumes:
+      - n8n_data:/home/node/.n8n
+    restart: unless-stopped
+    networks:
+      - my_custom_network
+
+  nginx:
+    image: nginx:alpine
+    container_name: nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /home/administrator/nginx.conf:/etc/nginx/nginx.conf:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+      - /home/administrator/certbot/www:/var/www/certbot:ro
+    depends_on:
+      - backend
+      - webmail
+      - payments
+      - fileserver
+      - n8n
+      - smtp-service
+      - blog-backend
+    restart: unless-stopped
+    networks:
+      - my_custom_network
+
+  certbot:
+    image: certbot/certbot
+    volumes:
+      - /home/administrator/certbot/www:/var/www/certbot
+      - /etc/letsencrypt:/etc/letsencrypt
+    entrypoint: /bin/sh -c
+    command: >
+      "trap exit TERM; while :; do sleep 1; done"
+    networks:
+      - my_custom_network
+
+volumes:
+  webmail_data:
+  n8n_data:
+
+networks:
+  my_custom_network:

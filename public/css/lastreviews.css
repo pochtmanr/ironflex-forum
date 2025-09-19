@@ -1,0 +1,68 @@
+/* Last Reviews CSS */
+
+.lastreviews {
+    margin: 10px 0;
+    padding: 10px;
+    border: 1px solid #E8E8E8;
+    background: #F8F8F8;
+}
+
+.lastreviews-title {
+    font-weight: bold;
+    color: #2C5197;
+    margin-bottom: 10px;
+    padding-bottom: 5px;
+    border-bottom: 1px solid #E8E8E8;
+}
+
+.review-item {
+    padding: 8px 0;
+    border-bottom: 1px solid #E8E8E8;
+}
+
+.review-item:last-child {
+    border-bottom: none;
+}
+
+.review-title {
+    font-weight: bold;
+    color: #2C5197;
+    text-decoration: none;
+    font-size: 11px;
+}
+
+.review-title:hover {
+    text-decoration: underline;
+}
+
+.review-meta {
+    font-size: 10px;
+    color: #666;
+    margin-top: 2px;
+}
+
+.review-excerpt {
+    font-size: 10px;
+    color: #333;
+    margin-top: 3px;
+    line-height: 14px;
+}
+
+.review-rating {
+    color: #FF6600;
+    font-weight: bold;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .lastreviews {
+        margin: 5px 0;
+        padding: 8px;
+    }
+    
+    .review-item {
+        padding: 6px 0;
+    }
+}
+
+

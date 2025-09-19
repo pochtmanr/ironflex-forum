@@ -1,0 +1,585 @@
+/* IPB Forum Main Stylesheet */
+
+/* Basic Reset and Layout */
+* {
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: Verdana, Arial, sans-serif;
+    font-size: 11px;
+    color: #222;
+    background: #E5E5E5 url('../images/bg_gradient.gif') repeat-x top;
+    padding: 0px 20px;
+    position: relative;
+    min-height: 100%;
+}
+
+/* Logo Strip */
+#logostrip {
+    padding: 10px 0;
+    text-align: left;
+}
+
+#logostrip img {
+    vertical-align: top;
+}
+
+/* Menu System */
+.shadow {
+    background: url('../images/menu_shadow.gif') repeat-x bottom;
+    padding-bottom: 5px;
+}
+
+.menubg {
+    background: #2C5197;
+    border: 1px solid #2C5197;
+    height: 30px;
+}
+
+.menu {
+    position: relative;
+}
+
+.menu ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    height: 30px;
+}
+
+.menu li {
+    float: left;
+    position: relative;
+    height: 30px;
+    line-height: 30px;
+}
+
+.menu li a {
+    display: block;
+    padding: 0 15px;
+    color: #fff;
+    text-decoration: none;
+    height: 30px;
+    line-height: 30px;
+}
+
+.menu li:hover,
+.menu li.active {
+    background: #1B3A6B;
+}
+
+.menu li a:hover {
+    color: #FFF;
+}
+
+/* Dropdown menu */
+.menu li ul.level2 {
+    position: absolute;
+    top: 30px;
+    left: 0;
+    background: #2C5197;
+    border: 1px solid #1B3A6B;
+    min-width: 150px;
+    display: none;
+    z-index: 1000;
+}
+
+.menu li:hover ul.level2 {
+    display: block;
+}
+
+.menu li ul.level2 li {
+    float: none;
+    width: 100%;
+    height: auto;
+    line-height: normal;
+}
+
+.menu li ul.level2 li a {
+    padding: 8px 15px;
+    border-bottom: 1px solid #1B3A6B;
+    white-space: nowrap;
+}
+
+.clear {
+    clear: both;
+}
+
+/* Search Area */
+#submenu {
+    background: #F0F0F0;
+    border: 1px solid #CCC;
+    border-top: 0;
+    padding: 5px 10px;
+    text-align: right;
+}
+
+.ipb-top-right-link {
+    display: inline-block;
+    color: #2C5197;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.popupmenu-new {
+    background: #FFF;
+    border: 1px solid #CCC;
+    padding: 10px;
+    box-shadow: 2px 2px 5px rgba(0,0,0,0.2);
+}
+
+.popupmenu-new input[type="text"] {
+    width: 400px;
+    padding: 3px;
+    border: 1px solid #CCC;
+}
+
+.button {
+    padding: 3px 8px;
+    background: #E0E0E0;
+    border: 1px solid #AAA;
+    cursor: pointer;
+}
+
+.button:hover {
+    background: #F0F0F0;
+}
+
+/* Navigation Strip */
+#navstrip {
+    background: #F5F5F5;
+    border: 1px solid #CCC;
+    padding: 8px 10px;
+    margin: 10px 0;
+    font-size: 11px;
+}
+
+#navstrip a {
+    color: #2C5197;
+    text-decoration: none;
+}
+
+#navstrip a:hover {
+    text-decoration: underline;
+}
+
+/* Forum Wrapper */
+#forumwrapper {
+    background: #FFF;
+}
+
+/* User Links */
+#userlinksguest {
+    background: #E8E8E8;
+    border: 1px solid #CCC;
+    padding: 8px;
+    text-align: center;
+    margin: 10px 0;
+}
+
+.pcen {
+    font-weight: bold;
+}
+
+.drive {
+    color: #2C5197;
+    text-decoration: none;
+}
+
+.drive:hover {
+    text-decoration: underline;
+}
+
+.ul {
+    text-decoration: underline;
+}
+
+.wi {
+    font-weight: normal;
+}
+
+/* IPB Wrapper */
+#ipbwrapper {
+    padding: 10px 0;
+}
+
+/* Border Wrap */
+.borderwrap {
+    border: 1px solid #CCC;
+    margin: 10px 0;
+}
+
+/* Main Title */
+.maintitle {
+    background: #D1DCEB;
+    border-bottom: 1px solid #CCC;
+    padding: 8px 10px;
+    font-weight: bold;
+    color: #2C5197;
+}
+
+.maintitle h1 {
+    font-size: 14px;
+    margin: 0;
+    font-weight: bold;
+}
+
+/* Form Subtitle */
+.formsubtitle {
+    background: #E8E8E8;
+    border-bottom: 1px solid #CCC;
+    padding: 5px 10px;
+    font-weight: bold;
+    font-size: 11px;
+}
+
+/* IPB Table */
+.ipbtable {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.ipbtable th {
+    background: #D1DCEB;
+    color: #2C5197;
+    font-weight: bold;
+    padding: 8px;
+    border: 1px solid #CCC;
+    text-align: left;
+    font-size: 11px;
+}
+
+.ipbtable td {
+    padding: 8px;
+    border: 1px solid #E8E8E8;
+    vertical-align: top;
+}
+
+/* Row Styles */
+.row1 {
+    background: #F8F8F8;
+}
+
+.row2 {
+    background: #FFFFFF;
+}
+
+.catend {
+    background: #E8E8E8;
+    height: 5px;
+}
+
+/* Topics Count */
+.topics_count {
+    font-weight: bold;
+    color: #2C5197;
+}
+
+/* Forum Description */
+.forumdesc {
+    color: #666;
+    font-size: 10px;
+    font-style: italic;
+}
+
+/* Last Poster Info */
+.last_poster_info {
+    font-size: 10px;
+    line-height: 14px;
+}
+
+.last_poster_info a {
+    color: #2C5197;
+    text-decoration: none;
+}
+
+.last_poster_info a:hover {
+    text-decoration: underline;
+}
+
+/* Active Users */
+.activeusers {
+    margin: 10px 0;
+}
+
+.activeusers .row2 {
+    background: #F8F8F8;
+    padding: 10px;
+}
+
+.desc {
+    color: #666;
+    font-size: 10px;
+}
+
+/* Dropdown */
+.dropdown {
+    padding: 2px;
+    border: 1px solid #CCC;
+    font-size: 11px;
+}
+
+/* Advertisement */
+.ad-banner {
+    border: 1px solid #CCC;
+    color: #999;
+    font-size: 12px;
+}
+
+.overflowhidden {
+    overflow: hidden;
+    margin: 10px 0;
+}
+
+/* Footer */
+#gfooter {
+    width: 100%;
+    margin-top: 20px;
+    padding: 10px 0;
+    border-top: 1px solid #CCC;
+    background: #F8F8F8;
+    font-size: 10px;
+    color: #666;
+}
+
+#gfooter td {
+    padding: 5px;
+}
+
+#gfooter a {
+    color: #2C5197;
+    text-decoration: none;
+}
+
+#gfooter a:hover {
+    text-decoration: underline;
+}
+
+/* Language Selector */
+#language_selector {
+    padding: 2px;
+    border: 1px solid #CCC;
+    font-size: 10px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1024px) {
+    body {
+        padding: 0 10px;
+    }
+    
+    .ad-banner {
+        width: 100% !important;
+        height: auto !important;
+        min-height: 60px;
+    }
+    
+    .popupmenu-new {
+        width: 90% !important;
+        left: 5% !important;
+    }
+    
+    .popupmenu-new input[type="text"] {
+        width: 90%;
+    }
+}
+
+@media (max-width: 768px) {
+    .menu li {
+        float: none;
+        width: 100%;
+    }
+    
+    .menu ul {
+        height: auto;
+    }
+    
+    .menu li a {
+        padding: 10px 15px;
+        border-bottom: 1px solid #1B3A6B;
+    }
+    
+    .ipbtable,
+    .ipbtable tbody,
+    .ipbtable tr,
+    .ipbtable td,
+    .ipbtable th {
+        display: block;
+        width: 100%;
+    }
+    
+    .ipbtable tr {
+        border: 1px solid #CCC;
+        margin-bottom: 10px;
+        padding: 5px;
+    }
+    
+    .ipbtable th {
+        display: none;
+    }
+    
+    .ipbtable td {
+        border: none;
+        padding: 5px;
+        text-align: left;
+    }
+    
+    .ipbtable td:before {
+        content: attr(data-label) ": ";
+        font-weight: bold;
+        color: #2C5197;
+    }
+}
+
+/* Print Styles */
+@media print {
+    .menu,
+    #submenu,
+    .ad-banner,
+    #userlinksguest,
+    .activeusers {
+        display: none;
+    }
+    
+    body {
+        background: white;
+        color: black;
+        font-size: 12pt;
+    }
+    
+    .ipbtable {
+        border-collapse: collapse;
+    }
+    
+    .ipbtable th,
+    .ipbtable td {
+        border: 1px solid black;
+        padding: 5pt;
+    }
+}
+
+/* Additional IPB specific styles */
+.nopad {
+    padding: 0 !important;
+}
+
+.darkrow1 {
+    background: #D1DCEB;
+    color: #2C5197;
+    font-weight: bold;
+    padding: 5px 8px;
+}
+
+.lastaction {
+    font-size: 10px;
+    color: #666;
+}
+
+/* Pagination styles */
+.pagelink {
+    color: #2C5197;
+    text-decoration: none;
+    padding: 2px 4px;
+    border: 1px solid #CCC;
+    margin: 0 1px;
+}
+
+.pagelink:hover {
+    background: #E8E8E8;
+}
+
+.pagecurrent {
+    background: #2C5197;
+    color: white;
+    padding: 2px 4px;
+    border: 1px solid #2C5197;
+    margin: 0 1px;
+}
+
+.pagelinklast {
+    color: #2C5197;
+    text-decoration: none;
+    padding: 2px 4px;
+    border: 1px solid #CCC;
+    margin: 0 1px;
+    font-weight: bold;
+}
+
+/* Popup menu styles */
+.popupmenu {
+    position: absolute;
+    background: white;
+    border: 1px solid #CCC;
+    box-shadow: 2px 2px 5px rgba(0,0,0,0.2);
+    z-index: 1000;
+}
+
+.popupmenu-category {
+    background: #D1DCEB;
+    padding: 5px 10px;
+    font-weight: bold;
+    color: #2C5197;
+}
+
+.popupmenu-item {
+    padding: 5px 10px;
+    border-bottom: 1px solid #E8E8E8;
+}
+
+.popupmenu-item:hover {
+    background: #F0F0F0;
+}
+
+.popupmenu-item-last {
+    padding: 5px 10px;
+}
+
+/* Icon styles */
+img {
+    vertical-align: middle;
+    border: 0;
+}
+
+/* Link styles */
+a.drive.wi {
+    color: #2C5197;
+    text-decoration: none;
+}
+
+a.drive.wi:hover {
+    text-decoration: underline;
+}
+
+/* Form elements */
+input[type="text"],
+input[type="password"],
+textarea,
+select {
+    font-family: Verdana, Arial, sans-serif;
+    font-size: 11px;
+    padding: 2px;
+    border: 1px solid #CCC;
+}
+
+input[type="checkbox"] {
+    margin: 0 5px 0 0;
+}
+
+/* Expand/Collapse functionality */
+.expand {
+    float: right;
+    margin-right: 5px;
+}
+
+.expand a {
+    color: #2C5197;
+    text-decoration: none;
+}
+
+.expand a:hover {
+    text-decoration: underline;
+}
+
+

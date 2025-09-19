@@ -1,0 +1,10 @@
+sudo docker run --rm \
+  -v $(pwd)/certbot/www:/var/www/certbot \
+  -v /etc/letsencrypt:/etc/letsencrypt \
+  certbot/certbot certonly \
+  --webroot \
+  --webroot-path=/var/www/certbot \
+  --email polskoydm@gmail.com \
+  --agree-tos \
+  --no-eff-email \
+  -d blog.theholylabs.com
