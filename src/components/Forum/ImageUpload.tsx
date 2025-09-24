@@ -1,6 +1,5 @@
 import React, { useState, useCallback } from 'react';
-
-const API_BASE_URL = process.env.REACT_APP_API_URL || '/api';
+import { firebaseAPI } from '../../services/firebaseAPI';
 
 interface UploadedImage {
   filename: string;
@@ -23,45 +22,34 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
   const [dragOver, setDragOver] = useState(false);
   const [uploadedImages, setUploadedImages] = useState<UploadedImage[]>([]);
 
-  const handleFileUpload = async (files: File[]) => {
+  const handleFileUpload = useCallback(async (files: File[]) => {
     if (files.length === 0) return;
     
     setUploading(true);
     
     try {
-      const formData = new FormData();
+      const filesToUpload = Array.from(files).slice(0, maxImages);
+      const result = await firebaseAPI.upload.uploadMultipleFiles(filesToUpload);
       
-      // Add files to form data
-      Array.from(files).slice(0, maxImages).forEach(file => {
-        formData.append('images', file);
-      });
-
-      const response = await fetch(`${API_BASE_URL}/upload/images`, {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        const newImages = result.images as UploadedImage[];
-        
-        setUploadedImages(prev => [...prev, ...newImages]);
-        
-        // Convert to full URLs for the parent component
-        const imageUrls = newImages.map(img => `${API_BASE_URL.replace('/api', '')}${img.url}`);
-        onImagesUploaded(imageUrls);
-      } else {
-        const error = await response.json();
-        console.error('Upload failed:', error);
-        alert('Ошибка загрузки изображений: ' + (error.error || 'Неизвестная ошибка'));
-      }
+      // Firebase returns attachments array with full URLs
+      const newImages = result.attachments.map((attachment: any) => ({
+        filename: attachment.filename,
+        url: attachment.url,
+        size: attachment.size
+      }));
+      
+      setUploadedImages(prev => [...prev, ...newImages]);
+      
+      // Firebase Storage URLs are already full URLs
+      const imageUrls = newImages.map((img: any) => img.url);
+      onImagesUploaded(imageUrls);
     } catch (error) {
       console.error('Upload error:', error);
       alert('Ошибка загрузки изображений');
     } finally {
       setUploading(false);
     }
-  };
+  }, [maxImages, onImagesUploaded, setUploadedImages, setUploading]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -74,7 +62,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
     if (files.length > 0) {
       handleFileUpload(files);
     }
-  }, []);
+  }, [handleFileUpload]);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -165,7 +153,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
               <div key={index} className="relative group">
                 <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden">
                   <img
-                    src={`${API_BASE_URL.replace('/api', '')}${image.url}`}
+                    src={image.url}
                     alt={`Uploaded ${index + 1}`}
                     className="w-full h-full object-cover"
                   />

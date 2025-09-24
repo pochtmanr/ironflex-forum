@@ -7,10 +7,8 @@ import ImageUpload from './ImageUpload';
 import RichTextEditor from './RichTextEditor';
 import FormattedText from './FormattedText';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || '/api';
-
 interface Category {
-  id: number;
+  id: number | string;
   name: string;
   description: string;
 }
@@ -86,29 +84,22 @@ const CreateTopic: React.FC = () => {
     setLoading(true);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/forum/topics`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          categoryId: parseInt(formData.categoryId),
-          title: formData.title.trim(),
-          content: formData.content.trim(),
-          mediaLinks: [...formData.mediaLinks.split('\n').filter(link => link.trim()), ...uploadedImages].join('\n').trim(),
-          userId: currentUser?.uid,
-          userEmail: currentUser?.email,
-          userName: currentUser?.displayName || currentUser?.email?.split('@')[0]
-        })
+      // Prepare media links
+      const allMediaLinks = [
+        ...formData.mediaLinks.split('\n').filter(link => link.trim()),
+        ...uploadedImages
+      ].filter(link => link.trim());
+
+      // Use Firebase API instead of REST API
+      const result = await forumAPI.createTopic({
+        categoryId: formData.categoryId,
+        title: formData.title.trim(),
+        content: formData.content.trim(),
+        mediaLinks: allMediaLinks
       });
 
-      if (response.ok) {
-        const result = await response.json();
-        navigate(`/topic/${result.topicId}`);
-      } else {
-        const errorData = await response.json();
-        setError(errorData.error || 'Ошибка при создании темы');
-      }
+      // Navigate to the newly created topic
+      navigate(`/topic/${result.topicId}`);
     } catch (error) {
       console.error('Error creating topic:', error);
       setError('Ошибка при создании темы');

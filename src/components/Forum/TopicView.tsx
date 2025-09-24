@@ -1,21 +1,22 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { forumAPI } from '../../services/api';
 import MediaRenderer from './MediaRenderer';
 import FormattedText from './FormattedText';
 import SimpleReplyForm from './SimpleReplyForm';
 import RichHtml from './RichHtml';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || '/api';
-
 interface Topic {
-  id: number;
+  id: number | string;
   title: string;
   content: string;
   media_links: string;
   user_name: string;
   user_email: string;
   user_id: string;
+  user_photo_url?: string; // Added for avatar
+  category_id: number | string;
   category_name: string;
   category_slug: string;
   views: number;
@@ -26,18 +27,19 @@ interface Topic {
 }
 
 interface Post {
-  id: number;
+  id: number | string;
   content: string;
   media_links: string;
   user_name: string;
   user_email: string;
   user_id: string;
+  user_photo_url?: string; // Added for avatar
   likes: number;
   dislikes: number;
   created_at: string;
   is_edited: boolean;
   edited_at: string | null;
-  parent_post_id: number | null;
+  parent_post_id: number | string | null;
   reply_count: number;
   replies?: Post[];
 }
@@ -51,101 +53,76 @@ const TopicView: React.FC = () => {
   const [submitting, setSubmitting] = useState(false);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [replyingToPost, setReplyingToPost] = useState<number | null>(null);
-  const [expandedReplies, setExpandedReplies] = useState<Set<number>>(new Set());
+  const [replyingToPost, setReplyingToPost] = useState<number | string | null>(null);
+  const [expandedReplies, setExpandedReplies] = useState<Set<number | string>>(new Set());
   const [replySortBy, setReplySortBy] = useState<'newest' | 'popular'>('newest');
   const [mainReplySortBy, setMainReplySortBy] = useState<'newest' | 'popular'>('newest');
   const [showMainReplyForm, setShowMainReplyForm] = useState(false);
 
-  useEffect(() => {
-    loadTopicData();
-  }, [topicId, page]);
-
-  const loadTopicData = async () => {
+  const loadTopicData = useCallback(async () => {
     if (!topicId) return;
 
     try {
-      const response = await fetch(`${API_BASE_URL}/forum/topics/${topicId}?page=${page}`);
-      if (response.ok) {
-        const data = await response.json();
-        setTopic(data.topic);
-        setPosts(data.posts);
-        setTotalPages(data.pagination.pages);
-      } else {
-        console.error('Error loading topic');
-      }
+      const data = await forumAPI.getTopic(topicId, page);
+      console.log('DEBUG TopicView: Loaded topic data:', data.topic);
+      console.log('DEBUG TopicView: Topic photo URL:', data.topic?.user_photo_url);
+      setTopic(data.topic);
+      setPosts(data.posts);
+      setTotalPages(data.pagination.pages);
     } catch (error) {
       console.error('Error loading topic:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [topicId, page]); // Dependencies for useCallback
 
-  const handleLike = async (targetType: 'topic' | 'post', targetId: number, likeType: 'like' | 'dislike') => {
+  useEffect(() => {
+    loadTopicData();
+  }, [loadTopicData]); // Only depend on the memoized loadTopicData
+
+  const handleLike = async (targetType: 'topic' | 'post', targetId: number | string, likeType: 'like' | 'dislike') => {
     if (!currentUser) return;
 
     try {
-      const response = await fetch(`${API_BASE_URL}/forum/like`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          targetType,
-          targetId,
-          likeType,
-          userId: currentUser.uid
-        })
-      });
-
-      if (response.ok) {
-        // Reload data to get updated like counts
-        loadTopicData();
+      // Call the Firebase API to handle likes
+      if (targetType === 'topic') {
+        await forumAPI.likeTopic(targetId.toString(), likeType);
+      } else {
+        await forumAPI.likePost(targetId.toString(), likeType);
       }
+      
+      // Reload the data to show updated counts
+      loadTopicData();
     } catch (error) {
       console.error('Error handling like:', error);
+      // Optionally show an error message to the user
     }
   };
 
-  const handleReply = async (content: string, uploadedImages: string[], parentPostId: number | null = null) => {
-    if (!currentUser || !content.trim()) return;
+  const handleReply = async (content: string, uploadedImages: string[], parentPostId: number | string | null = null) => {
+    if (!currentUser || !content.trim() || !topicId) return;
+
+    console.log('DEBUG handleReply: Starting reply submission');
+    console.log('DEBUG handleReply: Content:', content);
+    console.log('DEBUG handleReply: Uploaded images:', uploadedImages);
 
     setSubmitting(true);
 
     try {
-      const mediaLinks = uploadedImages.join('\n').trim();
+      const result = await forumAPI.createPost(topicId, content.trim(), uploadedImages);
+      console.log('DEBUG handleReply: Post created successfully:', result);
       
-      const response = await fetch(`${API_BASE_URL}/forum/topics/${topicId}/posts`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          content: content.trim(),
-          mediaLinks,
-          parentPostId,
-          userId: currentUser.uid,
-          userEmail: currentUser.email,
-          userName: currentUser.displayName || currentUser.email?.split('@')[0]
-        })
-      });
-
-      if (response.ok) {
-        setReplyingToPost(null);
-        setShowMainReplyForm(false);
-        loadTopicData(); // Reload to show new post
-      } else {
-        const errorData = await response.json();
-        console.error('Error creating reply:', errorData.error);
-      }
+      setReplyingToPost(null);
+      setShowMainReplyForm(false);
+      loadTopicData(); // Reload to show new post
     } catch (error) {
-      console.error('Error creating reply:', error);
+      console.error('ERROR handleReply: Failed to create reply:', error);
     } finally {
       setSubmitting(false);
     }
   };
 
-  const toggleRepliesExpanded = (postId: number) => {
+  const toggleRepliesExpanded = (postId: number | string) => {
     setExpandedReplies(prev => {
       const newSet = new Set(prev);
       if (newSet.has(postId)) {
@@ -251,7 +228,7 @@ const TopicView: React.FC = () => {
           </li>
           <li className="text-gray-500 flex-shrink-0">/</li>
           <li className="flex-shrink-0">
-            <Link to={`/category/${topic.id}`} className="text-blue-600 hover:text-blue-700 max-w-[100px] sm:max-w-none truncate block">
+            <Link to={`/category/${topic.category_id}`} className="text-blue-600 hover:text-blue-700 max-w-[100px] sm:max-w-none truncate block">
               {topic.category_name}
             </Link>
           </li>
@@ -276,19 +253,29 @@ const TopicView: React.FC = () => {
         <div className="p-3 sm:p-6">
           <div className="flex items-start space-x-2 sm:space-x-4">
             <div className="flex-shrink-0">
-              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-500 text-white  flex items-center justify-center font-bold shadow-md text-sm sm:text-base">
-                {getUserInitials(topic.user_name)}
-              </div>
-              <div className="w-10 sm:w-12 text-center mt-1 sm:mt-2">
-                
-              </div>
+              {topic.user_photo_url ? (
+                <img 
+                  src={topic.user_photo_url} 
+                  alt={topic.user_name}
+                  className="w-10 h-10 sm:w-12 sm:h-12 rounded-full object-cover shadow-md"
+                />
+              ) : (
+                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-500 text-white rounded-full flex items-center justify-center font-bold shadow-md text-sm sm:text-base">
+                  {getUserInitials(topic.user_name)}
+                </div>
+              )}
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-3 gap-2">
                 <div className="min-w-0">
                   <h3 className="font-semibold text-gray-900 text-sm sm:text-base">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="truncate">{topic.user_name}</span>
+                      <Link 
+                        to={`/profile/${topic.user_id}`}
+                        className="truncate text-blue-600 hover:text-blue-800 transition-colors"
+                      >
+                        {topic.user_name}
+                      </Link>
                       <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full flex-shrink-0">
                         Автор темы
                       </span>
@@ -329,7 +316,9 @@ const TopicView: React.FC = () => {
                     className="text-sm sm:text-base"
                   />
                 )}
-                <MediaRenderer mediaLinks={topic.media_links} size="large" />
+                {topic.media_links && topic.media_links.trim() && (
+                  <MediaRenderer mediaLinks={topic.media_links} size="large" />
+                )}
               </div>
             </div>
           </div>
@@ -432,9 +421,17 @@ const TopicView: React.FC = () => {
                   <div className="flex items-start space-x-4">
                     {/* User Avatar */}
                     <div className="flex-shrink-0">
-                      <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gray-400 flex items-center justify-center text-white font-bold text-sm shadow-sm">
-                        {getUserInitials(post.user_name)}
-                      </div>
+                      {post.user_photo_url ? (
+                        <img 
+                          src={post.user_photo_url} 
+                          alt={post.user_name}
+                          className="w-10 h-10 sm:w-12 sm:h-12 rounded-full object-cover shadow-sm"
+                        />
+                      ) : (
+                        <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gray-400 flex items-center justify-center text-white font-bold text-sm shadow-sm rounded-full">
+                          {getUserInitials(post.user_name)}
+                        </div>
+                      )}
                     </div>
                     
                     <div className="flex-1 min-w-0">
@@ -442,7 +439,12 @@ const TopicView: React.FC = () => {
                       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-3 gap-2">
                         <div className="min-w-0">
                           <h4 className="font-semibold text-gray-900 text-sm sm:text-base">
-                            {post.user_name}
+                            <Link 
+                              to={`/profile/${post.user_id}`}
+                              className="text-blue-600 hover:text-blue-800 transition-colors"
+                            >
+                              {post.user_name}
+                            </Link>
                           </h4>
                           <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-500">
                             <span>{formatDate(post.created_at)}</span>
@@ -469,7 +471,9 @@ const TopicView: React.FC = () => {
                             className="text-sm sm:text-base leading-relaxed"
                           />
                         )}
-                        <MediaRenderer mediaLinks={post.media_links} size="medium" />
+                        {post.media_links && post.media_links.trim() && (
+                          <MediaRenderer mediaLinks={post.media_links} size="medium" />
+                        )}
                       </div>
                       
                       {/* Action Bar */}
@@ -567,13 +571,26 @@ const TopicView: React.FC = () => {
                           <div className="p-3 sm:p-4">
                             <div className="flex items-start space-x-3">
                               <div className="flex-shrink-0">
-                                <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center text-white font-bold text-xs">
-                                  {getUserInitials(reply.user_name)}
-                                </div>
+                                {reply.user_photo_url ? (
+                                  <img 
+                                    src={reply.user_photo_url} 
+                                    alt={reply.user_name}
+                                    className="w-8 h-8 rounded-full object-cover"
+                                  />
+                                ) : (
+                                  <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center text-white font-bold text-xs">
+                                    {getUserInitials(reply.user_name)}
+                                  </div>
+                                )}
                               </div>
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 mb-2 text-xs text-gray-600">
-                                  <span className="font-medium text-gray-900">{reply.user_name}</span>
+                                  <Link 
+                                    to={`/profile/${reply.user_id}`}
+                                    className="font-medium text-blue-600 hover:text-blue-800 transition-colors"
+                                  >
+                                    {reply.user_name}
+                                  </Link>
                                   <span>•</span>
                                   <span>{formatDate(reply.created_at)}</span>
                                   {reply.is_edited && reply.edited_at && (
@@ -593,7 +610,9 @@ const TopicView: React.FC = () => {
                                       className="text-sm leading-relaxed"
                                     />
                                   )}
-                                  <MediaRenderer mediaLinks={reply.media_links} size="small" />
+                                  {reply.media_links && reply.media_links.trim() && (
+                                    <MediaRenderer mediaLinks={reply.media_links} size="small" />
+                                  )}
                                 </div>
                                 
                                 {currentUser && (

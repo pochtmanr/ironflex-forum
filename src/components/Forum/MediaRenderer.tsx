@@ -2,7 +2,7 @@ import React from 'react';
 
 // Helper functions for media parsing
 const parseYouTubeUrl = (url: string): string | null => {
-  const ytRegex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
+  const ytRegex = /(?:youtube\.com\/(?:[^/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?/\s]{11})/;
   const match = url.match(ytRegex);
   return match ? match[1] : null;
 };
@@ -65,6 +65,7 @@ const MediaRenderer: React.FC<MediaRendererProps> = ({
                       frameBorder="0"
                       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                       allowFullScreen
+                      title={`YouTube video: ${trimmedLink}`}
                       className={`rounded border shadow-sm ${currentSize.video}`}
                     ></iframe>
                     <div className="flex-1 min-w-0">
@@ -98,7 +99,7 @@ const MediaRenderer: React.FC<MediaRendererProps> = ({
                   <div className="mb-2">
                     <img 
                       src={trimmedLink} 
-                      alt="Attached image" 
+                      alt={`Media content image from ${trimmedLink}`} 
                       className={`rounded border shadow-sm cursor-pointer hover:opacity-90 transition-opacity object-cover ${currentSize.image}`}
                       onError={(e) => {
                         e.currentTarget.style.display = 'none';

@@ -37,7 +37,7 @@ const Encyclopedia: React.FC = () => {
                 <td className="row1" style={{verticalAlign: 'top', width: '150px'}}>
                   <div className="postdetails">
                     <img src="/images/user_icon.svg" alt="Пользователь офлайн" style={{border: 0}} />
-                    <b><a href="#" className="drive wi">Егорычъ</a></b>
+                    <b><span className="drive wi">Егорычъ</span></b>
                     <br /><span className="postdetails">Администратор</span>
                     <br /><img src="/images/star.svg" alt="*" style={{border: 0}} />
                     <br /><span className="postdetails">
@@ -183,10 +183,10 @@ const Encyclopedia: React.FC = () => {
                       <div style={{background: '#F8F8F8', padding: '10px', borderLeft: '4px solid #2C5197'}}>
                         <p><strong>📌 Полезные ссылки:</strong></p>
                         <ul>
-                          <li><a href="/novichkam" className="drive">Форум для новичков</a></li>
-                          <li><a href="#trenirovki" className="drive">Раздел тренировок</a></li>
-                          <li><a href="#pitanie" className="drive">Раздел питания</a></li>
-                          <li><a href="#sportpit" className="drive">Спортивное питание</a></li>
+                          <li><a href="/novice" className="drive">Форум для новичков</a></li>
+                          <li><span className="drive">Раздел тренировок</span></li>
+                          <li><span className="drive">Раздел питания</span></li>
+                          <li><span className="drive">Спортивное питание</span></li>
                         </ul>
                       </div>
                     </div>
@@ -201,12 +201,12 @@ const Encyclopedia: React.FC = () => {
                 </td>
                 <td className="darkrow2">
                   <div style={{float: 'right'}}>
-                    <a href="#quote" className="drive">
+                    <span className="drive">
                       <img src="/images/quote_icon.svg" style={{border: 0}} alt="Цитировать" />
-                    </a>
-                    <a href="#edit" className="drive">
+                    </span>
+                    <span className="drive">
                       <img src="/images/edit_icon.svg" style={{border: 0}} alt="Редактировать" />
-                    </a>
+                    </span>
                   </div>
                   <div>
                     <strong>Егорычъ</strong> на <em>7 февраля 2011 - 00:30</em> сказал:

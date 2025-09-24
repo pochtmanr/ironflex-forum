@@ -38,11 +38,11 @@ const Novice: React.FC = () => {
                 </td>
                 <td className="row1" style={{whiteSpace: 'nowrap'}}>
                   <div className="last_poster_info">
-                    <a href="#" className="drive">
+                    <span className="drive">
                       <img src="/images/lastpost.svg" style={{border: 0}} alt="Последнее сообщение" />
-                    </a>
+                    </span>
                     11.9.2018, 21:01<br />
-                    <b>Автор:</b> <a href="#" className="drive wi">Егорычъ</a>
+                    <b>Автор:</b> <span className="drive wi">Егорычъ</span>
                   </div>
                 </td>
               </tr>
@@ -52,7 +52,7 @@ const Novice: React.FC = () => {
                   <img src="/images/f_pinned.svg" style={{border: 0}} alt="Закрепленная тема" />
                 </td>
                 <td className="row2">
-                  <b><a href="#beginner-mistakes">❌ Типичные ошибки новичков</a></b>
+                  <b><span className="drive">❌ Типичные ошибки новичков</span></b>
                   <br />
                   <span className="forumdesc">Самые распространенные ошибки начинающих бодибилдеров</span>
                 </td>
@@ -61,11 +61,11 @@ const Novice: React.FC = () => {
                 </td>
                 <td className="row1" style={{whiteSpace: 'nowrap'}}>
                   <div className="last_poster_info">
-                    <a href="#" className="drive">
+                    <span className="drive">
                       <img src="/images/lastpost.svg" style={{border: 0}} alt="Последнее сообщение" />
-                    </a>
+                    </span>
                     15.8.2018, 14:30<br />
-                    <b>Автор:</b> <a href="#" className="drive wi">Тренер</a>
+                    <b>Автор:</b> <span className="drive wi">Тренер</span>
                   </div>
                 </td>
               </tr>
@@ -75,7 +75,7 @@ const Novice: React.FC = () => {
                   <img src="/images/f_norm_no.svg" style={{border: 0}} alt="Обычная тема" />
                 </td>
                 <td className="row2">
-                  <b><a href="#first-program">🏋️ Первая программа тренировок</a></b>
+                  <b><span className="drive">🏋️ Первая программа тренировок</span></b>
                   <br />
                   <span className="forumdesc">Базовая программа для начинающих атлетов</span>
                 </td>
@@ -84,11 +84,11 @@ const Novice: React.FC = () => {
                 </td>
                 <td className="row1" style={{whiteSpace: 'nowrap'}}>
                   <div className="last_poster_info">
-                    <a href="#" className="drive">
+                    <span className="drive">
                       <img src="/images/lastpost.svg" style={{border: 0}} alt="Последнее сообщение" />
-                    </a>
+                    </span>
                     10.7.2018, 16:45<br />
-                    <b>Автор:</b> <a href="#" className="drive wi">НовичокГод</a>
+                    <b>Автор:</b> <span className="drive wi">НовичокГод</span>
                   </div>
                 </td>
               </tr>
@@ -98,7 +98,7 @@ const Novice: React.FC = () => {
                   <img src="/images/f_norm_no.svg" style={{border: 0}} alt="Обычная тема" />
                 </td>
                 <td className="row2">
-                  <b><a href="#nutrition-basics">🍽️ Основы питания для набора массы</a></b>
+                  <b><span className="drive">🍽️ Основы питания для набора массы</span></b>
                   <br />
                   <span className="forumdesc">Как правильно питаться для роста мышц</span>
                 </td>
@@ -107,11 +107,11 @@ const Novice: React.FC = () => {
                 </td>
                 <td className="row1" style={{whiteSpace: 'nowrap'}}>
                   <div className="last_poster_info">
-                    <a href="#" className="drive">
+                    <span className="drive">
                       <img src="/images/lastpost.svg" style={{border: 0}} alt="Последнее сообщение" />
-                    </a>
+                    </span>
                     22.6.2018, 12:15<br />
-                    <b>Автор:</b> <a href="#" className="drive wi">Питание_Эксперт</a>
+                    <b>Автор:</b> <span className="drive wi">Питание_Эксперт</span>
                   </div>
                 </td>
               </tr>
@@ -121,7 +121,7 @@ const Novice: React.FC = () => {
                   <img src="/images/f_norm_no.svg" style={{border: 0}} alt="Обычная тема" />
                 </td>
                 <td className="row2">
-                  <b><a href="#supplements-beginner">💊 Спортпит для новичков</a></b>
+                  <b><span className="drive">💊 Спортпит для новичков</span></b>
                   <br />
                   <span className="forumdesc">Какие добавки действительно нужны начинающим</span>
                 </td>
@@ -130,11 +130,11 @@ const Novice: React.FC = () => {
                 </td>
                 <td className="row1" style={{whiteSpace: 'nowrap'}}>
                   <div className="last_poster_info">
-                    <a href="#" className="drive">
+                    <span className="drive">
                       <img src="/images/lastpost.svg" style={{border: 0}} alt="Последнее сообщение" />
-                    </a>
+                    </span>
                     05.6.2018, 18:22<br />
-                    <b>Автор:</b> <a href="#" className="drive wi">Supplements</a>
+                    <b>Автор:</b> <span className="drive wi">Supplements</span>
                   </div>
                 </td>
               </tr>
@@ -176,10 +176,10 @@ const Novice: React.FC = () => {
 
             <h3 style={{color: '#2C5197', marginTop: '20px', marginBottom: '10px'}}>🔗 Полезные разделы форума</h3>
             <ul>
-              <li><a href="#training" className="drive wi">Тренировки</a> - программы и методики</li>
-              <li><a href="#nutrition" className="drive wi">Питание</a> - диеты и рецепты</li>
-              <li><a href="#supplements" className="drive wi">Спортивное питание</a> - добавки и протеины</li>
-              <li><a href="#progress" className="drive wi">Отчеты о прогрессе</a> - истории успеха</li>
+              <li><span className="drive wi">Тренировки</span> - программы и методики</li>
+              <li><span className="drive wi">Питание</span> - диеты и рецепты</li>
+              <li><span className="drive wi">Спортивное питание</span> - добавки и протеины</li>
+              <li><span className="drive wi">Отчеты о прогрессе</span> - истории успеха</li>
             </ul>
           </div>
         </div>
@@ -193,16 +193,16 @@ const Novice: React.FC = () => {
           </div>
           <div className="row1" style={{padding: '10px'}}>
             <div style={{marginBottom: '10px'}}>
-              <strong>11.9.2018, 21:01</strong> - <a href="#" className="drive wi">Егорычъ</a> в теме 
+              <strong>11.9.2018, 21:01</strong> - <span className="drive wi">Егорычъ</span> в теме 
               <Link to="/encyclopedia" className="drive wi"> "Энциклопедия бодибилдинга!"</Link>
             </div>
             <div style={{marginBottom: '10px'}}>
-              <strong>15.8.2018, 14:30</strong> - <a href="#" className="drive wi">Тренер</a> в теме 
-              <a href="#beginner-mistakes" className="drive wi"> "Типичные ошибки новичков"</a>
+              <strong>15.8.2018, 14:30</strong> - <span className="drive wi">Тренер</span> в теме 
+              <span className="drive wi"> "Типичные ошибки новичков"</span>
             </div>
             <div style={{marginBottom: '10px'}}>
-              <strong>10.7.2018, 16:45</strong> - <a href="#" className="drive wi">НовичокГод</a> в теме 
-              <a href="#first-program" className="drive wi"> "Первая программа тренировок"</a>
+              <strong>10.7.2018, 16:45</strong> - <span className="drive wi">НовичокГод</span> в теме 
+              <span className="drive wi"> "Первая программа тренировок"</span>
             </div>
           </div>
         </div>

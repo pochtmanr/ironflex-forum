@@ -1,7 +1,6 @@
 import React, { useState, useRef, forwardRef, useImperativeHandle } from 'react';
 import EmojiInputEditor, { EmojiInputEditorRef } from './EmojiInputEditor';
-
-const API_BASE_URL = process.env.REACT_APP_API_URL || '/api';
+import { firebaseAPI } from '../../services/firebaseAPI';
 
 interface SimpleReplyFormProps {
   onSubmit: (content: string, uploadedImages: string[]) => void;
@@ -55,18 +54,8 @@ const SimpleReplyForm = forwardRef<SimpleReplyFormRef, SimpleReplyFormProps>(({
     for (const file of files) {
       if (file.type.startsWith('image/')) {
         try {
-          const formData = new FormData();
-          formData.append('image', file);
-
-          const response = await fetch(`${API_BASE_URL}/upload/image`, {
-            method: 'POST',
-            body: formData,
-          });
-
-          if (response.ok) {
-            const data = await response.json();
-            setUploadedImages(prev => [...prev, data.imageUrl]);
-          }
+          const result = await firebaseAPI.upload.uploadSingleFile(file);
+          setUploadedImages(prev => [...prev, result.imageUrl]);
         } catch (error) {
           console.error('Error uploading image:', error);
         }
@@ -93,11 +82,6 @@ const SimpleReplyForm = forwardRef<SimpleReplyFormRef, SimpleReplyFormProps>(({
 
   const insertMention = (username: string) => {
     emojiEditorRef.current?.insertMention(username);
-  };
-
-  const clearEditor = () => {
-    setContent('');
-    setUploadedImages([]);
   };
 
   // Expose insertMention function to parent
@@ -237,6 +221,16 @@ const SimpleReplyForm = forwardRef<SimpleReplyFormRef, SimpleReplyFormProps>(({
           </div>
         </div>
       </div>
+      
+      {/* Hidden file input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        multiple
+        accept="image/*"
+        onChange={handleFileSelect}
+        className="hidden"
+      />
     </form>
   );
 });

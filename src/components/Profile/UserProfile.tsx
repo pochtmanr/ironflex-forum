@@ -1,15 +1,18 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { doc, getDoc, collection, query, where, orderBy, limit, getDocs } from 'firebase/firestore';
+import { collection, query, where, orderBy, limit, getDocs, doc, getDoc } from 'firebase/firestore';
 import { db } from '../../firebase/config';
+import FormattedText from '../Forum/FormattedText';
 
 interface UserProfileData {
   uid: string;
   email: string;
   displayName: string;
+  username?: string; // New: optional username
   photoURL?: string;
   bio?: string;
+  location?: string; // New: optional location
   joinDate: Date;
   postCount: number;
   topicCount: number;
@@ -23,6 +26,7 @@ interface RecentActivity {
   content: string;
   createdAt: Date;
   categoryName?: string;
+  topicId?: string;
 }
 
 const UserProfile: React.FC = () => {
@@ -37,57 +41,118 @@ const UserProfile: React.FC = () => {
   const profileUserId = userId || currentUser?.uid;
   const isOwnProfile = currentUser?.uid === profileUserId;
 
-  useEffect(() => {
-    loadUserProfile();
-  }, [userId]);
-
-  const loadUserProfile = async () => {
+  const loadUserProfile = useCallback(async () => {
     if (!profileUserId) return;
 
     try {
-      // For now, we'll use Firebase Auth data and mock the rest
-      // In a real app, you'd fetch from Firestore
-      const mockProfile: UserProfileData = {
+      // Get user's custom profile data from Firestore
+      const userDocRef = doc(db, 'users', profileUserId);
+      const userDocSnap = await getDoc(userDocRef);
+      let customProfileData: any = {};
+      if (userDocSnap.exists()) {
+        customProfileData = userDocSnap.data();
+      }
+
+      // Get user's topics
+      const topicsQuery = query(
+        collection(db, 'topics'),
+        where('userId', '==', profileUserId),
+        where('isActive', '==', true),
+        orderBy('createdAt', 'desc'),
+        limit(10)
+      );
+      const topicsSnapshot = await getDocs(topicsQuery);
+      
+      // Get user's posts
+      const postsQuery = query(
+        collection(db, 'posts'),
+        where('userId', '==', profileUserId),
+        where('isActive', '==', true),
+        orderBy('createdAt', 'desc'),
+        limit(10)
+      );
+      const postsSnapshot = await getDocs(postsQuery);
+
+      // Create profile data
+      const userProfile: UserProfileData = {
         uid: profileUserId,
-        email: currentUser?.email || 'user@example.com',
-        displayName: currentUser?.displayName || 'Пользователь',
-        photoURL: currentUser?.photoURL || undefined,
-        bio: 'Увлекаюсь бодибилдингом и здоровым образом жизни.',
-        joinDate: new Date(currentUser?.metadata.creationTime || Date.now()),
-        postCount: 42,
-        topicCount: 5,
-        lastActive: new Date()
+        email: isOwnProfile ? (currentUser?.email || 'user@example.com') : 'private@example.com',
+        displayName: customProfileData.displayName || currentUser?.displayName || customProfileData.username || 'Пользователь',
+        username: customProfileData.username || customProfileData.displayName || 'Пользователь',
+        photoURL: customProfileData.photoURL || currentUser?.photoURL || undefined,
+        bio: customProfileData.bio || 'Пользователь пока не рассказал о себе.',
+        location: customProfileData.location || '',
+        joinDate: isOwnProfile ? new Date(currentUser?.metadata.creationTime || Date.now()) : new Date(),
+        postCount: postsSnapshot.size,
+        topicCount: topicsSnapshot.size,
+        lastActive: customProfileData.lastActive?.toDate() || new Date()
       };
 
-      setProfile(mockProfile);
+      setProfile(userProfile);
 
-      // Mock recent activity
-      const mockActivity: RecentActivity[] = [
-        {
-          id: '1',
+      // Create recent activity from topics and posts
+      const recentActivity: RecentActivity[] = [];
+
+      // Add topics
+      topicsSnapshot.docs.forEach(doc => {
+        const data = doc.data();
+        recentActivity.push({
+          id: doc.id,
           type: 'topic',
-          title: 'Вопрос о протеине для новичков',
-          content: 'Какой протеин лучше выбрать для начинающих?',
-          createdAt: new Date(Date.now() - 86400000),
-          categoryName: 'Спортивное питание'
-        },
-        {
-          id: '2',
-          type: 'post',
-          title: 'Re: Программа тренировок на массу',
-          content: 'Отличная программа! Я добавил бы еще упражнения на трицепс...',
-          createdAt: new Date(Date.now() - 172800000),
-          categoryName: 'Тренировки'
-        }
-      ];
+          title: data.title || 'Без названия',
+          content: data.content || '',
+          createdAt: data.createdAt?.toDate() || new Date(),
+          categoryName: data.categoryName || 'Общее',
+          topicId: doc.id
+        });
+      });
 
-      setRecentActivity(mockActivity);
+      // Add posts
+      postsSnapshot.docs.forEach(doc => {
+        const data = doc.data();
+        recentActivity.push({
+          id: doc.id,
+          type: 'post',
+          title: 'Ответ в теме',
+          content: data.content || '',
+          createdAt: data.createdAt?.toDate() || new Date(),
+          categoryName: 'Форум',
+          topicId: data.topicId
+        });
+      });
+
+      // Sort by date
+      recentActivity.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+      setRecentActivity(recentActivity);
+
     } catch (error) {
       console.error('Error loading profile:', error);
+      
+      // Fallback to basic profile for auth user
+      if (isOwnProfile && currentUser) {
+        const fallbackProfile: UserProfileData = {
+          uid: profileUserId,
+          email: currentUser.email || 'user@example.com',
+          displayName: currentUser.displayName || 'Пользователь',
+          username: currentUser.displayName || 'Пользователь',
+          photoURL: currentUser.photoURL || undefined,
+          bio: 'Участник форума по бодибилдингу и фитнесу.',
+          location: '',
+          joinDate: new Date(currentUser.metadata.creationTime || Date.now()),
+          postCount: 0,
+          topicCount: 0,
+          lastActive: new Date()
+        };
+        setProfile(fallbackProfile);
+      }
     } finally {
       setLoading(false);
     }
-  };
+  }, [profileUserId, isOwnProfile, currentUser]); // Added dependencies for useCallback
+
+  useEffect(() => {
+    loadUserProfile();
+  }, [loadUserProfile]); // Only depend on the memoized loadUserProfile
 
   const formatDate = (date: Date) => {
     return date.toLocaleDateString('ru-RU', {
@@ -130,16 +195,7 @@ const UserProfile: React.FC = () => {
     <div className="max-w-7xl mx-auto px-4 py-8">
       {/* Profile Header */}
       <div className="bg-white rounded-lg shadow-md mb-6">
-        <div className="relative h-48 bg-gradient-to-r from-blue-500 to-blue-600 rounded-t-lg">
-          {isOwnProfile && (
-            <Link
-              to="/settings"
-              className="absolute top-4 right-4 px-4 py-2 bg-white text-gray-700 rounded-md hover:bg-gray-100 transition-colors text-sm font-medium"
-            >
-              Настройки
-            </Link>
-          )}
-        </div>
+        
         
         <div className="relative px-6 pb-6">
           <div className="flex flex-col sm:flex-row sm:items-end sm:space-x-5">
@@ -148,7 +204,7 @@ const UserProfile: React.FC = () => {
                 <img
                   src={profile.photoURL}
                   alt={profile.displayName}
-                  className="w-24 h-24 sm:w-32 sm:h-32 rounded-full border-4 border-white bg-white"
+                  className="w-24 h-24 sm:w-32 sm:h-32 rounded-md border-4 border-white bg-white"
                 />
               ) : (
                 <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-full border-4 border-white bg-gray-300 flex items-center justify-center text-gray-600 text-2xl font-bold">
@@ -162,7 +218,12 @@ const UserProfile: React.FC = () => {
                 <h1 className="text-2xl font-bold text-gray-900 truncate">
                   {profile.displayName}
                 </h1>
-                <p className="text-sm text-gray-500">@{profile.email.split('@')[0]}</p>
+                {profile.username && (
+                  <p className="text-sm text-gray-500">@{profile.username}</p>
+                )}
+                {profile.location && (
+                  <p className="text-sm text-gray-500">{profile.location}</p>
+                )}
               </div>
               
               {isOwnProfile && (
@@ -182,7 +243,12 @@ const UserProfile: React.FC = () => {
             <h1 className="text-2xl font-bold text-gray-900 truncate">
               {profile.displayName}
             </h1>
-            <p className="text-sm text-gray-500">@{profile.email.split('@')[0]}</p>
+            {profile.username && (
+              <p className="text-sm text-gray-500">@{profile.username}</p>
+            )}
+            {profile.location && (
+              <p className="text-sm text-gray-500">{profile.location}</p>
+            )}
           </div>
         </div>
         
@@ -252,6 +318,18 @@ const UserProfile: React.FC = () => {
               <div>
                 <h3 className="text-lg font-medium text-gray-900 mb-2">Информация</h3>
                 <dl className="grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-2">
+                  {profile.username && (
+                    <div>
+                      <dt className="text-sm font-medium text-gray-500">Имя пользователя</dt>
+                      <dd className="mt-1 text-sm text-gray-900">@{profile.username}</dd>
+                    </div>
+                  )}
+                  {profile.location && (
+                    <div>
+                      <dt className="text-sm font-medium text-gray-500">Местоположение</dt>
+                      <dd className="mt-1 text-sm text-gray-900">{profile.location}</dd>
+                    </div>
+                  )}
                   <div>
                     <dt className="text-sm font-medium text-gray-500">Email</dt>
                     <dd className="mt-1 text-sm text-gray-900">{profile.email}</dd>
@@ -275,9 +353,11 @@ const UserProfile: React.FC = () => {
                 .map(activity => (
                   <div key={activity.id} className="border-b border-gray-200 pb-4 last:border-0">
                     <h4 className="font-medium text-gray-900 hover:text-blue-600">
-                      <Link to={`/topic/${activity.id}`}>{activity.title}</Link>
+                      <Link to={`/topic/${activity.topicId || activity.id}`}>{activity.title}</Link>
                     </h4>
-                    <p className="text-sm text-gray-600 mt-1">{activity.content}</p>
+                    <div className="text-sm text-gray-600 mt-1">
+                      <FormattedText content={activity.content} className="text-sm" />
+                    </div>
                     <div className="flex items-center mt-2 text-xs text-gray-500 space-x-2">
                       <span>{activity.categoryName}</span>
                       <span>•</span>
@@ -299,9 +379,11 @@ const UserProfile: React.FC = () => {
                 .map(activity => (
                   <div key={activity.id} className="border-b border-gray-200 pb-4 last:border-0">
                     <h4 className="font-medium text-gray-900 hover:text-blue-600">
-                      <Link to={`/topic/${activity.id}`}>{activity.title}</Link>
+                      <Link to={`/topic/${activity.topicId || activity.id}`}>{activity.title}</Link>
                     </h4>
-                    <p className="text-sm text-gray-600 mt-1">{activity.content}</p>
+                    <div className="text-sm text-gray-600 mt-1">
+                      <FormattedText content={activity.content} className="text-sm" />
+                    </div>
                     <div className="flex items-center mt-2 text-xs text-gray-500 space-x-2">
                       <span>{activity.categoryName}</span>
                       <span>•</span>

@@ -1,6 +1,8 @@
 import React, { useEffect, useState, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { contentAPI, tokenManager } from '../../services/api';
+import { contentAPI } from '../../services/firebaseIntegration';
+import { firebaseAPI } from '../../services/firebaseAPI';
 import RichTextEditor from '../Forum/RichTextEditor';
 import MediaRenderer from '../Forum/MediaRenderer';
 
@@ -12,14 +14,14 @@ const AdminContent: React.FC = () => {
   const { currentUser } = useAuth();
   const [tab, setTab] = useState<Tab>('articles');
   const [title, setTitle] = useState('');
+  const [subheader, setSubheader] = useState('');
   const [content, setContent] = useState('');
   const [status, setStatus] = useState('published');
   const [level, setLevel] = useState('');
   const [duration, setDuration] = useState<number | ''>('');
   const [message, setMessage] = useState<string>('');
-  const [coverImage, setCoverImage] = useState('');
-  const [mediaLinks, setMediaLinks] = useState('');
-  const [uploadedImages, setUploadedImages] = useState<string[]>([]);
+  const [mainImage, setMainImage] = useState('');
+  const [videoUrl, setVideoUrl] = useState('');
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -34,24 +36,13 @@ const AdminContent: React.FC = () => {
   const handleImageUpload = async (files: File[]) => {
     setIsUploading(true);
     try {
-      for (const file of files) {
-        if (file.type.startsWith('image/')) {
-          const formData = new FormData();
-          formData.append('image', file);
-
-          const response = await fetch(`${API_BASE_URL}/upload/image`, {
-            method: 'POST',
-            body: formData,
-          });
-
-          if (response.ok) {
-            const data = await response.json();
-            setUploadedImages(prev => [...prev, data.imageUrl]);
-          }
-        }
+      const file = files[0]; // Only take the first file
+      if (file && file.type.startsWith('image/')) {
+        const result = await firebaseAPI.upload.uploadSingleFile(file);
+        setMainImage(result.imageUrl);
       }
     } catch (error) {
-      console.error('Error uploading images:', error);
+      console.error('Error uploading image:', error);
     } finally {
       setIsUploading(false);
     }
@@ -63,56 +54,72 @@ const AdminContent: React.FC = () => {
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  const removeImage = (index: number) => {
-    setUploadedImages(prev => prev.filter((_, i) => i !== index));
+  const removeImage = () => {
+    setMainImage('');
   };
 
   const submit = async () => {
     setMessage('');
-    const allMediaLinks = [...mediaLinks.split('\n').filter(link => link.trim()), ...uploadedImages].join('\n').trim();
+    const mediaLinks = videoUrl.trim() ? [videoUrl.trim()] : [];
     const payload: any = { 
       title: title.trim(), 
+      subheader: subheader.trim(),
       content: content.trim(), 
       status,
-      mediaLinks: allMediaLinks,
-      coverImageUrl: coverImage.trim()
+      mediaLinks: mediaLinks,
+      coverImageUrl: mainImage.trim()
     };
-    if (!payload.title || !payload.content) return setMessage('Заполните заголовок и контент');
+    if (!payload.title || !payload.subheader || !payload.content) return setMessage('Заполните заголовок, подзаголовок и контент');
+    
+    // Additional validation for trainings
+    if (tab === 'trainings') {
+      if (!level) return setMessage('Заполните уровень тренировки');
+      if (duration === '' || !duration) return setMessage('Заполните длительность тренировки');
+      payload.level = level;
+      payload.durationMinutes = Number(duration);
+    }
+    
     try {
-      // Always refresh Firebase token to ensure we have latest claims
-      if (currentUser) {
-        const idToken = await currentUser.getIdToken(true); // force refresh
-        tokenManager.setTokens(idToken, '');
-        console.log('Using fresh Firebase token for admin request');
-      }
+      console.log('Creating content with Firebase:', payload);
       
       if (tab === 'articles') {
-        await contentAPI.createArticle(payload);
+        const result = await contentAPI.createArticle(payload);
+        setMessage(`✅ Статья "${payload.title}" успешно создана!`);
+        console.log('Article created:', result);
       } else {
-        payload.level = level;
-        payload.durationMinutes = duration === '' ? null : Number(duration);
-        await contentAPI.createTraining(payload);
+        const result = await contentAPI.createTraining(payload);
+        setMessage(`✅ Тренировка "${payload.title}" успешно создана!`);
+        console.log('Training created:', result);
       }
+      
+      // Reset form after successful creation
       setTitle('');
+      setSubheader('');
       setContent('');
       setLevel('');
       setDuration('');
-      setCoverImage('');
-      setMediaLinks('');
-      setUploadedImages([]);
-      setMessage('✅ Сохранено успешно!');
+      setMainImage('');
+      setVideoUrl('');
+      
     } catch (e: any) {
-      console.error('Admin API error:', e);
-      if (e?.message?.includes('Unauthorized') || e?.message?.includes('Forbidden')) {
-        setMessage('❌ Нет прав администратора. Выйдите и войдите заново.');
-      } else {
-        setMessage(`❌ Ошибка: ${e?.message || 'Неизвестная ошибка'}`);
-      }
+      console.error('Content creation error:', e);
+      setMessage(`❌ Ошибка: ${e?.message || 'Неизвестная ошибка'}`);
     }
   };
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-6">
+      {/* Admin Navigation */}
+      <div className="mb-6">
+        <nav className="flex items-center space-x-4 text-sm">
+          <Link to="/admin" className="text-blue-600 hover:text-blue-700 font-medium">
+            ← Админ-панель
+          </Link>
+          <span className="text-gray-500">/</span>
+          <span className="text-gray-700">Создание контента</span>
+        </nav>
+      </div>
+
       <div className="bg-white shadow">
         <div className="bg-gray-700 text-white px-4 py-3 flex items-center justify-between">
           <h1 className="font-semibold">Админ: Контент</h1>
@@ -121,115 +128,247 @@ const AdminContent: React.FC = () => {
             <button onClick={() => setTab('trainings')} className={`px-3 py-1 text-sm rounded ${tab==='trainings'?'bg-white text-gray-900':'bg-gray-600'}`}>Тренировки</button>
           </div>
         </div>
-        <div className="p-4 space-y-3">
-          {message && <div className="text-sm text-green-700">{message}</div>}
-          <div>
-            <label className="block text-sm mb-1">Заголовок</label>
-            <input value={title} onChange={(e)=>setTitle(e.target.value)} className="w-full border px-3 py-2" />
-          </div>
-          <div>
-            <label className="block text-sm mb-1">Контент</label>
-            <RichTextEditor
-              value={content}
-              onChange={setContent}
-              placeholder="Напишите контент..."
-              rows={12}
-              className="focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500"
-            />
-          </div>
-          <div>
-            <label className="block text-sm mb-1">Статус</label>
-            <select value={status} onChange={(e)=>setStatus(e.target.value)} className="border px-3 py-2">
-              <option value="draft">draft</option>
-              <option value="published">published</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm mb-1">Обложка (URL изображения)</label>
-            <input value={coverImage} onChange={(e)=>setCoverImage(e.target.value)} className="w-full border px-3 py-2" placeholder="https://example.com/image.jpg" />
-          </div>
-
-          <div>
-            <label className="block text-sm mb-1">Загрузить изображения</label>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              multiple
-              onChange={handleFileSelect}
-              className="hidden"
-            />
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isUploading}
-                className="px-3 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 disabled:opacity-50"
-              >
-                {isUploading ? 'Загрузка...' : 'Выбрать файлы'}
-              </button>
-              {uploadedImages.length > 0 && (
-                <span className="text-sm text-gray-600">{uploadedImages.length} изображений загружено</span>
-              )}
+        <div className="p-6 space-y-6">
+          {message && <div className="text-sm text-green-700 bg-green-50 p-3 rounded">{message}</div>}
+          
+          {/* Article Form */}
+          {tab === 'articles' && (
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Создание статьи</h3>
+              
+              <div>
+                <label className="block text-sm font-medium mb-2">Заголовок *</label>
+                <input 
+                  value={title} 
+                  onChange={(e)=>setTitle(e.target.value)} 
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                  placeholder="Основной заголовок статьи" 
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium mb-2">Подзаголовок *</label>
+                <input 
+                  value={subheader} 
+                  onChange={(e)=>setSubheader(e.target.value)} 
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                  placeholder="Краткое описание статьи" 
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium mb-2">Главное изображение</label>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileSelect}
+                  className="hidden"
+                />
+                <div className="space-y-3">
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isUploading}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+                  >
+                    {isUploading ? 'Загрузка...' : 'Выбрать изображение'}
+                  </button>
+                  
+                  {mainImage && (
+                    <div className="relative inline-block">
+                      <img 
+                        src={mainImage} 
+                        alt="Main image"
+                        className="w-32 h-32 object-cover rounded-lg border"
+                      />
+                      <button
+                        type="button"
+                        onClick={removeImage}
+                        className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full text-sm flex items-center justify-center hover:bg-red-600"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium mb-2">Видео URL (опционально)</label>
+                <input 
+                  value={videoUrl} 
+                  onChange={(e)=>setVideoUrl(e.target.value)} 
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                  placeholder="https://youtube.com/watch?v=..." 
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium mb-2">Контент *</label>
+                <RichTextEditor
+                  value={content}
+                  onChange={setContent}
+                  placeholder="Напишите содержание статьи..."
+                  rows={12}
+                  className="focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium mb-2">Статус</label>
+                <select 
+                  value={status} 
+                  onChange={(e)=>setStatus(e.target.value)} 
+                  className="border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="draft">Черновик</option>
+                  <option value="published">Опубликовано</option>
+                </select>
+              </div>
             </div>
-            
-            {uploadedImages.length > 0 && (
-              <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2">
-                {uploadedImages.map((imageUrl, index) => (
-                  <div key={index} className="relative group">
-                    <img 
-                      src={imageUrl} 
-                      alt={`Uploaded ${index + 1}`}
-                      className="w-full h-20 object-cover rounded border"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => removeImage(index)}
-                      className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      ×
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+          )}
 
-          <div>
-            <label className="block text-sm mb-1">Дополнительные медиа (ссылки)</label>
-            <textarea 
-              value={mediaLinks} 
-              onChange={(e)=>setMediaLinks(e.target.value)} 
-              rows={3} 
-              className="w-full border px-3 py-2" 
-              placeholder="YouTube видео, внешние изображения (каждая ссылка с новой строки)"
-            />
-          </div>
-
+          {/* Training Form */}
           {tab === 'trainings' && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Создание тренировки</h3>
+              
               <div>
-                <label className="block text-sm mb-1">Уровень</label>
-                <input value={level} onChange={(e)=>setLevel(e.target.value)} className="w-full border px-3 py-2" placeholder="Начинающий, Средний, Продвинутый" />
+                <label className="block text-sm font-medium mb-2">Заголовок *</label>
+                <input 
+                  value={title} 
+                  onChange={(e)=>setTitle(e.target.value)} 
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                  placeholder="Название тренировки" 
+                />
               </div>
+              
               <div>
-                <label className="block text-sm mb-1">Длительность (мин)</label>
-                <input value={duration} onChange={(e)=>setDuration(e.target.value === '' ? '' : Number(e.target.value))} type="number" className="w-full border px-3 py-2" />
+                <label className="block text-sm font-medium mb-2">Подзаголовок *</label>
+                <input 
+                  value={subheader} 
+                  onChange={(e)=>setSubheader(e.target.value)} 
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                  placeholder="Краткое описание тренировки" 
+                />
+              </div>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2">Уровень *</label>
+                  <select 
+                    value={level} 
+                    onChange={(e)=>setLevel(e.target.value)} 
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">Выберите уровень</option>
+                    <option value="Начинающий">Начинающий</option>
+                    <option value="Средний">Средний</option>
+                    <option value="Продвинутый">Продвинутый</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Длительность (мин) *</label>
+                  <input 
+                    value={duration} 
+                    onChange={(e)=>setDuration(e.target.value === '' ? '' : Number(e.target.value))} 
+                    type="number" 
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                    placeholder="60"
+                  />
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium mb-2">Главное изображение</label>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileSelect}
+                  className="hidden"
+                />
+                <div className="space-y-3">
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isUploading}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+                  >
+                    {isUploading ? 'Загрузка...' : 'Выбрать изображение'}
+                  </button>
+                  
+                  {mainImage && (
+                    <div className="relative inline-block">
+                      <img 
+                        src={mainImage} 
+                        alt="Main image"
+                        className="w-32 h-32 object-cover rounded-lg border"
+                      />
+                      <button
+                        type="button"
+                        onClick={removeImage}
+                        className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full text-sm flex items-center justify-center hover:bg-red-600"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium mb-2">Видео URL (опционально)</label>
+                <input 
+                  value={videoUrl} 
+                  onChange={(e)=>setVideoUrl(e.target.value)} 
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                  placeholder="https://youtube.com/watch?v=..." 
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium mb-2">Контент *</label>
+                <RichTextEditor
+                  value={content}
+                  onChange={setContent}
+                  placeholder="Напишите описание и инструкции для тренировки..."
+                  rows={12}
+                  className="focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium mb-2">Статус</label>
+                <select 
+                  value={status} 
+                  onChange={(e)=>setStatus(e.target.value)} 
+                  className="border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="draft">Черновик</option>
+                  <option value="published">Опубликовано</option>
+                </select>
               </div>
             </div>
           )}
 
           {/* Preview Section */}
-          {(content.trim() || uploadedImages.length > 0 || mediaLinks.trim()) && (
-            <div>
-              <label className="block text-sm mb-2 font-medium">Предпросмотр контента:</label>
-              <div className="border border-gray-200 rounded p-4 bg-gray-50">
+          {(content.trim() || mainImage || videoUrl.trim()) && (
+            <div className="border-t border-gray-200 pt-6">
+              <label className="block text-sm font-medium mb-3">Предпросмотр:</label>
+              <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                {mainImage && (
+                  <div className="mb-4">
+                    <img src={mainImage} alt="Preview" className="w-full max-w-md h-48 object-cover rounded" />
+                  </div>
+                )}
                 {content && (
                   <div className="prose max-w-none mb-4" dangerouslySetInnerHTML={{ __html: content }} />
                 )}
-                {(uploadedImages.length > 0 || mediaLinks.trim()) && (
+                {videoUrl.trim() && (
                   <MediaRenderer 
-                    mediaLinks={[...mediaLinks.split('\n').filter(link => link.trim()), ...uploadedImages].join('\n')} 
+                    mediaLinks={videoUrl} 
                     size="medium" 
                   />
                 )}
@@ -237,13 +376,13 @@ const AdminContent: React.FC = () => {
             </div>
           )}
 
-          <div className="pt-2">
+          <div className="pt-4 border-t border-gray-200">
             <button 
               onClick={submit} 
               disabled={isUploading}
-              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
             >
-              {isUploading ? 'Загрузка...' : 'Сохранить'}
+              {isUploading ? 'Загрузка...' : (tab === 'articles' ? 'Создать статью' : 'Создать тренировку')}
             </button>
           </div>
         </div>

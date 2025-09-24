@@ -1,12 +1,41 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useAuth } from '../../contexts/AuthContext';
+import { db } from '../../firebase/config';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
 
 const PrivacySettings: React.FC = () => {
+  const { currentUser } = useAuth();
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [error, setError] = useState('');
+
   const [privacy, setPrivacy] = useState({
     showEmail: false,
     showActivity: true,
     allowMessages: true,
     showOnlineStatus: true
   });
+
+  useEffect(() => {
+    const fetchPrivacySettings = async () => {
+      if (!currentUser) return;
+      setLoading(true);
+      try {
+        const privacyDocRef = doc(db, 'users', currentUser.uid, 'settings', 'privacy');
+        const privacyDocSnap = await getDoc(privacyDocRef);
+        if (privacyDocSnap.exists()) {
+          setPrivacy(privacyDocSnap.data() as typeof privacy);
+        }
+      } catch (err: any) {
+        console.error('Error fetching privacy settings:', err);
+        setError('Ошибка загрузки настроек конфиденциальности: ' + err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchPrivacySettings();
+  }, [currentUser]);
 
   const handleChange = (key: keyof typeof privacy) => {
     setPrivacy({
@@ -15,10 +44,31 @@ const PrivacySettings: React.FC = () => {
     });
   };
 
-  const handleSave = () => {
-    // In a real app, save to Firestore
-    console.log('Saving privacy settings:', privacy);
+  const handleSave = async () => {
+    if (!currentUser) return;
+    setSaving(true);
+    setError('');
+    setSuccess(false);
+    try {
+      const privacyDocRef = doc(db, 'users', currentUser.uid, 'settings', 'privacy');
+      await setDoc(privacyDocRef, privacy, { merge: true });
+      setSuccess(true);
+      setTimeout(() => setSuccess(false), 3000);
+    } catch (err: any) {
+      console.error('Error saving privacy settings:', err);
+      setError('Ошибка сохранения настроек конфиденциальности: ' + err.message);
+    } finally {
+      setSaving(false);
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="p-6 text-center text-gray-500">
+        Загрузка настроек конфиденциальности...
+      </div>
+    );
+  }
 
   return (
     <div className="p-6">
@@ -95,12 +145,24 @@ const PrivacySettings: React.FC = () => {
           </button>
         </div>
 
+        {error && (
+          <div className="rounded-md bg-red-50 p-4 mb-4">
+            <div className="text-sm text-red-800">{error}</div>
+          </div>
+        )}
+        {success && (
+          <div className="rounded-md bg-green-50 p-4 mb-4">
+            <div className="text-sm text-green-800">Настройки успешно сохранены!</div>
+          </div>
+        )}
+
         <div className="flex justify-end">
           <button
             onClick={handleSave}
-            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
+            disabled={saving}
+            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Сохранить настройки
+            {saving ? 'Сохранение...' : 'Сохранить настройки'}
           </button>
         </div>
       </div>

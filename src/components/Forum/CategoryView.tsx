@@ -1,14 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { forumAPI } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
+import { apiCache } from '../../utils/cache';
+import SkeletonLoader from '../UI/SkeletonLoader';
 
 interface Topic {
-  id: number;
+  id: number | string;
   title: string;
   content: string;
   user_name: string;
   user_email: string;
+  user_id: string;
   reply_count: number;
   views: number;
   likes: number;
@@ -20,7 +23,7 @@ interface Topic {
 }
 
 interface Category {
-  id: number;
+  id: number | string;
   name: string;
   description: string;
   slug: string;
@@ -35,24 +38,51 @@ const CategoryView: React.FC = () => {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
-  useEffect(() => {
-    loadCategoryData();
-  }, [categoryId, page]);
-
-  const loadCategoryData = async () => {
+  const loadCategoryData = useCallback(async () => {
     if (!categoryId) return;
 
     try {
+      // Check cache first
+      const cacheKey = `category-${categoryId}-page-${page}`;
+      const cachedData = apiCache.get(cacheKey);
+      if (cachedData) {
+        console.log('DEBUG: CategoryView - using cached data for', cacheKey);
+        setCategory(cachedData.category);
+        setTopics(cachedData.topics);
+        setTotalPages(cachedData.totalPages);
+        setLoading(false);
+        return;
+      }
+
       const response = await forumAPI.getCategory(categoryId, page);
+      
+      // Cache the response for 2 minutes
+      const dataToCache = {
+        category: response.category,
+        topics: response.topics,
+        totalPages: response.pagination.pages
+      };
+      apiCache.set(cacheKey, dataToCache, 2);
+      
       setCategory(response.category);
       setTopics(response.topics);
       setTotalPages(response.pagination.pages);
     } catch (error) {
       console.error('Error loading category:', error);
+      // If category not found, try to show a helpful message
+      if (error instanceof Error && error.message.includes('not found')) {
+        setCategory(null);
+        setTopics([]);
+        setTotalPages(1);
+      }
     } finally {
       setLoading(false);
     }
-  };
+  }, [categoryId, page]); // Dependencies for useCallback
+
+  useEffect(() => {
+    loadCategoryData();
+  }, [loadCategoryData]); // Only depend on the memoized loadCategoryData
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -65,15 +95,15 @@ const CategoryView: React.FC = () => {
     });
   };
 
-  const getTopicIcon = (topic: Topic) => {
-    if (topic.is_pinned) {
-      return <img src="/images/f_pinned.svg" alt="Закреплено" className="w-6 h-6" />;
-    }
-    if (topic.is_locked) {
-      return <img src="/images/f_closed.svg" alt="Заблокировано" className="w-6 h-6" />;
-    }
-    return <img src="/images/f_norm_no.svg" alt="Обычная тема" className="w-6 h-6" />;
-  };
+  // const getTopicIcon = (topic: Topic) => {
+  //   if (topic.is_pinned) {
+  //     return <img src="/images/f_pinned.svg" alt="Закреплено" className="w-6 h-6" />;
+  //   }
+  //   if (topic.is_locked) {
+  //     return <img src="/images/f_closed.svg" alt="Заблокировано" className="w-6 h-6" />;
+  //   }
+  //   return <img src="/images/f_norm_no.svg" alt="Обычная тема" className="w-6 h-6" />;
+  // };
 
   if (loading) {
     return (
@@ -139,7 +169,9 @@ const CategoryView: React.FC = () => {
               </tr>
             </thead>
             <tbody>
-              {topics.length === 0 ? (
+              {loading ? (
+                <SkeletonLoader type="topic" count={5} />
+              ) : topics.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
                     В этой категории пока нет тем.
@@ -166,7 +198,12 @@ const CategoryView: React.FC = () => {
                           {topic.title}
                         </Link>
                         <div className="text-gray-500">
-                          от <span className="font-medium">{topic.user_name}</span> • {formatDate(topic.created_at)}
+                          от <Link 
+                            to={`/profile/${topic.user_id}`}
+                            className="font-medium text-blue-600 hover:text-blue-800 transition-colors"
+                          >
+                            {topic.user_name}
+                          </Link> • {formatDate(topic.created_at)}
                         </div>
                       </div>
                     </td>
@@ -225,4 +262,4 @@ const CategoryView: React.FC = () => {
   );
 };
 
-export default CategoryView;
+export default React.memo(CategoryView);

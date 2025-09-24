@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { updatePassword, reauthenticateWithCredential, EmailAuthProvider } from 'firebase/auth';
-import { auth } from '../../firebase/config';
 
 const SecuritySettings: React.FC = () => {
   const { currentUser } = useAuth();
@@ -54,27 +53,29 @@ const SecuritySettings: React.FC = () => {
     setLoading(true);
 
     try {
-      if (auth.currentUser && auth.currentUser.email) {
-        // Re-authenticate user
-        const credential = EmailAuthProvider.credential(
-          auth.currentUser.email,
-          passwords.currentPassword
-        );
-        
-        await reauthenticateWithCredential(auth.currentUser, credential);
-        
-        // Update password
-        await updatePassword(auth.currentUser, passwords.newPassword);
-        
-        setSuccess(true);
-        setPasswords({
-          currentPassword: '',
-          newPassword: '',
-          confirmPassword: ''
-        });
-        
-        setTimeout(() => setSuccess(false), 3000);
+      if (!currentUser || !currentUser.email) {
+        throw new Error('User not authenticated or email not available.');
       }
+
+      // Re-authenticate user
+      const credential = EmailAuthProvider.credential(
+        currentUser.email,
+        passwords.currentPassword
+      );
+      
+      await reauthenticateWithCredential(currentUser, credential);
+      
+      // Update password
+      await updatePassword(currentUser, passwords.newPassword);
+      
+      setSuccess(true);
+      setPasswords({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: ''
+      });
+      
+      setTimeout(() => setSuccess(false), 3000);
     } catch (error: any) {
       if (error.code === 'auth/wrong-password') {
         setError('Неверный текущий пароль');

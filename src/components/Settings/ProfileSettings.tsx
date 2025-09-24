@@ -1,7 +1,9 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { updateProfile } from 'firebase/auth';
-import { auth } from '../../firebase/config';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { storage, db } from '../../firebase/config';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
 
 const ProfileSettings: React.FC = () => {
   const { currentUser } = useAuth();
@@ -12,6 +14,8 @@ const ProfileSettings: React.FC = () => {
   
   const [formData, setFormData] = useState({
     displayName: currentUser?.displayName || '',
+    username: '', // New field
+    location: '', // New field
     bio: '',
     photoURL: currentUser?.photoURL || ''
   });
@@ -29,18 +33,36 @@ const ProfileSettings: React.FC = () => {
 
   const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (!file || !currentUser) return;
 
-    // In a real app, you would upload to Firebase Storage
-    // For now, we'll just show a preview
-    const reader = new FileReader();
-    reader.onloadend = () => {
+    setLoading(true);
+    setError('');
+
+    try {
+      // Upload to Firebase Storage
+      const timestamp = Date.now();
+      const fileName = `profile-${currentUser.uid}-${timestamp}.${file.name.split('.').pop()}`;
+      const storageRef = ref(storage, `profile-photos/${fileName}`);
+      
+      // Upload file
+      const uploadResult = await uploadBytes(storageRef, file);
+      
+      // Get download URL
+      const downloadURL = await getDownloadURL(uploadResult.ref);
+      
+
+      // Update form data with the new URL
       setFormData({
         ...formData,
-        photoURL: reader.result as string
+        photoURL: downloadURL
       });
-    };
-    reader.readAsDataURL(file);
+      
+    } catch (error: any) {
+      console.error('Error uploading photo:', error);
+      setError('Ошибка при загрузке фото: ' + (error.message || 'Неизвестная ошибка'));
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -50,18 +72,30 @@ const ProfileSettings: React.FC = () => {
     setSuccess(false);
 
     try {
-      if (auth.currentUser) {
-        await updateProfile(auth.currentUser, {
-          displayName: formData.displayName,
-          photoURL: formData.photoURL
-        });
-        
-        // In a real app, you would also save bio and other data to Firestore
-        
-        setSuccess(true);
-        setTimeout(() => setSuccess(false), 3000);
+      if (!currentUser) {
+        throw new Error('User not authenticated.');
       }
+
+      // Update Firebase Auth profile (displayName and photoURL)
+      await updateProfile(currentUser, {
+        displayName: formData.displayName, // Use displayName from form, could be username
+        photoURL: formData.photoURL
+      });
+
+      // Save additional profile data to Firestore
+      const userProfileRef = doc(db, 'users', currentUser.uid);
+      await setDoc(userProfileRef, {
+        username: formData.username, // Save username
+        location: formData.location, // Save location
+        bio: formData.bio,
+        photoURL: formData.photoURL, // <--- This is the line we're checking
+        lastActive: new Date(),
+      }, { merge: true }); // Use merge to avoid overwriting other fields
+        
+      setSuccess(true);
+      setTimeout(() => setSuccess(false), 3000);
     } catch (error: any) {
+      console.error('Error updating profile:', error);
       setError(error.message || 'Ошибка при обновлении профиля');
     } finally {
       setLoading(false);
@@ -76,6 +110,35 @@ const ProfileSettings: React.FC = () => {
       .toUpperCase()
       .slice(0, 2);
   };
+
+  useEffect(() => {
+    if (currentUser) {
+      const fetchUserProfile = async () => {
+        const userProfileRef = doc(db, 'users', currentUser.uid);
+        const userProfileSnap = await getDoc(userProfileRef);
+        if (userProfileSnap.exists()) {
+          const data = userProfileSnap.data();
+          setFormData(prev => ({
+            ...prev,
+            username: data.username || currentUser.displayName || '',
+            location: data.location || '',
+            bio: data.bio || '',
+            displayName: currentUser.displayName || data.username || '',
+            photoURL: currentUser.photoURL || data.photoURL || ''
+          }));
+        } else {
+           // If no Firestore profile exists, use current Firebase Auth data
+          setFormData(prev => ({
+            ...prev,
+            username: currentUser.displayName || '',
+            displayName: currentUser.displayName || '',
+            photoURL: currentUser.photoURL || ''
+          }));
+        }
+      };
+      fetchUserProfile();
+    }
+  }, [currentUser]);
 
   return (
     <div className="p-6">
@@ -122,9 +185,10 @@ const ProfileSettings: React.FC = () => {
               <button
                 type="button"
                 onClick={handlePhotoClick}
-                className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                disabled={loading}
+                className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Изменить фото
+                {loading ? 'Загрузка...' : 'Изменить фото'}
               </button>
               <p className="mt-1 text-xs text-gray-500">JPG, GIF или PNG. Макс. размер 2MB.</p>
             </div>
@@ -144,6 +208,22 @@ const ProfileSettings: React.FC = () => {
             onChange={handleChange}
             className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
             placeholder="Ваше имя"
+          />
+        </div>
+
+        {/* Username (New Field) */}
+        <div>
+          <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
+            Имя пользователя
+          </label>
+          <input
+            type="text"
+            id="username"
+            name="username"
+            value={formData.username}
+            onChange={handleChange}
+            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+            placeholder="Придумайте имя пользователя (никнейм)"
           />
         </div>
 
@@ -177,6 +257,23 @@ const ProfileSettings: React.FC = () => {
             placeholder="Расскажите немного о себе..."
           />
           <p className="mt-1 text-xs text-gray-500">Макс. 500 символов</p>
+        </div>
+
+        {/* Location (New Field) */}
+        <div>
+          <label htmlFor="location" className="block text-sm font-medium text-gray-700 mb-1">
+            Местоположение
+          </label>
+          <input
+            type="text"
+            id="location"
+            name="location"
+            value={formData.location}
+            onChange={handleChange}
+            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+            placeholder="Ваше местоположение (например, Москва, Россия)"
+          />
+          <p className="mt-1 text-xs text-gray-500">Например, Москва, Россия</p>
         </div>
 
         {/* Submit Button */}

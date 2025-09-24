@@ -32,9 +32,7 @@ const EmojiInputEditor = forwardRef<EmojiInputEditorRef, EmojiInputEditorProps>(
 }, ref) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const [showGifPicker, setShowGifPicker] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-  const [cursorPosition, setCursorPosition] = useState(0);
   const [anchorPosition, setAnchorPosition] = useState<{ x: number; y: number; height?: number } | null>(null);
 
   // Manage body scroll lock based on picker visibility
@@ -110,7 +108,7 @@ const EmojiInputEditor = forwardRef<EmojiInputEditorRef, EmojiInputEditorProps>(
     const currentValue = value || '';
     const newValue = currentValue + `![GIF](${gifUrl}) `;
     onChange(newValue);
-    setShowGifPicker(false);
+    setShowEmojiPicker(false);
   };
 
   const insertFormatting = (format: string) => {
@@ -234,13 +232,6 @@ const EmojiInputEditor = forwardRef<EmojiInputEditorRef, EmojiInputEditorProps>(
         textarea.focus();
       }
     }, 0);
-  };
-
-  const handleGifSelect = (gifUrl: string) => {
-    insertGif(gifUrl);
-    if (onGifSelect) {
-      onGifSelect(gifUrl);
-    }
   };
 
   const toggleEmojiPicker = (anchor?: HTMLElement | { x: number; y: number; height?: number }) => {

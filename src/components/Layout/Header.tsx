@@ -1,6 +1,8 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { doc, getDoc } from 'firebase/firestore'; // Import doc and getDoc
+import { db } from '../../firebase/config'; // Import db
 
 const Header: React.FC = () => {
   const { currentUser, logout } = useAuth();
@@ -9,7 +11,9 @@ const Header: React.FC = () => {
   const [search, setSearch] = useState('');
   const [mobileOpen, setMobileOpen] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
+  const [firestorePhotoURL, setFirestorePhotoURL] = useState<string | undefined>(undefined); // New state for Firestore photo URL
   const dropdownRef = useRef<HTMLDivElement>(null);
+  
 
   // Check if current path matches
   const isActive = (path: string) => {
@@ -32,6 +36,25 @@ const Header: React.FC = () => {
     const q = params.get('q') || '';
     setSearch(q);
   }, [location.search]);
+
+  // Fetch user photoURL from Firestore
+  useEffect(() => {
+    const fetchUserPhoto = async () => {
+      if (currentUser) {
+        const userRef = doc(db, 'users', currentUser.uid);
+        const userSnap = await getDoc(userRef);
+        if (userSnap.exists()) {
+          const data = userSnap.data();
+          setFirestorePhotoURL(data.photoURL || undefined);
+        } else {
+          setFirestorePhotoURL(undefined);
+        }
+      } else {
+        setFirestorePhotoURL(undefined);
+      }
+    };
+    fetchUserPhoto();
+  }, [currentUser]); // Re-fetch when currentUser changes
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -74,58 +97,57 @@ const Header: React.FC = () => {
     <>
       {/* Desktop header - hidden on mobile */}
       <div className="hidden md:block">
-        {/* Logo strip */}
-        <div className="bg-white px-4 py-2">
-          <Link to="/" className="inline-flex items-center">
-            <img src="/images/4_logo1.svg" alt="Протокол Тарновского" className="h-8" />
-          </Link>
-        </div>
-        
+          
         {/* Navigation bar */}
         <div className="bg-gray-50 shadow-sm">
           <div className=" mx-auto px-4">
             <div className="flex items-center justify-between">
-              {/* Navigation menu */}
-              <nav>
-                <ul className="flex items-center">
-                  <li className="relative">
-                    <Link 
-                      to="/" 
-                      className={`block px-4 py-3 transition-colors text-sm ${
-                        isActive('/') 
-                          ? 'text-white bg-gray-600' 
-                          : 'text-gray-700 hover:text-white hover:bg-gray-600'
-                      }`}
-                    >
-                      Форум
-                    </Link>
-                  </li>
-                  <li className="relative">
-                    <Link 
-                      to="/articles" 
-                      className={`block px-4 py-3 transition-colors text-sm ${
-                        isActive('/articles') 
-                          ? 'text-white bg-gray-600' 
-                          : 'text-gray-700 dark:text-gray-300 hover:text-white hover:bg-gray-600'
-                      }`}
-                    >
-                      Статьи
-                    </Link>
-                  </li>
-                  <li className="relative">
-                    <Link 
-                      to="/trainings" 
-                      className={`block px-4 py-3 transition-colors text-sm ${
-                        isActive('/trainings') 
-                          ? 'text-white bg-gray-600' 
-                          : 'text-gray-700 dark:text-gray-300 hover:text-white hover:bg-gray-600'
-                      }`}
-                    >
-                      Тренировки
-                    </Link>
-                  </li>
-                </ul>
-              </nav>
+              {/* Group logo and navigation menu */}
+              <div className="flex items-center space-x-6">
+                <Link to="/" className="inline-flex items-center">
+                    <img src="/images/4_logo1.svg" alt="Протокол Тарновского" className="h-8" />
+                </Link>
+                <nav>
+                  <ul className="flex items-center">
+                    <li className="relative">
+                      <Link 
+                        to="/" 
+                        className={`block px-4 py-3 transition-colors text-sm ${
+                          isActive('/') 
+                            ? 'text-white bg-gray-600' 
+                            : 'text-gray-700 hover:text-white hover:bg-gray-600'
+                        }`}
+                      >
+                        Форум
+                      </Link>
+                    </li>
+                    <li className="relative">
+                      <Link 
+                        to="/articles" 
+                        className={`block px-4 py-3 transition-colors text-sm ${
+                          isActive('/articles') 
+                            ? 'text-white bg-gray-600' 
+                            : 'text-gray-700 dark:text-gray-300 hover:text-white hover:bg-gray-600'
+                        }`}
+                      >
+                        Статьи
+                      </Link>
+                    </li>
+                    <li className="relative">
+                      <Link 
+                        to="/trainings" 
+                        className={`block px-4 py-3 transition-colors text-sm ${
+                          isActive('/trainings') 
+                            ? 'text-white bg-gray-600' 
+                            : 'text-gray-700 dark:text-gray-300 hover:text-white hover:bg-gray-600'
+                        }`}
+                      >
+                        Тренировки
+                      </Link>
+                    </li>
+                  </ul>
+                </nav>
+              </div>
               
               {/* Desktop search and profile */}
               <div className="flex items-center gap-4">
@@ -152,8 +174,13 @@ const Header: React.FC = () => {
                       onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
                       className="w-10 h-10 bg-gray-600 text-white rounded-full flex items-center justify-center font-semibold text-sm hover:bg-gray-700 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
                     >
-                      {getUserInitials(currentUser)}
+                      {firestorePhotoURL ? (
+                        <img src={firestorePhotoURL} alt="User Avatar" className="w-full h-full rounded-full object-cover" />
+                      ) : (
+                        getUserInitials(currentUser)
+                      )}
                     </button>
+                    {/* console.log(`Header: Desktop photoURL: ${firestorePhotoURL}`); */} 
 
                     {/* Dropdown Menu */}
                     {profileDropdownOpen && (
@@ -176,6 +203,18 @@ const Header: React.FC = () => {
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                             </svg>
                             Профиль
+                          </div>
+                        </Link>
+                        <Link
+                          to="/admin"
+                          onClick={() => setProfileDropdownOpen(false)}
+                          className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                        >
+                          <div className="flex items-center">
+                            <svg className="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                            </svg>
+                            Админ-панель
                           </div>
                         </Link>
                         <button
@@ -229,12 +268,7 @@ const Header: React.FC = () => {
           </Link>
           
           <div className="flex items-center gap-3">
-            {/* Mobile Profile Picture */}
-            {currentUser && (
-              <div className="w-8 h-8 bg-gray-600 text-white rounded-full flex items-center justify-center font-semibold text-xs">
-                {getUserInitials(currentUser)}
-              </div>
-            )}
+            
             
             <button
               onClick={() => setMobileOpen(true)}
@@ -343,19 +377,24 @@ const Header: React.FC = () => {
           {/* User section in drawer */}
           <div className="border-t p-4 mt-4">
             {currentUser ? (
-              <>
+              <div className="space-y-4"> {/* Added this wrapper div */} 
                 <div className="flex items-center mb-4">
-                  <div className="w-10 h-10 bg-gray-600 text-white rounded-full flex items-center justify-center font-semibold text-sm mr-3">
-                    {getUserInitials(currentUser)}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 truncate">
-                      {currentUser.displayName || 'Пользователь'}
-                    </p>
-                    <p className="text-xs text-gray-500 truncate">
-                      {currentUser.email}
-                    </p>
-                  </div>
+                  {firestorePhotoURL ? (
+                    <img src={firestorePhotoURL} alt="User Avatar" className="w-10 h-10 rounded-full object-cover mr-3" />
+                  ) : (
+                    <div className="w-10 h-10 bg-gray-600 text-white rounded-full flex items-center justify-center font-semibold text-sm mr-3">
+                      {getUserInitials(currentUser)}
+                    </div>
+                  )}
+                  {/* console.log(`Header: Mobile photoURL: ${firestorePhotoURL}`); */} 
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900 truncate">
+                        {currentUser.displayName || 'Пользователь'}
+                      </p>
+                      <p className="text-xs text-gray-500 truncate">
+                        {currentUser.email}
+                      </p>
+                    </div>
                 </div>
                 <div className="space-y-2">
                   <Link 
@@ -368,6 +407,18 @@ const Header: React.FC = () => {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                       </svg>
                       Мой профиль
+                    </div>
+                  </Link>
+                  <Link 
+                    to="/admin" 
+                    onClick={() => setMobileOpen(false)}
+                    className="block px-4 py-2 text-gray-700 hover:bg-gray-100 rounded transition-colors"
+                  >
+                    <div className="flex items-center">
+                      <svg className="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                      </svg>
+                      Админ-панель
                     </div>
                   </Link>
                   <button 
@@ -385,7 +436,7 @@ const Header: React.FC = () => {
                     </div>
                   </button>
                 </div>
-              </>
+              </div>
             ) : (
               <div className="space-y-3">
                 <p className="text-sm text-gray-600 mb-3">
