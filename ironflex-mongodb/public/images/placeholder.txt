@@ -1,0 +1,31 @@
+# Image Placeholders
+
+This directory contains placeholder references for the forum images.
+In a real implementation, these would be actual image files:
+
+## Required Images:
+- 4_logo1.png - Main forum logo
+- home.gif - Home breadcrumb icon
+- bf_new.gif - Forum with new posts icon
+- bf_nonew.gif - Forum with no new posts icon
+- f_hot_no.gif - Hot topic (no new posts) icon
+- f_norm_no.gif - Normal topic (no new posts) icon
+- f_pinned.gif - Pinned topic icon
+- f_closed.gif - Closed topic icon
+- f_poll.gif - Poll topic icon
+- lastpost.gif - Last post icon
+- attachicon.gif - Attachment icon
+- pages_icon.gif - Multi-page icon
+- menu_action_down.gif - Dropdown menu arrow
+- t_new.gif - New topic button
+- user_icon.gif - User icon
+- star.gif - User rating star
+- Banner_7536003.gif - Advertisement banner
+- Banner_4909677.gif - Advertisement banner
+
+## CSS Background Images:
+- bg_gradient.gif - Background gradient
+- menu_shadow.gif - Menu shadow effect
+
+All images should be optimized for web use and match the original forum design.
+
