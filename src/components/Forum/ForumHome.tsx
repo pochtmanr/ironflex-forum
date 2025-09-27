@@ -44,24 +44,18 @@ const ForumHome: React.FC = () => {
   useEffect(() => {
     // Initialize AdSense ad when component mounts
     if (!adInitialized.current && typeof window !== 'undefined') {
-      try {
-        // Wait for adsbygoogle to be available
-        const initAd = () => {
+      const timer = setTimeout(() => {
+        try {
           if (window.adsbygoogle && !adInitialized.current) {
             (window.adsbygoogle as any[]).push({});
             adInitialized.current = true;
           }
-        };
-
-        if (window.adsbygoogle) {
-          initAd();
-        } else {
-          // Wait a bit for the script to load
-          setTimeout(initAd, 100);
+        } catch (error) {
+          console.log('AdSense initialization error:', error);
         }
-      } catch (error) {
-        console.log('AdSense initialization error:', error);
-      }
+      }, 1000); // Wait 1 second for the script to fully load
+
+      return () => clearTimeout(timer);
     }
   }, []);
 
