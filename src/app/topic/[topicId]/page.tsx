@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useAuth } from '@/contexts/AuthContext';
 import { forumAPI } from '@/services/api';
 import { FileUploadWithPreview } from '@/components/FileUpload';
@@ -316,9 +317,11 @@ const TopicViewPage: React.FC = () => {
                     <div key={linkIndex} className="bg-gray-50 p-3 rounded-lg">
                       {isImage ? (
                         <div className="space-y-2">
-                          <img
+                          <Image
                             src={link}
                             alt={filename}
+                            width={800}
+                            height={400}
                             className="max-w-full h-auto rounded border"
                             style={{ maxHeight: '400px' }}
                             onError={(e) => {
@@ -465,9 +468,11 @@ const TopicViewPage: React.FC = () => {
                         <div key={linkIndex} className="bg-gray-50 p-3 rounded-lg">
                           {isImage ? (
                             <div className="space-y-2">
-                              <img
+                              <Image
                                 src={link}
                                 alt={filename}
+                                width={800}
+                                height={400}
                                 className="max-w-full h-auto rounded border"
                                 style={{ maxHeight: '400px' }}
                                 onError={(e) => {

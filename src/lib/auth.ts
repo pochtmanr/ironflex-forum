@@ -23,8 +23,10 @@ export const verifyPassword = async (password: string, hash: string): Promise<bo
 }
 
 export const generateTokens = (user: UserPayload) => {
-  const accessToken = jwt.sign(user, JWT_SECRET, { expiresIn: JWT_EXPIRE })
-  const refreshToken = jwt.sign({ id: user.id }, JWT_REFRESH_SECRET, { expiresIn: JWT_REFRESH_EXPIRE })
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const accessToken = jwt.sign(user, JWT_SECRET, { expiresIn: JWT_EXPIRE as any })
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const refreshToken = jwt.sign({ id: user.id }, JWT_REFRESH_SECRET, { expiresIn: JWT_REFRESH_EXPIRE as any })
   
   return { accessToken, refreshToken }
 }
