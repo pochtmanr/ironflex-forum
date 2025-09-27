@@ -1,9 +1,16 @@
 'use client'
 
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import { useAuth } from '../../contexts/AuthContext';
 import TopTopics from './TopTopics';
+
+// Declare adsbygoogle global variable
+declare global {
+  interface Window {
+    adsbygoogle: any[];
+  }
+}
 
 interface Category {
   id: number | string;
@@ -28,9 +35,34 @@ const ForumHome: React.FC = () => {
   const [onlineUsers, setOnlineUsers] = useState(0);
   const [loading, setLoading] = useState(true);
   const { currentUser } = useAuth();
+  const adInitialized = useRef(false);
 
   useEffect(() => {
     loadForumData();
+  }, []);
+
+  useEffect(() => {
+    // Initialize AdSense ad when component mounts
+    if (!adInitialized.current && typeof window !== 'undefined') {
+      try {
+        // Wait for adsbygoogle to be available
+        const initAd = () => {
+          if (window.adsbygoogle && !adInitialized.current) {
+            (window.adsbygoogle as any[]).push({});
+            adInitialized.current = true;
+          }
+        };
+
+        if (window.adsbygoogle) {
+          initAd();
+        } else {
+          // Wait a bit for the script to load
+          setTimeout(initAd, 100);
+        }
+      } catch (error) {
+        console.log('AdSense initialization error:', error);
+      }
+    }
   }, []);
 
   const loadForumData = async () => {
