@@ -160,8 +160,8 @@ export const forumAPI = {
   }
 };
 
-// File Server API - Integration with bucket.theholylabs.com
-const FILE_SERVER_BASE_URL = 'https://bucket.theholylabs.com';
+// File Server API - Use Next.js API route for uploads
+const FILE_SERVER_BASE_URL = '/api';
 
 // Upload API
 export const uploadAPI = {
