@@ -1,16 +1,54 @@
 'use client'
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { useAuth } from '../../contexts/AuthContext';
+
+// Search component that uses useSearchParams
+const SearchComponent: React.FC<{ isMobile?: boolean }> = ({ isMobile = false }) => {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const [search, setSearch] = useState('');
+
+  useEffect(() => {
+    const q = searchParams.get('q') || '';
+    setSearch(q);
+  }, [searchParams]);
+
+  const onSubmitSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    const q = search.trim();
+    const base = '/';
+    router.push(`${base}${q ? `?q=${encodeURIComponent(q)}` : ''}`);
+  };
+
+  return (
+    <form onSubmit={onSubmitSearch} className={`flex items-center gap-2 ${isMobile ? '' : 'py-2'}`}>
+      <input
+        type="search"
+        placeholder="Поиск..."
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        className={isMobile 
+          ? "flex-1 px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent text-sm"
+          : "px-3 py-1.5 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent text-sm w-72"
+        }
+      />
+      <button 
+        type="submit" 
+        className={`px-4 ${isMobile ? 'py-2' : 'py-1.5'} bg-gray-600 text-white hover:bg-gray-700 transition-colors text-sm font-medium`}
+      >
+        Найти
+      </button>
+    </form>
+  );
+};
 
 const Header: React.FC = () => {
   const { currentUser, logout } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const [search, setSearch] = useState('');
   const [mobileOpen, setMobileOpen] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [userPhotoURL, setUserPhotoURL] = useState<string | undefined>(undefined);
@@ -31,11 +69,6 @@ const Header: React.FC = () => {
       console.error('Failed to log out', error);
     }
   };
-
-  useEffect(() => {
-    const q = searchParams.get('q') || '';
-    setSearch(q);
-  }, [searchParams]);
 
   // Set user photo URL from MongoDB user data
   useEffect(() => {
@@ -74,13 +107,6 @@ const Header: React.FC = () => {
       return user.email[0].toUpperCase();
     }
     return 'U';
-  };
-
-  const onSubmitSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    const q = search.trim();
-    const base = '/';
-    router.push(`${base}${q ? `?q=${encodeURIComponent(q)}` : ''}`);
   };
 
   return (
@@ -141,21 +167,9 @@ const Header: React.FC = () => {
               
               {/* Desktop search and profile */}
               <div className="flex items-center gap-4">
-                <form onSubmit={onSubmitSearch} className="flex items-center gap-2 py-2">
-                  <input
-                    type="search"
-                    placeholder="Поиск..."
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    className="px-3 py-1.5 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent text-sm w-72"
-                  />
-                  <button 
-                    type="submit" 
-                    className="px-4 py-1.5 bg-gray-600 text-white hover:bg-gray-700 transition-colors text-sm font-medium"
-                  >
-                    Найти
-                  </button>
-                </form>
+                <Suspense fallback={<div className="w-72 h-8 bg-gray-200 animate-pulse rounded"></div>}>
+                  <SearchComponent />
+                </Suspense>
 
                 {/* Desktop Profile Dropdown */}
                 {currentUser && (
@@ -273,21 +287,9 @@ const Header: React.FC = () => {
 
         {/* Mobile search - always visible */}
         <div className="bg-gray-50 px-4 py-3 border-b">
-          <form onSubmit={onSubmitSearch} className="flex items-center gap-2">
-            <input
-              type="search"
-              placeholder="Поиск..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="flex-1 px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent text-sm"
-            />
-            <button 
-              type="submit" 
-              className="px-4 py-2 bg-gray-600 text-white hover:bg-gray-700 transition-colors text-sm font-medium"
-            >
-              Найти
-            </button>
-          </form>
+          <Suspense fallback={<div className="h-8 bg-gray-200 animate-pulse rounded"></div>}>
+            <SearchComponent isMobile={true} />
+          </Suspense>
         </div>
 
         {/* Mobile menu overlay */}

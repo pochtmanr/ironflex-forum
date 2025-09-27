@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
@@ -15,7 +15,7 @@ interface Category {
   slug: string;
 }
 
-const CreateTopicPage: React.FC = () => {
+const CreateTopicContent: React.FC = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { currentUser } = useAuth();
@@ -283,6 +283,18 @@ const CreateTopicPage: React.FC = () => {
         </form>
       </div>
     </div>
+  );
+};
+
+const CreateTopicPage: React.FC = () => {
+  return (
+    <Suspense fallback={<div className="max-w-4xl mx-auto px-4 py-8">
+      <div className="text-center">
+        <div className="text-gray-500">Загрузка...</div>
+      </div>
+    </div>}>
+      <CreateTopicContent />
+    </Suspense>
   );
 };
 
