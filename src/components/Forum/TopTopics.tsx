@@ -58,7 +58,8 @@ const TopTopics: React.FC<TopTopicsProps> = ({
       setTopics(result.topics);
     } catch (err) {
       console.error('Error loading top topics:', err);
-      setError('Не удалось загрузить популярные темы.');
+      const errorMessage = err instanceof Error ? err.message : 'Не удалось загрузить популярные темы.';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
