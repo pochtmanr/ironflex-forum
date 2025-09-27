@@ -106,12 +106,25 @@ const ForumHome: React.FC = () => {
 
   return (
     <div className="mx-auto py-3 sm:py-6 px-2 sm:px-4">
-      {/* Mobile-Optimized Banner Area */}
+      {/* Mobile-Optimized Banner Ad Area */}
       <div className="text-center mb-4 sm:mb-6 overflow-hidden">
         <div className="flex justify-center">
-          <div className="w-full max-w-[970px] h-[60px] sm:h-[90px] bg-gray-100 flex items-center justify-center text-gray-500 rounded text-xs sm:text-base">
-            <span className="block sm:hidden">Рекламный блок 320x60</span>
-            <span className="hidden sm:block">Рекламный блок 970x90</span>
+          <div className="w-full max-w-[970px] h-[60px] sm:h-[90px]">
+            {/* Mobile Ad Unit */}
+            <ins className="adsbygoogle block sm:hidden"
+                 style={{display:'block'}}
+                 data-ad-client="ca-pub-9876848164575099"
+                 data-ad-slot="1234567890"
+                 data-ad-format="auto"
+                 data-full-width-responsive="true"></ins>
+            
+            {/* Desktop Ad Unit */}
+            <ins className="adsbygoogle hidden sm:block"
+                 style={{display:'block'}}
+                 data-ad-client="ca-pub-9876848164575099"
+                 data-ad-slot="0987654321"
+                 data-ad-format="rectangle"
+                 data-full-width-responsive="true"></ins>
           </div>
         </div>
       </div>
