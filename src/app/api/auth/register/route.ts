@@ -69,26 +69,39 @@ export async function POST(request: NextRequest) {
     console.log('User created successfully:', user._id)
 
     // Generate tokens
-    const { accessToken, refreshToken } = generateTokens({
-      id: user._id.toString(),
-      email: user.email,
-      username: user.username,
-      isAdmin: user.isAdmin
-    })
-
-    return NextResponse.json({
-      message: 'User created successfully',
-      user: {
-        id: user._id,
+    console.log('Generating tokens...')
+    try {
+      const { accessToken, refreshToken } = generateTokens({
+        id: user._id.toString(),
         email: user.email,
         username: user.username,
-        displayName: user.displayName,
-        photoURL: user.photoURL,
         isAdmin: user.isAdmin
-      },
-      accessToken,
-      refreshToken
-    })
+      })
+      console.log('Tokens generated successfully')
+
+      const response = {
+        message: 'User created successfully',
+        user: {
+          id: user._id,
+          email: user.email,
+          username: user.username,
+          displayName: user.displayName,
+          photoURL: user.photoURL,
+          isAdmin: user.isAdmin
+        },
+        accessToken,
+        refreshToken
+      }
+      
+      console.log('Returning successful response')
+      return NextResponse.json(response)
+    } catch (tokenError) {
+      console.error('Token generation error:', tokenError)
+      // Delete the user if token generation fails
+      await User.deleteOne({ _id: user._id })
+      console.log('User deleted due to token error')
+      throw tokenError
+    }
 
   } catch (error) {
     console.error('Registration error:', error)
