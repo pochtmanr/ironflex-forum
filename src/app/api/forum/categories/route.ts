@@ -1,9 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import connectDB from '@/lib/mongodb'
 import Category from '@/models/Category'
 import Topic from '@/models/Topic'
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     await connectDB()
     

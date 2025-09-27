@@ -1,28 +1,9 @@
 'use client'
 
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import Link from 'next/link';
 
 const Footer: React.FC = () => {
-  const [currentTime, setCurrentTime] = useState(new Date());
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 60000); // Update every minute
-
-    return () => clearInterval(timer);
-  }, []);
-
-  const formatTime = (date: Date) => {
-    return date.toLocaleString('ru-RU', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
 
   return (
     <footer className="bg-gray-800 text-white mt-auto">

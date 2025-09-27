@@ -299,7 +299,7 @@ export const authAPI = {
       body: JSON.stringify(data)
     }, true);
     
-    const authResponse = response as { accessToken: string; refreshToken: string; user: any };
+    const authResponse = response as { accessToken: string; refreshToken: string; user: unknown };
     tokenManager.setTokens(authResponse.accessToken, authResponse.refreshToken);
     return authResponse;
   },
@@ -310,7 +310,7 @@ export const authAPI = {
       body: JSON.stringify({ emailOrUsername, password })
     }, true);
     
-    const authResponse = response as { accessToken: string; refreshToken: string; user: any };
+    const authResponse = response as { accessToken: string; refreshToken: string; user: unknown };
     tokenManager.setTokens(authResponse.accessToken, authResponse.refreshToken);
     return authResponse;
   },
@@ -340,7 +340,7 @@ export const authAPI = {
       body: JSON.stringify({ refreshToken })
     }, true);
     
-    const authResponse = response as { accessToken: string; refreshToken: string; user: any };
+    const authResponse = response as { accessToken: string; refreshToken: string; user: unknown };
     tokenManager.setTokens(authResponse.accessToken, authResponse.refreshToken);
     return authResponse;
   }

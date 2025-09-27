@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '20')
     const offset = (page - 1) * limit
 
-    const where: any = { isActive: true }
+    const where: Record<string, unknown> = { isActive: true }
     if (categoryId) {
       where.categoryId = categoryId
     }

@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
     
     // Make username unique if it already exists
     let counter = 1
-    let originalUsername = username
+    const originalUsername = username
     while (await User.findOne({ username })) {
       username = `${originalUsername}${counter}`
       counter++

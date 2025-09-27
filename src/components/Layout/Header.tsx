@@ -61,7 +61,7 @@ const Header: React.FC = () => {
   }, []);
 
   // Get user initials for avatar
-  const getUserInitials = (user: any) => {
+  const getUserInitials = (user: { displayName?: string; username?: string }) => {
     if (user.displayName) {
       return user.displayName
         .split(' ')

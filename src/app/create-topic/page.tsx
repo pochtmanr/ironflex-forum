@@ -104,9 +104,10 @@ const CreateTopicPage: React.FC = () => {
 
       // Redirect to the category page
       router.push(`/category/${selectedCategoryId}`);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Topic creation error:', error);
-      setError(error.message || 'Ошибка создания темы');
+      const errorMessage = error instanceof Error ? error.message : 'Ошибка создания темы';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }

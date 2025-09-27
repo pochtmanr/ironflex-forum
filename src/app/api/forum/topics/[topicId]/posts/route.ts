@@ -7,10 +7,10 @@ import User from '@/models/User';
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { topicId: string } }
+  { params }: { params: Promise<{ topicId: string }> }
 ) {
   try {
-    const { topicId } = params;
+    const { topicId } = await params;
     const body = await request.json();
     const { content, mediaLinks } = body;
     console.log('Received post creation request:', { content, mediaLinks });

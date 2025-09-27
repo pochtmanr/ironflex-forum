@@ -30,8 +30,9 @@ const FileManager: React.FC<FileManagerProps> = ({
       setError(null);
       const response = await uploadAPI.getFiles();
       setFiles(response.files || []);
-    } catch (err: any) {
-      setError(err.message || 'Failed to load files');
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load files';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -52,8 +53,9 @@ const FileManager: React.FC<FileManagerProps> = ({
       if (selectedFile === filename) {
         setSelectedFile(null);
       }
-    } catch (err: any) {
-      alert(err.message || 'Failed to delete file');
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to delete file';
+      alert(errorMessage);
     }
   };
 

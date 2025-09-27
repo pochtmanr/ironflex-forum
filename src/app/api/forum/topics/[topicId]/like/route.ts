@@ -5,10 +5,10 @@ import Topic from '@/models/Topic';
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { topicId: string } }
+  { params }: { params: Promise<{ topicId: string }> }
 ) {
   try {
-    const { topicId } = params;
+    const { topicId } = await params;
     const body = await request.json();
     const { likeType } = body;
 

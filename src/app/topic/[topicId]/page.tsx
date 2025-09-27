@@ -96,9 +96,10 @@ const TopicViewPage: React.FC = () => {
       setTopic(topicData);
       setPosts(response.posts);
       setTotalPages(response.pagination.pages);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Topic loading error:', error);
-      setError(error.message || 'Ошибка загрузки темы');
+      const errorMessage = error instanceof Error ? error.message : 'Ошибка загрузки темы';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -113,8 +114,9 @@ const TopicViewPage: React.FC = () => {
     try {
       await forumAPI.likeTopic(topicId, likeType);
       loadTopicData(); // Reload to get updated likes
-    } catch (error: any) {
-      setError(error.message || 'Ошибка при голосовании');
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Ошибка при голосовании';
+      setError(errorMessage);
     }
   };
 
@@ -127,8 +129,9 @@ const TopicViewPage: React.FC = () => {
     try {
       await forumAPI.likePost(postId, likeType);
       loadTopicData(); // Reload to get updated likes
-    } catch (error: any) {
-      setError(error.message || 'Ошибка при голосовании');
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Ошибка при голосовании';
+      setError(errorMessage);
     }
   };
 
@@ -146,9 +149,10 @@ const TopicViewPage: React.FC = () => {
       await forumAPI.deleteTopic(topicId);
       // Redirect to the category page after successful deletion
       router.push(`/category/${topic.category_id}`);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Topic deletion error:', error);
-      setError(error.message || 'Ошибка удаления темы');
+      const errorMessage = error instanceof Error ? error.message : 'Ошибка удаления темы';
+      setError(errorMessage);
     }
   };
 
@@ -179,9 +183,10 @@ const TopicViewPage: React.FC = () => {
       setReplyContent('');
       setReplyMediaLinks([]);
       loadTopicData(); // Reload to show new post
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Post creation error:', error);
-      setError(error.message || 'Ошибка создания ответа');
+      const errorMessage = error instanceof Error ? error.message : 'Ошибка создания ответа';
+      setError(errorMessage);
     } finally {
       setSubmittingReply(false);
     }

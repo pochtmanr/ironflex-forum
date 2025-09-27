@@ -28,8 +28,9 @@ const FileUploadExample: React.FC = () => {
     try {
       const health = await uploadAPI.healthCheck();
       alert(`File server is healthy: ${JSON.stringify(health)}`);
-    } catch (error: any) {
-      alert(`File server health check failed: ${error.message}`);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      alert(`File server health check failed: ${errorMessage}`);
     }
   };
 
@@ -37,8 +38,9 @@ const FileUploadExample: React.FC = () => {
     try {
       const stats = await uploadAPI.getStorageStats();
       alert(`Storage stats: ${JSON.stringify(stats, null, 2)}`);
-    } catch (error: any) {
-      alert(`Failed to get storage stats: ${error.message}`);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      alert(`Failed to get storage stats: ${errorMessage}`);
     }
   };
 

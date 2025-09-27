@@ -8,10 +8,10 @@ import Category from '@/models/Category';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { topicId: string } }
+  { params }: { params: Promise<{ topicId: string }> }
 ) {
   try {
-    const { topicId } = params;
+    const { topicId } = await params;
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '20');
@@ -122,10 +122,10 @@ export async function GET(
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { topicId: string } }
+  { params }: { params: Promise<{ topicId: string }> }
 ) {
   try {
-    const { topicId } = params;
+    const { topicId } = await params;
     const body = await request.json();
     const { content, mediaLinks } = body;
     console.log('Received post creation request:', { content, mediaLinks });
@@ -233,10 +233,10 @@ export async function POST(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { topicId: string } }
+  { params }: { params: Promise<{ topicId: string }> }
 ) {
   try {
-    const { topicId } = params;
+    const { topicId } = await params;
 
     // Verify authentication
     const authHeader = request.headers.get('authorization');

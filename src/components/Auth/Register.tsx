@@ -42,8 +42,9 @@ const Register: React.FC = () => {
         formData.displayName
       );
       router.push('/');
-    } catch (error: any) {
-      setError(error.message || 'Ошибка регистрации. Попробуйте снова.');
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Ошибка регистрации. Попробуйте снова.';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }

@@ -21,8 +21,9 @@ const Login: React.FC = () => {
     try {
       await login(email, password);
       router.push('/');
-    } catch (error: any) {
-      setError(error.message || 'Ошибка входа. Проверьте данные и попробуйте снова.');
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Ошибка входа. Проверьте данные и попробуйте снова.';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }

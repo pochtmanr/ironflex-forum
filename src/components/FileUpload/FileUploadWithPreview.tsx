@@ -174,13 +174,14 @@ const FileUploadWithPreview: React.FC<FileUploadWithPreviewProps> = ({
           setUploadingFiles(prev => prev.filter(f => f.id !== id));
         }, 2000);
 
-      } catch (error: any) {
+      } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : 'Upload failed';
         // Update status to error
         setUploadingFiles(prev => prev.map(f => 
-          f.id === id ? { ...f, status: 'error', error: error.message } : f
+          f.id === id ? { ...f, status: 'error', error: errorMessage } : f
         ));
         
-        onUploadError?.(error.message || 'Upload failed');
+        onUploadError?.(errorMessage);
       }
     });
 
