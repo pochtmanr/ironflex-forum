@@ -34,23 +34,6 @@ const TopTopics: React.FC<TopTopicsProps> = ({
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    loadTopTopics();
-  }, [limit, currentPeriod, loadTopTopics]);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsDropdownOpen(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, []);
-
   const loadTopTopics = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -65,6 +48,23 @@ const TopTopics: React.FC<TopTopicsProps> = ({
       setLoading(false);
     }
   }, [limit, currentPeriod]);
+
+  useEffect(() => {
+    loadTopTopics();
+  }, [loadTopTopics]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   const handlePeriodChange = (period: 'day' | 'week' | 'all') => {
     setCurrentPeriod(period);
