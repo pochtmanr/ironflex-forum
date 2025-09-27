@@ -1,0 +1,156 @@
+.file-upload-container {
+  width: 100%;
+}
+
+.file-upload-area {
+  border: 2px dashed #d1d5db;
+  border-radius: 8px;
+  padding: 2rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+  background-color: #f9fafb;
+  min-height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.file-upload-area:hover {
+  border-color: #3b82f6;
+  background-color: #eff6ff;
+}
+
+.file-upload-area.drag-active {
+  border-color: #3b82f6;
+  background-color: #dbeafe;
+  transform: scale(1.02);
+}
+
+.file-upload-area.uploading {
+  border-color: #10b981;
+  background-color: #ecfdf5;
+  cursor: not-allowed;
+}
+
+.upload-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.upload-icon {
+  color: #6b7280;
+  transition: color 0.2s ease-in-out;
+}
+
+.file-upload-area:hover .upload-icon {
+  color: #3b82f6;
+}
+
+.file-upload-area.drag-active .upload-icon {
+  color: #3b82f6;
+}
+
+.upload-text {
+  font-size: 1.125rem;
+  font-weight: 500;
+  color: #374151;
+  margin: 0;
+}
+
+.upload-hint {
+  font-size: 0.875rem;
+  color: #6b7280;
+  margin: 0;
+}
+
+.upload-progress {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+}
+
+.progress-bar {
+  width: 100%;
+  max-width: 300px;
+  height: 8px;
+  background-color: #e5e7eb;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background-color: #10b981;
+  transition: width 0.3s ease-in-out;
+  border-radius: 4px;
+}
+
+.progress-text {
+  font-size: 0.875rem;
+  color: #374151;
+  margin: 0;
+  font-weight: 500;
+}
+
+/* Responsive design */
+@media (max-width: 640px) {
+  .file-upload-area {
+    padding: 1.5rem;
+    min-height: 150px;
+  }
+  
+  .upload-text {
+    font-size: 1rem;
+  }
+  
+  .upload-hint {
+    font-size: 0.75rem;
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .file-upload-area {
+    background-color: #1f2937;
+    border-color: #374151;
+  }
+  
+  .file-upload-area:hover {
+    background-color: #1e3a8a;
+    border-color: #3b82f6;
+  }
+  
+  .file-upload-area.drag-active {
+    background-color: #1e40af;
+    border-color: #3b82f6;
+  }
+  
+  .upload-icon {
+    color: #9ca3af;
+  }
+  
+  .file-upload-area:hover .upload-icon {
+    color: #3b82f6;
+  }
+  
+  .upload-text {
+    color: #f3f4f6;
+  }
+  
+  .upload-hint {
+    color: #9ca3af;
+  }
+  
+  .progress-bar {
+    background-color: #374151;
+  }
+  
+  .progress-text {
+    color: #f3f4f6;
+  }
+}

@@ -1,14 +1,19 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { forumAPI } from '../../services/api';
+'use client'
+
+import React, { useState, useEffect, useCallback } from 'react';
+import { useParams } from 'next/navigation';
+import Link from 'next/link';
+import { contentAPI } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
+import SkeletonLoader from '../UI/SkeletonLoader';
 
 interface Topic {
-  id: number;
+  id: number | string;
   title: string;
   content: string;
   user_name: string;
   user_email: string;
+  user_id: string;
   reply_count: number;
   views: number;
   likes: number;
@@ -20,14 +25,15 @@ interface Topic {
 }
 
 interface Category {
-  id: number;
+  id: number | string;
   name: string;
   description: string;
   slug: string;
 }
 
 const CategoryView: React.FC = () => {
-  const { categoryId } = useParams<{ categoryId: string }>();
+  const params = useParams();
+  const categoryId = params?.categoryId as string;
   const { currentUser } = useAuth();
   const [category, setCategory] = useState<Category | null>(null);
   const [topics, setTopics] = useState<Topic[]>([]);
@@ -35,24 +41,33 @@ const CategoryView: React.FC = () => {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
-  useEffect(() => {
-    loadCategoryData();
-  }, [categoryId, page]);
-
-  const loadCategoryData = async () => {
+  const loadCategoryData = useCallback(async () => {
     if (!categoryId) return;
 
     try {
-      const response = await forumAPI.getCategory(categoryId, page);
+      setLoading(true);
+      
+      const response = await contentAPI.getCategory(categoryId, page);
+      
       setCategory(response.category);
       setTopics(response.topics);
       setTotalPages(response.pagination.pages);
     } catch (error) {
       console.error('Error loading category:', error);
+      // If category not found, try to show a helpful message
+      if (error instanceof Error && error.message.includes('not found')) {
+        setCategory(null);
+        setTopics([]);
+        setTotalPages(1);
+      }
     } finally {
       setLoading(false);
     }
-  };
+  }, [categoryId, page]);
+
+  useEffect(() => {
+    loadCategoryData();
+  }, [loadCategoryData]);
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -63,16 +78,6 @@ const CategoryView: React.FC = () => {
       hour: '2-digit',
       minute: '2-digit'
     });
-  };
-
-  const getTopicIcon = (topic: Topic) => {
-    if (topic.is_pinned) {
-      return <img src="/images/f_pinned.svg" alt="Закреплено" className="w-6 h-6" />;
-    }
-    if (topic.is_locked) {
-      return <img src="/images/f_closed.svg" alt="Заблокировано" className="w-6 h-6" />;
-    }
-    return <img src="/images/f_norm_no.svg" alt="Обычная тема" className="w-6 h-6" />;
   };
 
   if (loading) {
@@ -101,10 +106,10 @@ const CategoryView: React.FC = () => {
       <nav className="mb-6">
         <ol className="flex items-center space-x-2 text-sm">
           <li>
-            <Link to="/" className="text-blue-600 hover:text-blue-700">Форум</Link>
+            <Link href="/" className="text-blue-600 hover:text-blue-700">Форум</Link>
           </li>
           <li className="text-gray-500">/</li>
-          <li className="text-gray-700">{category.name}</li>
+          <li className="text-gray-900">{category.name}</li>
         </ol>
       </nav>
 
@@ -117,8 +122,8 @@ const CategoryView: React.FC = () => {
           </div>
           {currentUser && (
             <Link
-              to={`/create-topic?category=${categoryId}`}
-              className="px-4 py-2 text-sm bg-blue-600 text-white  hover:bg-blue-700 transition-colors font-medium"
+              href={`/create-topic?category=${categoryId}`}
+              className="px-4 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors font-medium"
             >
              + Создать тему
             </Link>
@@ -130,7 +135,6 @@ const CategoryView: React.FC = () => {
           <table className="w-full">
             <thead>
               <tr className="bg-gray-100 text-gray-600 text-xs sm:text-sm">
-                
                 <th className="px-6 py-3 text-left font-medium">Тема</th>
                 <th className="px-6 py-3 text-center font-medium w-24">Ответов</th>
                 <th className="px-6 py-3 text-center font-medium w-24">Просмотров</th>
@@ -139,14 +143,16 @@ const CategoryView: React.FC = () => {
               </tr>
             </thead>
             <tbody>
-              {topics.length === 0 ? (
+              {loading ? (
+                <SkeletonLoader type="topic" count={5} />
+              ) : topics.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
+                  <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
                     В этой категории пока нет тем.
                     {currentUser && (
                       <>
                         {' '}
-                        <Link to={`/create-topic?category=${categoryId}`} className="text-blue-600 hover:text-blue-700">
+                        <Link href={`/create-topic?category=${categoryId}`} className="text-blue-600 hover:text-blue-700">
                           Создайте первую тему!
                         </Link>
                       </>
@@ -156,17 +162,21 @@ const CategoryView: React.FC = () => {
               ) : (
                 topics.map((topic, index) => (
                   <tr key={topic.id} className={`border-b hover:bg-gray-50 transition-colors ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
-                    
-                    <td className="px-6 py-4 ">
+                    <td className="px-6 py-4">
                       <div>
                         <Link 
-                          to={`/topic/${topic.id}`}
+                          href={`/topic/${topic.id}`}
                           className="text-blue-600 text-sm font-semibold hover:text-blue-700 block mb-1"
                         >
                           {topic.title}
                         </Link>
                         <div className="text-gray-500">
-                          от <span className="font-medium">{topic.user_name}</span> • {formatDate(topic.created_at)}
+                          от <Link 
+                            href={`/profile/${topic.user_id}`}
+                            className="font-medium text-blue-600 hover:text-blue-800 transition-colors"
+                          >
+                            {topic.user_name}
+                          </Link> • {formatDate(topic.created_at)}
                         </div>
                       </div>
                     </td>
@@ -205,7 +215,7 @@ const CategoryView: React.FC = () => {
                 <button
                   onClick={() => setPage(Math.max(1, page - 1))}
                   disabled={page === 1}
-                  className="px-3 py-1 text-sm border border-gray-300  hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Назад
                 </button>
@@ -225,4 +235,4 @@ const CategoryView: React.FC = () => {
   );
 };
 
-export default CategoryView;
+export default React.memo(CategoryView);

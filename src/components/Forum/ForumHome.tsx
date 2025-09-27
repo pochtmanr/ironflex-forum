@@ -1,12 +1,12 @@
+'use client'
 
-import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { forumAPI } from '../../services/api';
+import React, { useEffect, useState, useMemo } from 'react';
+import Link from 'next/link';
 import { useAuth } from '../../contexts/AuthContext';
 import TopTopics from './TopTopics';
 
 interface Category {
-  id: number;
+  id: number | string;
   name: string;
   description: string;
   slug: string;
@@ -36,13 +36,13 @@ const ForumHome: React.FC = () => {
   const loadForumData = async () => {
     try {
       const [categoriesResponse, statsResponse] = await Promise.all([
-        forumAPI.getCategories(),
-        forumAPI.getStats()
+        fetch('/api/forum/categories').then(res => res.json()),
+        fetch('/api/forum/stats').then(res => res.json())
       ]);
 
-      setCategories(categoriesResponse.categories);
-      setStats(statsResponse.stats);
-      setOnlineUsers(statsResponse.onlineUsers);
+      setCategories(categoriesResponse.categories || []);
+      setStats(statsResponse.stats || null);
+      setOnlineUsers(statsResponse.onlineUsers || 0);
     } catch (error) {
       console.error('Error loading forum data:', error);
     } finally {
@@ -50,7 +50,7 @@ const ForumHome: React.FC = () => {
     }
   };
 
-  const formatDate = (dateString: string | null) => {
+  const formatDate = useMemo(() => (dateString: string | null) => {
     if (!dateString) return 'Нет сообщений';
     const date = new Date(dateString);
     return date.toLocaleString('ru-RU', {
@@ -60,13 +60,48 @@ const ForumHome: React.FC = () => {
       hour: '2-digit',
       minute: '2-digit'
     });
-  };
+  }, []);
+
+  // Memoized components to reduce re-renders
+  const CategoryMobile = useMemo(() => ({ category, index }: { category: Category; index: number }) => (
+    <div key={category.id} className={`border-b ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'} p-4 hover:bg-blue-50 transition-colors`}>
+      <Link href={`/category/${category.id}`} className="text-blue-600 font-semibold hover:text-blue-700 block mb-1 text-sm leading-tight">
+        {category.name}
+      </Link>
+      <p className="text-xs text-gray-600 mb-3 line-clamp-2">{category.description}</p>
+      <div className="flex items-center justify-between text-xs text-gray-500">
+        <div className="flex items-center space-x-4">
+          <span>Тем: <strong className="text-gray-700">{category.topic_count}</strong></span>
+          <span>Ответов: <strong className="text-gray-700">{category.post_count}</strong></span>
+        </div>
+        
+      </div>
+    </div>
+  ), [formatDate]);
+
+  const CategoryDesktop = useMemo(() => ({ category, index }: { category: Category; index: number }) => (
+    <tr key={category.id} className={`border-b ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'} hover:bg-blue-50 transition-colors`}>
+      <td className="px-4 py-4">
+        <Link href={`/category/${category.id}`} className="text-blue-600 text-sm font-semibold hover:text-blue-700 block mb-1">
+          {category.name}
+        </Link>
+        <span className="text-gray-600">{category.description}</span>
+      </td>
+      <td className="px-4 py-4 text-center">
+        <div className="text-lg text-gray-800">{category.topic_count}</div>
+      </td>
+      <td className="px-4 py-4 text-center">
+        <div className="text-lg text-gray-800">{category.post_count}</div>
+      </td>
+      
+    </tr>
+  ), [formatDate]);
 
   if (loading) {
     return (
-      <div className="mx-auto py-4 sm:py-8 px-2 sm:px-4">
-        <div className="bg-gray-100 p-4 sm:p-6 rounded-lg">
-          <h1 className="text-lg sm:text-2xl font-bold text-gray-600">Загрузка форума...</h1>
+      <div className="max-w-9xl mx-auto px-4 py-8">
+        <div className="text-center">
+          <div className="text-gray-500">Загрузка форума...</div>
         </div>
       </div>
     );
@@ -86,19 +121,19 @@ const ForumHome: React.FC = () => {
 
       {/* Mobile-Optimized Main Forum Categories */}
       <div className="bg-white shadow-md mb-4 sm:mb-6">
-        <div className="bg-gray-600 text-white px-3 sm:px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="bg-gray-600 text-white px-3 sm:px-3 py-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div className="min-w-0">
             <h1 className="text-lg sm:text-xl font-bold">Форум</h1>
             {stats && (
               <div className="text-xs sm:text-sm text-gray-200 mt-1">
                 <span className="block sm:hidden">
-                  Тем: {stats.total_topics} • Сообщений: {stats.total_posts}
+                  Тем: {stats.total_topics} • Ответов: {stats.total_posts}
                   <br />
                   Пользователей: {stats.total_users}
                   {onlineUsers > 0 && ` • Онлайн: ${onlineUsers}`}
                 </span>
                 <span className="hidden sm:block">
-                  Тем: {stats.total_topics} • Сообщений: {stats.total_posts} • Пользователей: {stats.total_users}
+                  Тем: {stats.total_topics} • Ответов: {stats.total_posts} • Пользователей: {stats.total_users}
                   {onlineUsers > 0 && ` • Онлайн: ${onlineUsers}`}
                 </span>
               </div>
@@ -106,8 +141,8 @@ const ForumHome: React.FC = () => {
           </div>
           {currentUser && (
             <Link
-              to="/create-topic"
-              className="px-3 sm:px-4 py-2 bg-blue-600 text-white  hover:bg-blue-700 transition-colors font-medium flex items-center justify-center space-x-2 text-sm sm:text-base flex-shrink-0 touch-manipulation"
+              href="/create-topic"
+              className="px-3 sm:px-3 py-1.5 bg-blue-500 text-white  hover:bg-blue-700 transition-colors font-medium flex items-center justify-center space-x-2 text-sm sm:text-base flex-shrink-0 touch-manipulation"
             >
               <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -122,28 +157,7 @@ const ForumHome: React.FC = () => {
         {/* Mobile Layout (below sm breakpoint) */}
         <div className="block sm:hidden">
           {categories.map((category, index) => (
-            <div key={category.id} className={`border-b ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'} p-4 hover:bg-blue-50 transition-colors`}>
-              <div className="w-full">
-                <Link to={`/category/${category.id}`} className="text-blue-600 font-semibold hover:text-blue-700 block mb-1 text-sm leading-tight">
-                  {category.name}
-                </Link>
-                <p className="text-xs text-gray-600 mb-3 line-clamp-2">{category.description}</p>
-                <div className="flex items-center justify-between text-xs text-gray-500">
-                  <div className="flex items-center space-x-4">
-                    <span>Тем: <strong className="text-gray-700">{category.topic_count}</strong></span>
-                    <span>Ответов: <strong className="text-gray-700">{category.post_count}</strong></span>
-                  </div>
-                  <div className="flex items-center space-x-1 flex-shrink-0">
-                    <img 
-                      src="/images/lastpost.svg" 
-                      alt="Последнее сообщение" 
-                      className="w-3 h-3"
-                    />
-                    <span className="truncate max-w-[80px]">{formatDate(category.last_activity)}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <CategoryMobile key={category.id} category={category} index={index} />
           ))}
         </div>
 
@@ -155,37 +169,12 @@ const ForumHome: React.FC = () => {
                 <th className="px-4 py-3 text-left font-medium">Категория</th>
                 <th className="px-4 py-3 text-center font-medium w-24">Тем</th>
                 <th className="px-4 py-3 text-center font-medium w-24">Ответов</th>
-                <th className="px-4 py-3 text-left font-medium w-64">Последнее сообщение</th>
+                
               </tr>
             </thead>
             <tbody>
               {categories.map((category, index) => (
-                <tr key={category.id} className={`border-b ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'} hover:bg-blue-50 transition-colors`}>
-                  <td className="px-4 py-4">
-                    <Link to={`/category/${category.id}`} className="text-blue-600 text-sm font-semibold hover:text-blue-700 block mb-1">
-                      {category.name}
-                    </Link>
-                    <span className="text-gray-600">{category.description}</span>
-                  </td>
-                  <td className="px-4 py-4 text-center">
-                    <div className="text-lg text-gray-800">{category.topic_count}</div>
-                  </td>
-                  <td className="px-4 py-4 text-center">
-                    <div className="text-lg text-gray-800">{category.post_count}</div>
-                  </td>
-                  <td className="px-4 py-4 whitespace-nowrap">
-                    <div className="flex items-start gap-2">
-                      <img 
-                        src="/images/lastpost.svg" 
-                        alt="Последнее сообщение" 
-                        className="w-5 h-5 mt-0.5"
-                      />
-                      <div className="text-sm">
-                        <div className="text-gray-600">{formatDate(category.last_activity)}</div>
-                      </div>
-                    </div>
-                  </td>
-                </tr>
+                <CategoryDesktop key={category.id} category={category} index={index} />
               ))}
             </tbody>
           </table>
@@ -201,13 +190,13 @@ const ForumHome: React.FC = () => {
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center space-y-3 sm:space-y-0 sm:space-x-4">
             <Link
-              to="/register"
+              href="/register"
               className="w-full sm:w-auto px-4 sm:px-6 py-2 sm:py-3 bg-blue-600 text-white hover:bg-blue-700 transition-colors font-medium text-sm sm:text-base touch-manipulation"
             >
               Регистрация
             </Link>
             <Link
-              to="/login"
+              href="/login"
               className="w-full sm:w-auto px-4 sm:px-6 py-2 sm:py-3 border border-blue-600 text-blue-600  hover:bg-blue-50 transition-colors font-medium text-sm sm:text-base touch-manipulation"
             >
               Вход
@@ -217,40 +206,10 @@ const ForumHome: React.FC = () => {
       )}
 
       {/* Top Topics Section */}
-      <TopTopics limit={5} period="today" className="mb-6" />
-
-      {/* Mobile-Optimized Quick Actions for Logged In Users */}
-      {currentUser && (
-        <div className="bg-white p-4 mb-4 sm:mb-6">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div className="min-w-0">
-              <h3 className="text-base sm:text-lg font-semibold text-green-800 truncate">
-                Добро пожаловать, {currentUser.displayName || currentUser.email}!
-              </h3>
-              <p className="text-gray-700 text-sm sm:text-base">
-                Готовы поделиться своими знаниями или задать вопрос?
-              </p>
-            </div>
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-2 sm:space-y-0 sm:space-x-3 flex-shrink-0">
-              <Link
-                to="/create-topic"
-                className="px-4 py-2 sm:py-3 bg-green-800 text-white  hover:bg-green-700 transition-colors font-medium text-sm text-center touch-manipulation"
-              >
-                Создать тему
-              </Link>
-              <Link
-                to="/profile"
-                className="px-4 py-2 sm:py-3 border border-green-800 text-green-800  hover:bg-green-50 transition-colors font-medium text-sm text-center touch-manipulation"
-              >
-                Мой профиль
-              </Link>
-            </div>
-          </div>
-        </div>
-      )}
+      <TopTopics limit={5} period="day" className="mb-6" />
       
     </div>
   );
 };
 
-export default ForumHome;
+export default React.memo(ForumHome);

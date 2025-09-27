@@ -1,75 +1,104 @@
+'use client'
+
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { contentAPI } from '../../services/api';
+import ArticlesHeader from '../Articles/ArticlesHeader';
+import ArticlesList from '../Articles/ArticlesList';
 
 interface ArticleListItem {
-  id: number;
+  id: string;
   title: string;
   slug: string;
-  excerpt: string;
-  cover_image_url: string;
+  subheader: string;  
+  coverImageUrl: string;
   tags: string;
   created_at: string;
+  likes?: number;
+  views?: number;
+  commentCount?: number;
 }
+
+type SortOption = 'newest' | 'week' | 'month' | 'year';
 
 const Articles: React.FC = () => {
   const [items, setItems] = useState<ArticleListItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [sortBy, setSortBy] = useState<SortOption>('newest');
+
+  // Sort articles based on selected criteria
+  const sortArticles = (articles: ArticleListItem[], sortOption: SortOption): ArticleListItem[] => {
+    const now = new Date();
+    const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const oneMonthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const oneYearAgo = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
+
+    let filteredArticles = [...articles];
+
+    switch (sortOption) {
+      case 'newest':
+        return filteredArticles.sort((a, b) => 
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        );
+        
+      case 'week':
+        filteredArticles = articles.filter(article => 
+          new Date(article.created_at) >= oneWeekAgo
+        );
+        return filteredArticles.sort((a, b) => (b.likes || 0) - (a.likes || 0));
+        
+      case 'month':
+        filteredArticles = articles.filter(article => 
+          new Date(article.created_at) >= oneMonthAgo
+        );
+        return filteredArticles.sort((a, b) => (b.likes || 0) - (a.likes || 0));
+        
+      case 'year':
+        filteredArticles = articles.filter(article => 
+          new Date(article.created_at) >= oneYearAgo
+        );
+        return filteredArticles.sort((a, b) => (b.likes || 0) - (a.likes || 0));
+        
+      default:
+        return filteredArticles;
+    }
+  };
 
   useEffect(() => {
     const load = async () => {
       try {
-        const res = await contentAPI.getArticles(1, 20);
-        setItems(res.articles);
+        setLoading(true);
+        
+        const res = await contentAPI.getArticles(1, 50); // Get more articles for better sorting
+        console.log('DEBUG: Articles page - received data:', res);
+        const articles = res.articles || [];
+        
+        // Sort articles based on selected criteria
+        const sortedArticles = sortArticles(articles, sortBy);
+        
+        setItems(sortedArticles);
+      } catch (error) {
+        console.error('Error loading articles:', error);
+        setItems([]);
       } finally {
         setLoading(false);
       }
     };
     load();
-  }, []);
+  }, [sortBy]);
 
   return (
-    <div className="max-w-9xl mx-auto px-2 sm:px-4 py-4 sm:py-8">
+    <div className="mx-auto py-3 sm:py-6 px-2 sm:px-4">
+      <ArticlesHeader 
+        sortBy={sortBy} 
+        onSortChange={setSortBy} 
+      />
+      
       <div className="bg-white shadow-md">
-        <div className="bg-gray-600 text-white px-3 sm:px-6 py-3 sm:py-4 ">
-          <h1 className="text-xl sm:text-2xl font-bold">Статьи</h1>
-        </div>
-        <div className="p-3 sm:p-6 space-y-4">
-          {loading ? (
-            <div className="text-gray-500">Загрузка...</div>
-          ) : items.length === 0 ? (
-            <div className="text-gray-500">Пока нет статей</div>
-          ) : (
-            items.map(a => (
-              <Link key={a.id} to={`/articles/${a.slug || a.id}`} className="block border border-gray-200 hover:shadow-lg rounded overflow-hidden transition-shadow">
-                {a.cover_image_url && (
-                  <div className="h-48 bg-gray-200">
-                    <img 
-                      src={a.cover_image_url} 
-                      alt={a.title}
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).style.display = 'none';
-                      }}
-                    />
-                  </div>
-                )}
-                <div className="p-4">
-                  <div className="font-semibold text-gray-900 text-lg leading-tight">{a.title}</div>
-                  <div className="text-sm text-gray-600 mt-2 line-clamp-3">{a.excerpt}</div>
-                  <div className="text-xs text-gray-400 mt-3">
-                    {new Date(a.created_at).toLocaleDateString('ru-RU')}
-                  </div>
-                </div>
-              </Link>
-            ))
-          )}
-        </div>
+        <ArticlesList articles={items} loading={loading} />
       </div>
     </div>
   );
 };
 
-export default Articles;
-
+export default React.memo(Articles);
 
