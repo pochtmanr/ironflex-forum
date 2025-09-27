@@ -130,7 +130,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Registration failed');
+        // Handle specific error cases
+        if (response.status === 409) {
+          throw new Error('Пользователь с таким email уже существует');
+        }
+        if (response.status === 500) {
+          throw new Error('Ошибка сервера. Попробуйте позже');
+        }
+        throw new Error(data.error || 'Ошибка регистрации');
       }
 
       // Store tokens
