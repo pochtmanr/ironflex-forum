@@ -14,29 +14,37 @@ if (!cached) {
 }
 
 async function connectDB() {
-  const MONGODB_URI = process.env.MONGODB_URI
+  // Hardcoded MongoDB URI - no more environment variable issues!
+  const MONGODB_URI = "mongodb://admin:1U72642Td%261S5NLVN@212.233.93.63:27017/MongoDB-8954"
 
-  if (!MONGODB_URI) {
-    throw new Error('Please define the MONGODB_URI environment variable inside .env.local')
-  }
+  console.log('Attempting to connect to MongoDB...')
 
   if (cached.conn) {
+    console.log('Using cached MongoDB connection')
     return cached.conn
   }
 
   if (!cached.promise) {
     const opts = {
       bufferCommands: false,
+      serverSelectionTimeoutMS: 10000,
+      connectTimeoutMS: 10000,
+      socketTimeoutMS: 45000,
     }
 
     cached.promise = mongoose.connect(MONGODB_URI, opts).then((mongoose) => {
+      console.log('MongoDB connected successfully')
       return mongoose
+    }).catch((error) => {
+      console.error('MongoDB connection error:', error)
+      throw error
     })
   }
 
   try {
     cached.conn = await cached.promise
   } catch (e) {
+    console.error('MongoDB connection failed:', e)
     cached.promise = null
     throw e
   }
