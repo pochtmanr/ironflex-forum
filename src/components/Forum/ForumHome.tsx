@@ -106,6 +106,21 @@ const ForumHome: React.FC = () => {
 
   return (
     <div className="mx-auto py-3 sm:py-6 px-2 sm:px-4">
+      {/* Ad Banner - Before Forum Topics */}
+      <div className="text-center mb-4 sm:mb-6 overflow-hidden">
+        <div className="flex justify-center">
+          <div className="w-full max-w-[970px] bg-gray-100 flex items-center justify-center rounded">
+            {/* Google AdSense Ad Unit */}
+            <ins className="adsbygoogle"
+                 style={{display:'block', width:'100%', height:'90px'}}
+                 data-ad-client="ca-pub-9876848164575099"
+                 data-ad-slot="9885806566"
+                 data-ad-format="auto"
+                 data-full-width-responsive="true"></ins>
+          </div>
+        </div>
+      </div>
+
       {/* Mobile-Optimized Main Forum Categories */}
       <div className="bg-white shadow-md mb-4 sm:mb-6">
         <div className="bg-gray-600 text-white px-3 sm:px-3 py-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -165,21 +180,6 @@ const ForumHome: React.FC = () => {
               ))}
             </tbody>
           </table>
-        </div>
-      </div>
-
-      {/* Ad Banner */}
-      <div className="text-center mb-4 sm:mb-6 overflow-hidden">
-        <div className="flex justify-center">
-          <div className="w-full max-w-[970px] bg-gray-100 flex items-center justify-center rounded">
-            {/* Google AdSense Ad Unit */}
-            <ins className="adsbygoogle"
-                 style={{display:'block', width:'100%', height:'90px'}}
-                 data-ad-client="ca-pub-9876848164575099"
-                 data-ad-slot="9885806566"
-                 data-ad-format="auto"
-                 data-full-width-responsive="true"></ins>
-          </div>
         </div>
       </div>
 
