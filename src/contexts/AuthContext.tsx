@@ -139,8 +139,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       // Set current user
       setCurrentUser(data.user);
-    } catch (error: any) {
-      setError(error.message || 'Registration failed');
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Registration failed';
+      setError(errorMessage);
       throw error;
     }
   };
@@ -168,8 +169,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       // Set current user
       setCurrentUser(data.user);
-    } catch (error: any) {
-      setError(error.message || 'Login failed');
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Login failed';
+      setError(errorMessage);
       throw error;
     }
   };
@@ -182,9 +184,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       // Clear current user
       setCurrentUser(null);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Logout error:', error);
-      setError(error.message || 'Logout failed');
+      const errorMessage = error instanceof Error ? error.message : 'Logout failed';
+      setError(errorMessage);
     }
   };
 

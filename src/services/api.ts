@@ -52,7 +52,7 @@ async function apiRequest(
   endpoint: string,
   options: RequestInit = {},
   skipAuth = false
-): Promise<any> {
+): Promise<unknown> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(options.headers as Record<string, string> || {})
@@ -166,7 +166,7 @@ const FILE_SERVER_BASE_URL = 'https://bucket.theholylabs.com';
 // Upload API
 export const uploadAPI = {
   // Traditional form-data file upload
-  uploadFile: async (file: File, customFilename?: string) => {
+  uploadFile: async (file: File) => {
     const formData = new FormData();
     formData.append('file', file);
 
@@ -299,8 +299,9 @@ export const authAPI = {
       body: JSON.stringify(data)
     }, true);
     
-    tokenManager.setTokens(response.accessToken, response.refreshToken);
-    return response;
+    const authResponse = response as { accessToken: string; refreshToken: string; user: any };
+    tokenManager.setTokens(authResponse.accessToken, authResponse.refreshToken);
+    return authResponse;
   },
 
   login: async (emailOrUsername: string, password: string) => {
@@ -309,8 +310,9 @@ export const authAPI = {
       body: JSON.stringify({ emailOrUsername, password })
     }, true);
     
-    tokenManager.setTokens(response.accessToken, response.refreshToken);
-    return response;
+    const authResponse = response as { accessToken: string; refreshToken: string; user: any };
+    tokenManager.setTokens(authResponse.accessToken, authResponse.refreshToken);
+    return authResponse;
   },
 
   logout: async () => {
@@ -338,8 +340,9 @@ export const authAPI = {
       body: JSON.stringify({ refreshToken })
     }, true);
     
-    tokenManager.setTokens(response.accessToken, response.refreshToken);
-    return response;
+    const authResponse = response as { accessToken: string; refreshToken: string; user: any };
+    tokenManager.setTokens(authResponse.accessToken, authResponse.refreshToken);
+    return authResponse;
   }
 };
 
@@ -348,13 +351,13 @@ export const contentAPI = {
   getArticles: async (page = 1, limit = 20) => {
     return { articles: [], pagination: { page, limit, total: 0, pages: 0 } };
   },
-  getArticle: async (slugOrId: string) => {
+  getArticle: async () => {
     return null;
   },
   getTrainings: async (page = 1, limit = 20) => {
     return { trainings: [], pagination: { page, limit, total: 0, pages: 0 } };
   },
-  getTraining: async (slugOrId: string) => {
+  getTraining: async () => {
     return null;
   },
   // Use forumAPI for category functionality

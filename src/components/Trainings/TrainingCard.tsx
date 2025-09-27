@@ -1,5 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 
 interface TrainingListItem {
   id: string;
@@ -21,21 +22,6 @@ interface TrainingCardProps {
 }
 
 const TrainingCard: React.FC<TrainingCardProps> = ({ training }) => {
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('ru-RU', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric'
-    });
-  };
-
-  const formatDuration = (minutes: number | null) => {
-    if (!minutes) return null;
-    if (minutes < 60) return `${minutes} мин`;
-    const hours = Math.floor(minutes / 60);
-    const remainingMinutes = minutes % 60;
-    return remainingMinutes > 0 ? `${hours}ч ${remainingMinutes}мин` : `${hours}ч`;
-  };
 
   return (
     <div className="shadow-md rounded-lg overflow-hidden hover:shadow-lg transition-colors">
@@ -43,9 +29,11 @@ const TrainingCard: React.FC<TrainingCardProps> = ({ training }) => {
         {/* Article Image */}
         {training.coverImageUrl && (
           <div className="flex-shrink-0">
-            <img 
+            <Image 
               src={training.coverImageUrl} 
               alt={training.title}
+              width={160}
+              height={160}
               className="w-32 h-32 sm:w-40 sm:h-40 object-cover"
               onError={(e) => {
                 (e.target as HTMLImageElement).style.display = 'none';
