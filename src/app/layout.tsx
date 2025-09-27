@@ -28,17 +28,13 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ru">
+      <head>
+        <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9876848164575099"
+          crossOrigin="anonymous"></script>
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        {/* Google AdSense Script */}
-        <Script
-          async
-          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9876848164575099"
-          crossOrigin="anonymous"
-          strategy="afterInteractive"
-        />
-        
         <AuthProvider>
           <div className="App flex flex-col min-h-screen bg-white">
             <Header />
