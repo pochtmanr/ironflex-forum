@@ -14,8 +14,8 @@ if (!cached) {
 }
 
 async function connectDB() {
-  // Hardcoded MongoDB URI - no more environment variable issues!
-  const MONGODB_URI = "mongodb://admin:1U72642Td%261S5NLVN@212.233.93.63:27017/MongoDB-8954"
+  // Use environment variable for MongoDB URI
+  const MONGODB_URI = process.env.MONGODB_URI || "mongodb://admin:1U72642Td%261S5NLVN@212.233.93.63:27017/MongoDB-8954"
 
   console.log('Attempting to connect to MongoDB...')
 
@@ -34,11 +34,13 @@ async function connectDB() {
           }
 
           console.log('Creating new MongoDB connection...')
+          console.log('MongoDB URI:', MONGODB_URI.replace(/\/\/.*@/, '//***:***@')) // Hide credentials in logs
           cached.promise = mongoose.connect(MONGODB_URI, opts).then((mongoose) => {
             console.log('MongoDB connected successfully')
             return mongoose
           }).catch((error) => {
             console.error('MongoDB connection error:', error)
+            console.error('Connection URI (masked):', MONGODB_URI.replace(/\/\/.*@/, '//***:***@'))
             throw error
           })
         }
