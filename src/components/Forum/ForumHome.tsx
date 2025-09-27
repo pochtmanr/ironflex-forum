@@ -8,7 +8,7 @@ import TopTopics from './TopTopics';
 // Declare adsbygoogle global variable
 declare global {
   interface Window {
-    adsbygoogle: any[];
+    adsbygoogle: unknown[];
   }
 }
 
@@ -47,7 +47,7 @@ const ForumHome: React.FC = () => {
       const timer = setTimeout(() => {
         try {
           if (window.adsbygoogle && !adInitialized.current) {
-            (window.adsbygoogle as any[]).push({});
+            (window.adsbygoogle as unknown[]).push({});
             adInitialized.current = true;
           }
         } catch (error) {

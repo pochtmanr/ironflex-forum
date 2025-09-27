@@ -1,7 +1,8 @@
 'use client'
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { forumAPI } from '../../services/api';
 
 interface TopTopic {
@@ -35,7 +36,7 @@ const TopTopics: React.FC<TopTopicsProps> = ({
 
   useEffect(() => {
     loadTopTopics();
-  }, [limit, currentPeriod]);
+  }, [limit, currentPeriod, loadTopTopics]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -50,7 +51,7 @@ const TopTopics: React.FC<TopTopicsProps> = ({
     };
   }, []);
 
-  const loadTopTopics = async () => {
+  const loadTopTopics = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -63,7 +64,7 @@ const TopTopics: React.FC<TopTopicsProps> = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, [limit, currentPeriod]);
 
   const handlePeriodChange = (period: 'day' | 'week' | 'all') => {
     setCurrentPeriod(period);
@@ -140,9 +141,11 @@ const TopTopics: React.FC<TopTopicsProps> = ({
               <li key={topic.id} className="flex justify-between gap-x-6 py-5">
                 <div className="flex min-w-0 gap-x-4">
                   {topic.user_photo_url ? (
-                    <img 
+                    <Image 
                       src={topic.user_photo_url} 
                       alt={topic.user_name || 'Anonymous User'}
+                      width={48}
+                      height={48}
                       className="size-12 flex-none rounded-full bg-gray-50 object-cover"
                     />
                   ) : (

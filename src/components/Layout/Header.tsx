@@ -47,7 +47,6 @@ const SearchComponent: React.FC<{ isMobile?: boolean }> = ({ isMobile = false })
 
 const Header: React.FC = () => {
   const { currentUser, logout } = useAuth();
-  const router = useRouter();
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
