@@ -5,9 +5,12 @@ import { hashPassword, generateTokens } from '@/lib/auth'
 
 export async function POST(request: NextRequest) {
   try {
+    console.log('Registration API called')
     await connectDB()
+    console.log('MongoDB connected for registration')
     
     const { email, password, displayName } = await request.json()
+    console.log('Registration data received:', { email, displayName, passwordLength: password?.length })
 
     // Validation
     if (!email || !password) {
@@ -36,11 +39,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if user already exists
+    console.log('Checking if user exists...')
     const existingUser = await User.findOne({
       email
     })
+    console.log('User exists check result:', !!existingUser)
 
     if (existingUser) {
+      console.log('User already exists, returning 409')
       return NextResponse.json(
         { error: 'User with this email already exists' },
         { status: 409 }
@@ -48,7 +54,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Create user
+    console.log('Creating new user...')
     const passwordHash = await hashPassword(password)
+    console.log('Password hashed successfully')
+    
     const user = await User.create({
       email,
       username,
@@ -57,6 +66,7 @@ export async function POST(request: NextRequest) {
       isActive: true,
       isAdmin: false
     })
+    console.log('User created successfully:', user._id)
 
     // Generate tokens
     const { accessToken, refreshToken } = generateTokens({
