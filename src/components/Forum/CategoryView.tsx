@@ -47,10 +47,14 @@ const CategoryView: React.FC = () => {
     try {
       setLoading(true);
       
-      const response = await contentAPI.getCategory(categoryId, page);
+      const response = await contentAPI.getCategory(categoryId, page) as { 
+        category: unknown; 
+        topics: unknown[]; 
+        pagination: { pages: number } 
+      };
       
-      setCategory(response.category);
-      setTopics(response.topics);
+      setCategory(response.category as Category);
+      setTopics(response.topics as Topic[]);
       setTotalPages(response.pagination.pages);
     } catch (error) {
       console.error('Error loading category:', error);

@@ -157,7 +157,7 @@ const FileUploadWithPreview: React.FC<FileUploadWithPreviewProps> = ({
             break;
           case 'form':
           default:
-            result = await uploadAPI.uploadFile(file, customFilename);
+            result = await uploadAPI.uploadFile(file);
             break;
         }
 

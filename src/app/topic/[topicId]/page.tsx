@@ -81,7 +81,11 @@ const TopicViewPage: React.FC = () => {
       setLoading(true);
       setError('');
       
-      const response = await forumAPI.getTopic(topicId, page);
+      const response = await forumAPI.getTopic(topicId, page) as { 
+        topic: Topic; 
+        posts: Post[]; 
+        pagination: { pages: number } 
+      };
       console.log('Topic data received:', response.topic);
       console.log('Topic media_links:', response.topic.media_links);
       console.log('Topic media_links length:', response.topic.media_links?.length);

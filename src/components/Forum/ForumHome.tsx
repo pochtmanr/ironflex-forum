@@ -50,20 +50,10 @@ const ForumHome: React.FC = () => {
     }
   };
 
-  const formatDate = useMemo(() => (dateString: string | null) => {
-    if (!dateString) return 'Нет сообщений';
-    const date = new Date(dateString);
-    return date.toLocaleString('ru-RU', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  }, []);
 
   // Memoized components to reduce re-renders
-  const CategoryMobile = useMemo(() => ({ category, index }: { category: Category; index: number }) => (
+  const CategoryMobile = useMemo(() => {
+    const CategoryMobileComponent = ({ category, index }: { category: Category; index: number }) => (
     <div key={category.id} className={`border-b ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'} p-4 hover:bg-blue-50 transition-colors`}>
       <Link href={`/category/${category.id}`} className="text-blue-600 font-semibold hover:text-blue-700 block mb-1 text-sm leading-tight">
         {category.name}
@@ -77,9 +67,13 @@ const ForumHome: React.FC = () => {
         
       </div>
     </div>
-  ), [formatDate]);
+    );
+    CategoryMobileComponent.displayName = 'CategoryMobile';
+    return CategoryMobileComponent;
+  }, []);
 
-  const CategoryDesktop = useMemo(() => ({ category, index }: { category: Category; index: number }) => (
+  const CategoryDesktop = useMemo(() => {
+    const CategoryDesktopComponent = ({ category, index }: { category: Category; index: number }) => (
     <tr key={category.id} className={`border-b ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'} hover:bg-blue-50 transition-colors`}>
       <td className="px-4 py-4">
         <Link href={`/category/${category.id}`} className="text-blue-600 text-sm font-semibold hover:text-blue-700 block mb-1">
@@ -95,7 +89,10 @@ const ForumHome: React.FC = () => {
       </td>
       
     </tr>
-  ), [formatDate]);
+    );
+    CategoryDesktopComponent.displayName = 'CategoryDesktop';
+    return CategoryDesktopComponent;
+  }, []);
 
   if (loading) {
     return (

@@ -84,7 +84,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
             break;
           case 'form':
           default:
-            result = await uploadAPI.uploadFile(file, customFilename);
+            result = await uploadAPI.uploadFile(file);
             break;
         }
 

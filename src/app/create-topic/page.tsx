@@ -52,7 +52,7 @@ const CreateTopicPage: React.FC = () => {
   const loadCategories = async () => {
     try {
       setLoadingCategories(true);
-      const response = await forumAPI.getCategories();
+      const response = await forumAPI.getCategories() as { categories: Category[] };
       setCategories(response.categories || []);
     } catch (error) {
       console.error('Error loading categories:', error);

@@ -54,8 +54,8 @@ const TopTopics: React.FC<TopTopicsProps> = ({
     setLoading(true);
     setError(null);
     try {
-      const result = await forumAPI.getTopTopics(limit, currentPeriod);
-      setTopics(result.topics as TopTopic[]);
+      const result = await forumAPI.getTopTopics(limit, currentPeriod) as { topics: TopTopic[] };
+      setTopics(result.topics);
     } catch (err) {
       console.error('Error loading top topics:', err);
       setError('Не удалось загрузить популярные темы.');
