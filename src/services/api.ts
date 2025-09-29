@@ -65,7 +65,10 @@ async function apiRequest(
     }
   }
 
-  let response = await fetch(`/api${endpoint}`, {
+  // Always use production server API and database
+  const baseUrl = 'https://forum.theholylabs.com/api';
+
+  let response = await fetch(`${baseUrl}${endpoint}`, {
     ...options,
     headers
   });
@@ -78,7 +81,7 @@ async function apiRequest(
       const newToken = tokenManager.getAccessToken();
       if (newToken) {
         headers['Authorization'] = `Bearer ${newToken}`;
-        response = await fetch(`/api${endpoint}`, {
+        response = await fetch(`${baseUrl}${endpoint}`, {
           ...options,
           headers
         });
@@ -110,10 +113,17 @@ export const forumAPI = {
     content: string;
     mediaLinks?: string[];
   }) => {
+    // Get user data from localStorage (like React app)
+    const savedUser = localStorage.getItem('user');
+    const userData = savedUser ? JSON.parse(savedUser) : null;
+    
     return apiRequest('/forum/topics', {
       method: 'POST',
-      body: JSON.stringify(data)
-    });
+      body: JSON.stringify({
+        ...data,
+        userData
+      })
+    }, true); // Skip auth header, we're sending userData directly
   },
 
   getTopic: async (id: string, page = 1, limit = 20) => {
@@ -127,10 +137,18 @@ export const forumAPI = {
   },
 
   createPost: async (topicId: string, content: string, mediaLinks?: string[]) => {
+    // Get user data from localStorage (like React app)
+    const savedUser = localStorage.getItem('user');
+    const userData = savedUser ? JSON.parse(savedUser) : null;
+    
     return apiRequest(`/forum/topics/${topicId}/posts`, {
       method: 'POST',
-      body: JSON.stringify({ content, mediaLinks })
-    });
+      body: JSON.stringify({ 
+        content, 
+        mediaLinks,
+        userData 
+      })
+    }, true); // Skip auth header, we're sending userData directly
   },
 
   search: async (query: string, page = 1, limit = 20) => {
@@ -160,8 +178,8 @@ export const forumAPI = {
   }
 };
 
-// File Server API - Use Next.js API route for uploads
-const FILE_SERVER_BASE_URL = '/api';
+// File Server API - Always use production server for uploads
+const FILE_SERVER_BASE_URL = 'https://forum.theholylabs.com/api';
 
 // Upload API
 export const uploadAPI = {

@@ -33,6 +33,14 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 
+# Google OAuth credentials and sensitive tokens
+**/google-credentials.json
+**/google-token.json
+GOOGLE_CLIENT_SECRET*
+googleCredential*
+
+# Keep database config trackable if needed (already covered by .env* above)
+
 # vercel
 .vercel
 

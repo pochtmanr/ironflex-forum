@@ -84,26 +84,11 @@ export async function POST(request: NextRequest) {
   try {
     await connectDB()
     
-    const authHeader = request.headers.get('authorization')
-    if (!authHeader?.startsWith('Bearer ')) {
-      return NextResponse.json(
-        { error: 'Authorization token required' },
-        { status: 401 }
-      )
-    }
-
-    const token = authHeader.substring(7)
-    const user = await getUserFromToken(token)
+    // Get user data from request body (like React app approach)
+    const body = await request.json()
+    const { categoryId, title, content, mediaLinks, userData } = body
     
-    if (!user) {
-      return NextResponse.json(
-        { error: 'Invalid or expired token' },
-        { status: 401 }
-      )
-    }
-
-    const { categoryId, title, content, mediaLinks } = await request.json()
-    console.log('Received topic creation request:', { categoryId, title, content, mediaLinks })
+    console.log('Received topic creation request:', { categoryId, title, content, mediaLinks, userData })
 
     // Validation
     if (!categoryId || !title || !content) {
@@ -112,6 +97,33 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
+
+    // For now, let's use userData from the request or create a simple user
+    let user;
+    if (userData && userData.email) {
+      // Find or create user based on userData
+      user = await User.findOne({ email: userData.email }).select('-passwordHash')
+      if (!user) {
+        const username = userData.email.split('@')[0] + '_' + Math.random().toString(36).substr(2, 5);
+        user = await User.create({
+          email: userData.email,
+          username,
+          displayName: userData.displayName || userData.name || userData.email.split('@')[0],
+          photoURL: userData.photoURL || userData.picture,
+          googleId: userData.id,
+          isVerified: true,
+          isAdmin: false,
+          isActive: true
+        });
+        console.log('Created new user:', user._id);
+      }
+    } else {
+      return NextResponse.json(
+        { error: 'User data required' },
+        { status: 401 }
+      )
+    }
+
 
     // Verify category exists
     const category = await Category.findById(categoryId)

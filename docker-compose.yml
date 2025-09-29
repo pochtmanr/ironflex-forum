@@ -3,13 +3,17 @@ services:
     image: mongo:7.0
     container_name: mongodb
     ports:
-      - "27017:27017"
+      - "0.0.0.0:27017:27017"  # Expose to all interfaces for internet access
     environment:
       - MONGO_INITDB_ROOT_USERNAME=admin
-      - MONGO_INITDB_ROOT_PASSWORD=password
+      - MONGO_INITDB_ROOT_PASSWORD=StrongPassword123!
       - MONGO_INITDB_DATABASE=ironblog
+      - MONGO_INITDB_DATABASE_USER=ironblog_user
+      - MONGO_INITDB_DATABASE_PASSWORD=IronBlogPass456!
+    command: --bind_ip_all --auth
     volumes:
       - mongodb_data:/data/db
+      - ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
     restart: unless-stopped
     networks:
       - my_custom_network
@@ -38,7 +42,7 @@ services:
       - .env.local
     environment:
       - NODE_ENV=production
-      - MONGODB_URI=mongodb://admin:password@mongodb:27017/ironblog?authSource=admin
+      - MONGODB_URI=mongodb://admin:StrongPassword123!@mongodb:27017/ironblog?authSource=admin
     depends_on:
       - mongodb
       - fileserver
@@ -73,6 +77,22 @@ services:
       "trap exit TERM; while :; do sleep 1; done"
     networks:
       - my_custom_network
+
+  ipsec-vpn:
+    image: hwdsl2/ipsec-vpn-server:latest
+    container_name: ipsec-vpn
+    # Use host networking so UDP 500/4500 are reachable directly
+    network_mode: "host"
+    privileged: true
+    cap_add:
+      - NET_ADMIN
+    environment:
+      - VPN_IPSEC_PSK=ipsec-vpn-key
+      - VPN_USER=dima
+      - VPN_PASSWORD=rabbit
+    volumes:
+      - /lib/modules:/lib/modules:ro
+    restart: unless-stopped
 
 volumes:
   mongodb_data:

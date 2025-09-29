@@ -14,7 +14,7 @@ interface Category {
 }
 
 export default function AdminCategories() {
-  const { user } = useAuth()
+  const { } = useAuth()
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)

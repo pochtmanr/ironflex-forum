@@ -4,12 +4,16 @@ export interface IUser extends Document {
   _id: string
   email: string
   username: string
-  passwordHash: string
+  passwordHash?: string
   displayName?: string
   photoURL?: string
   bio?: string
   isActive: boolean
   isAdmin: boolean
+  isVerified: boolean
+  googleId?: string
+  githubId?: string
+  refreshToken?: string
   createdAt: Date
   updatedAt: Date
   lastLogin?: Date
@@ -30,7 +34,7 @@ const UserSchema = new Schema<IUser>({
   },
   passwordHash: {
     type: String,
-    required: true
+    required: false
   },
   displayName: {
     type: String,
@@ -50,6 +54,21 @@ const UserSchema = new Schema<IUser>({
   isAdmin: {
     type: Boolean,
     default: false
+  },
+  isVerified: {
+    type: Boolean,
+    default: false
+  },
+  googleId: {
+    type: String,
+    sparse: true
+  },
+  githubId: {
+    type: String,
+    sparse: true
+  },
+  refreshToken: {
+    type: String
   },
   lastLogin: {
     type: Date

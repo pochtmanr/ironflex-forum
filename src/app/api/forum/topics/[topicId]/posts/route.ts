@@ -12,8 +12,8 @@ export async function POST(
   try {
     const { topicId } = await params;
     const body = await request.json();
-    const { content, mediaLinks } = body;
-    console.log('Received post creation request:', { content, mediaLinks });
+    const { content, mediaLinks, userData } = body;
+    console.log('Received post creation request:', { content, mediaLinks, userData });
 
     if (!content || !content.trim()) {
       return NextResponse.json(
@@ -22,32 +22,30 @@ export async function POST(
       );
     }
 
-    // Verify authentication
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
-      );
-    }
-
-    const token = authHeader.substring(7);
-    const userPayload = verifyAccessToken(token);
-    if (!userPayload) {
-      return NextResponse.json(
-        { error: 'Invalid token' },
-        { status: 401 }
-      );
-    }
-
     await connectDB();
 
-    // Get user information
-    const user = await User.findById(userPayload.id);
-    if (!user) {
+    // Get or create user based on userData (like topics)
+    let user;
+    if (userData && userData.email) {
+      user = await User.findOne({ email: userData.email }).select('-passwordHash');
+      if (!user) {
+        const username = userData.email.split('@')[0] + '_' + Math.random().toString(36).substr(2, 5);
+        user = await User.create({
+          email: userData.email,
+          username,
+          displayName: userData.displayName || userData.name || userData.email.split('@')[0],
+          photoURL: userData.photoURL || userData.picture,
+          googleId: userData.id,
+          isVerified: true,
+          isAdmin: false,
+          isActive: true
+        });
+        console.log('Created new user for post:', user._id);
+      }
+    } else {
       return NextResponse.json(
-        { error: 'User not found' },
-        { status: 404 }
+        { error: 'User data required' },
+        { status: 401 }
       );
     }
 
@@ -71,8 +69,8 @@ export async function POST(
     // Create new post
     const post = new Post({
       topicId: topicId,
-      userId: userPayload.id,
-      userName: user.username,
+      userId: user._id.toString(),
+      userName: user.displayName || user.username,
       userEmail: user.email,
       content: content.trim(),
       mediaLinks: mediaLinks || []

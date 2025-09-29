@@ -4,6 +4,7 @@ import React, { useEffect, useState, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import { useAuth } from '../../contexts/AuthContext';
 import TopTopics from './TopTopics';
+import { forumAPI } from '../../services/api';
 
 // Declare adsbygoogle global variable
 declare global {
@@ -62,13 +63,13 @@ const ForumHome: React.FC = () => {
   const loadForumData = async () => {
     try {
       const [categoriesResponse, statsResponse] = await Promise.all([
-        fetch('/api/forum/categories').then(res => res.json()),
-        fetch('/api/forum/stats').then(res => res.json())
+        forumAPI.getCategories(),
+        forumAPI.getStats()
       ]);
 
-      setCategories(categoriesResponse.categories || []);
-      setStats(statsResponse.stats || null);
-      setOnlineUsers(statsResponse.onlineUsers || 0);
+      setCategories((categoriesResponse as { categories: Category[] }).categories || []);
+      setStats((statsResponse as { stats: ForumStats, onlineUsers: number }).stats || null);
+      setOnlineUsers((statsResponse as { stats: ForumStats, onlineUsers: number }).onlineUsers || 0);
     } catch (error) {
       console.error('Error loading forum data:', error);
     } finally {

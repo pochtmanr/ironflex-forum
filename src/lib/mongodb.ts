@@ -15,7 +15,7 @@ if (!cached) {
 
 async function connectDB() {
   // Use environment variable for MongoDB URI
-  const MONGODB_URI = process.env.MONGODB_URI || "mongodb://admin:1U72642Td%261S5NLVN@212.233.93.63:27017/MongoDB-8954"
+  const MONGODB_URI = process.env.MONGODB_URI || "mongodb://admin:StrongPassword123!@localhost:27017/ironblog?authSource=admin"
 
   console.log('Attempting to connect to MongoDB...')
 

@@ -16,10 +16,7 @@
   justify-content: center;
 }
 
-.file-upload-area:hover {
-  border-color: #3b82f6;
-  background-color: #eff6ff;
-}
+/* Removed hover effect as requested */
 
 .file-upload-area.drag-active {
   border-color: #3b82f6;
@@ -39,9 +36,7 @@
   transition: color 0.2s ease-in-out;
 }
 
-.file-upload-area:hover .upload-icon {
-  color: #3b82f6;
-}
+/* Removed icon hover effect as requested */
 
 .file-upload-area.drag-active .upload-icon {
   color: #3b82f6;
@@ -50,13 +45,13 @@
 .upload-text {
   font-size: 1.125rem;
   font-weight: 500;
-  color: #1f2937 !important;
+  color: #ffffff !important;
   margin: 0;
 }
 
 .upload-hint {
   font-size: 0.875rem;
-  color: #1f2937 !important;
+  color: #ffffff !important;
   margin: 0;
 }
 
@@ -68,7 +63,7 @@
 .previews-title {
   font-size: 1rem;
   font-weight: 600;
-  color: #374151;
+  color: #000000 !important;
   margin: 0 0 1rem 0;
 }
 
@@ -166,7 +161,7 @@
 .progress-title {
   font-size: 1rem;
   font-weight: 600;
-  color: #374151;
+  color: #000000 !important;
   margin: 0 0 1rem 0;
 }
 

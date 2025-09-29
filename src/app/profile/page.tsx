@@ -6,17 +6,17 @@ import { useAuth } from '@/contexts/AuthContext'
 
 export default function ProfilePage() {
   const router = useRouter()
-  const { user } = useAuth()
+  const { currentUser } = useAuth()
 
   useEffect(() => {
-    if (user) {
+    if (currentUser) {
       // Redirect to current user's profile
-      router.push(`/profile/${user.id}`)
+      router.push(`/profile/${currentUser.id}`)
     } else {
       // Redirect to login if not authenticated
       router.push('/login')
     }
-  }, [user, router])
+  }, [currentUser, router])
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">

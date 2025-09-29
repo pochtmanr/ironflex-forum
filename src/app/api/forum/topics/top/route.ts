@@ -31,10 +31,10 @@ export async function GET(request: NextRequest) {
       isActive: true,
       ...dateFilter
     })
-      .populate('categoryId', 'name')
       .sort({ views: -1, likes: -1 })
       .limit(limit)
       .select('title views likes replyCount userName userId categoryId createdAt')
+      .lean()
 
     console.log(`Found ${topics.length} topics`)
 
@@ -46,8 +46,8 @@ export async function GET(request: NextRequest) {
       reply_count: topic.replyCount || 0,
       user_name: topic.userName,
       user_id: topic.userId,
-      category_name: topic.categoryId?.name || 'Unknown',
-      category_id: topic.categoryId?._id || '',
+      category_name: 'Forum', // Simplified for now
+      category_id: topic.categoryId || '',
       user_photo_url: null // We'll add this later if needed
     }))
 

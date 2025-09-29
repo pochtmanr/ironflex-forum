@@ -15,15 +15,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application code
 COPY app.py .
 
-# Create uploads directory
-RUN mkdir -p uploads
+# Create uploads directory with proper permissions
+RUN mkdir -p uploads && chmod 777 uploads
 
-# Create non-root user
-RUN useradd --create-home --shell /bin/bash fileuser && \
-    chown -R fileuser:fileuser /app
-
-# Switch to non-root user
-USER fileuser
+# Run as root to avoid permission issues with volume mounts
+# (In production, you'd want proper user management)
 
 # Expose port
 EXPOSE 3001

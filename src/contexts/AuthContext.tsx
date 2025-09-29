@@ -17,6 +17,7 @@ interface AuthContextType {
   error: string | null;
   login: (emailOrUsername: string, password: string) => Promise<void>;
   register: (email: string, password: string, displayName?: string) => Promise<void>;
+  loginWithGoogle: (credential: string) => Promise<void>;
   logout: () => Promise<void>;
   clearError: () => void;
 }
@@ -37,9 +38,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Check for stored token on app load
+    // Check for user session on component mount (like React app)
+    const savedUser = localStorage.getItem('user');
     const token = localStorage.getItem('accessToken');
+    
+    console.log('AuthContext: Checking localStorage user:', savedUser ? 'User data exists' : 'No user data');
     console.log('AuthContext: Checking stored token:', token ? 'Token exists' : 'No token');
+    
+    if (savedUser) {
+      try {
+        const userData = JSON.parse(savedUser);
+        console.log('AuthContext: Restoring user from localStorage');
+        setCurrentUser(userData);
+        setLoading(false);
+        return;
+      } catch (err) {
+        console.error('AuthContext: Invalid user data in localStorage, removing');
+        localStorage.removeItem('user');
+      }
+    }
+    
     if (token) {
       // Verify token and get user info
       fetchUserFromToken(token);
@@ -144,6 +162,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.setItem('accessToken', data.accessToken);
       localStorage.setItem('refreshToken', data.refreshToken);
       
+      // Store user data for persistence (like React app)
+      localStorage.setItem('user', JSON.stringify(data.user));
+      
       // Set current user
       setCurrentUser(data.user);
     } catch (error: unknown) {
@@ -174,6 +195,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.setItem('accessToken', data.accessToken);
       localStorage.setItem('refreshToken', data.refreshToken);
       
+      // Store user data for persistence (like React app)
+      localStorage.setItem('user', JSON.stringify(data.user));
+      
       // Set current user
       setCurrentUser(data.user);
     } catch (error: unknown) {
@@ -185,9 +209,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = async () => {
     try {
-      // Clear tokens
+      // Clear all localStorage data (like React app)
       localStorage.removeItem('accessToken');
       localStorage.removeItem('refreshToken');
+      localStorage.removeItem('user');
+      localStorage.removeItem('googleCredential');
+      
+      // Sign out from Google if available
+      if (typeof window !== 'undefined' && window.google) {
+        window.google.accounts.id.disableAutoSelect();
+      }
       
       // Clear current user
       setCurrentUser(null);
@@ -198,6 +229,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const loginWithGoogle = async (credential: string) => {
+    try {
+      setError(null);
+      const response = await fetch('/api/auth/google', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ credential }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Google login failed');
+      }
+
+      // Store tokens
+      localStorage.setItem('accessToken', data.accessToken);
+      localStorage.setItem('refreshToken', data.refreshToken);
+      
+      // Set current user
+      setCurrentUser(data.user);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Google login failed';
+      setError(errorMessage);
+      throw error;
+    }
+  };
+
+
   const clearError = () => setError(null);
 
   const value = {
@@ -206,6 +268,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     error,
     login,
     register,
+    loginWithGoogle,
     logout,
     clearError
   };
