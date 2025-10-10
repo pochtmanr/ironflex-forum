@@ -4,9 +4,13 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { useAuth } from '@/contexts/AuthContext';
 import { forumAPI } from '@/services/api';
-import { FileUploadWithPreview } from '@/components/FileUpload';
+import { RichTextEditor } from '@/components/UI/RichTextEditor';
+import { LikeButtonGroup } from '@/components/UI/LikeButton';
+import { LoginPrompt } from '@/components/UI/LoginPrompt';
 
 interface Post {
   id: number | string;
@@ -14,6 +18,7 @@ interface Post {
   user_name: string;
   user_email: string;
   user_id: string;
+  user_photo?: string;
   created_at: string;
   likes: number;
   dislikes: number;
@@ -28,6 +33,7 @@ interface Topic {
   user_name: string;
   user_email: string;
   user_id: string;
+  user_photo?: string;
   category_id: string;
   category_name: string;
   reply_count: number;
@@ -59,6 +65,10 @@ const TopicViewPage: React.FC = () => {
   const [replyContent, setReplyContent] = useState('');
   const [submittingReply, setSubmittingReply] = useState(false);
   const [replyMediaLinks, setReplyMediaLinks] = useState<string[]>([]);
+  
+  // Vote tracking
+  const [topicVote, setTopicVote] = useState<'like' | 'dislike' | null>(null);
+  const [postVotes, setPostVotes] = useState<Record<string, 'like' | 'dislike' | null>>({});
 
   useEffect(() => {
     if (topicId) {
@@ -83,8 +93,8 @@ const TopicViewPage: React.FC = () => {
       setError('');
       
       const response = await forumAPI.getTopic(topicId, page) as { 
-        topic: Topic; 
-        posts: Post[]; 
+        topic: Topic & { user_vote?: 'like' | 'dislike' | null }; 
+        posts: (Post & { user_vote?: 'like' | 'dislike' | null })[]; 
         pagination: { pages: number } 
       };
       console.log('Topic data received:', response.topic);
@@ -92,14 +102,52 @@ const TopicViewPage: React.FC = () => {
       console.log('Topic media_links length:', response.topic.media_links?.length);
       console.log('Posts data received:', response.posts);
       
-      // Set is_author based on current user
+      // Set is_author based on current user for topic
+      // Convert both to strings for comparison to ensure consistency
+      const topicUserId = String(response.topic.user_id || '');
+      const currentUserId = String(currentUser?.id || '');
+      
       const topicData = {
         ...response.topic,
-        is_author: currentUser && response.topic.user_id === currentUser.id ? true : false
+        is_author: currentUser && topicUserId === currentUserId ? true : false
       };
       
+      // Set initial vote state from backend
+      if (response.topic.user_vote) {
+        setTopicVote(response.topic.user_vote);
+      }
+      
+      // Set is_author and vote state based on current user for each post
+      const postsData = response.posts.map(post => {
+        // Convert both to strings for comparison to ensure consistency
+        const postUserId = String(post.user_id || '');
+        const currentUserId = String(currentUser?.id || '');
+        const isAuthor = currentUser && postUserId === currentUserId;
+        console.log('Post author check:', {
+          postId: post.id,
+          postUserId: postUserId,
+          currentUserId: currentUserId,
+          isAuthor,
+          postUserIdType: typeof post.user_id,
+          currentUserIdType: typeof currentUser?.id
+        });
+        
+        // Set initial vote state for this post
+        if (post.user_vote) {
+          setPostVotes(prev => ({ ...prev, [post.id]: post.user_vote as 'like' | 'dislike' }));
+        }
+        
+        return {
+          ...post,
+          is_author: isAuthor ? true : false
+        };
+      });
+      
+      console.log('Current user full:', currentUser);
+      console.log('Posts with is_author:', postsData);
+      
       setTopic(topicData);
-      setPosts(response.posts);
+      setPosts(postsData);
       setTotalPages(response.pagination.pages);
     } catch (error: unknown) {
       console.error('Topic loading error:', error);
@@ -117,8 +165,23 @@ const TopicViewPage: React.FC = () => {
     }
 
     try {
-      await forumAPI.likeTopic(topicId, likeType);
-      loadTopicData(); // Reload to get updated likes
+      const response = await forumAPI.likeTopic(topicId, likeType) as {
+        likes: number;
+        dislikes: number;
+        userVote: 'like' | 'dislike' | null;
+      };
+      
+      // Update vote state from response
+      setTopicVote(response.userVote);
+      
+      // Update topic counts without reloading
+      if (topic) {
+        setTopic({
+          ...topic,
+          likes: response.likes,
+          dislikes: response.dislikes
+        });
+      }
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Ошибка при голосовании';
       setError(errorMessage);
@@ -131,12 +194,45 @@ const TopicViewPage: React.FC = () => {
       return;
     }
 
+    console.log('Liking post:', { postId, likeType, currentUser });
+    console.log('Access token in localStorage:', localStorage.getItem('accessToken'));
+
     try {
-      await forumAPI.likePost(postId, likeType);
-      loadTopicData(); // Reload to get updated likes
+      const response = await forumAPI.likePost(postId, likeType) as {
+        likes: number;
+        dislikes: number;
+        userVote: 'like' | 'dislike' | null;
+      };
+      console.log('Post liked successfully', response);
+      
+      // Update vote state from response
+      setPostVotes(prev => ({ ...prev, [postId]: response.userVote }));
+      
+      // Update post counts without reloading
+      setPosts(prevPosts => 
+        prevPosts.map(p => 
+          p.id.toString() === postId 
+            ? { ...p, likes: response.likes, dislikes: response.dislikes }
+            : p
+        )
+      );
     } catch (error: unknown) {
+      console.error('Like post error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Ошибка при голосовании';
-      setError(errorMessage);
+      
+      // If token is invalid, ask user to re-login
+      if (errorMessage.includes('token') || errorMessage.includes('Invalid') || errorMessage.includes('Unauthorized')) {
+        setError('Ваша сессия истекла. Пожалуйста, войдите снова.');
+        alert('Ваша сессия истекла. Пожалуйста, войдите снова.');
+        // Clear tokens and redirect to login
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
+        localStorage.removeItem('user');
+        setTimeout(() => router.push('/login'), 2000);
+      } else {
+        setError(errorMessage);
+        alert('Ошибка при голосовании: ' + errorMessage);
+      }
     }
   };
 
@@ -161,11 +257,27 @@ const TopicViewPage: React.FC = () => {
     }
   };
 
-  const handleReplyFileUpload = (fileUrl: string, filename: string) => {
-    console.log('File uploaded successfully:', { fileUrl, filename });
-    setReplyMediaLinks(prev => [...prev, fileUrl]);
-    console.log('Updated mediaLinks:', [...replyMediaLinks, fileUrl]);
+  const handleDeletePost = async (postId: string) => {
+    if (!currentUser) {
+      return;
+    }
+
+    const confirmed = window.confirm('Вы уверены, что хотите удалить этот комментарий? Это действие нельзя отменить.');
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      await forumAPI.deletePost(postId);
+      // Reload the page to show updated posts
+      loadTopicData();
+    } catch (error: unknown) {
+      console.error('Post deletion error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Ошибка удаления комментария';
+      setError(errorMessage);
+    }
   };
+
 
   const removeReplyMediaLink = (index: number) => {
     setReplyMediaLinks(prev => prev.filter((_, i) => i !== index));
@@ -195,6 +307,27 @@ const TopicViewPage: React.FC = () => {
     } finally {
       setSubmittingReply(false);
     }
+  };
+
+  // Handle image upload for RichTextEditor
+  const handleEditorImageUpload = async (file: File): Promise<string> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    const response = await fetch('/api/upload', {
+      method: 'POST',
+      body: formData,
+    });
+    
+    if (!response.ok) throw new Error('Upload failed');
+    
+    const data = await response.json();
+    const fileUrl = data.url || data.file_url;
+    
+    // Don't add to media links - the image will be in the markdown content
+    // This prevents duplicate display
+    
+    return fileUrl;
   };
 
   const formatDate = (dateString: string) => {
@@ -253,59 +386,107 @@ const TopicViewPage: React.FC = () => {
   }
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8">
+    <div className="mx-auto px-2 sm:px-4 py-4 sm:py-6">
       {/* Breadcrumb */}
-      <nav className="mb-6">
-        <ol className="flex items-center space-x-2 text-sm">
+      <nav className="mb-4 sm:mb-6">
+        <ol className="flex items-center space-x-2 text-xs sm:text-sm">
           <li>
-            <Link href="/" className="text-blue-600 hover:text-blue-700">Форум</Link>
+            <Link href="/" className="text-blue-500 hover:text-blue-700">Форум</Link>
           </li>
-          <li className="text-gray-500">/</li>
+          <li className="text-gray-400">/</li>
           <li>
-            <Link href={`/category/${topic.category_id}`} className="text-blue-600 hover:text-blue-700">
+            <Link href={`/category/${topic.category_id}`} className="text-blue-500 hover:text-blue-700">
               {topic.category_name}
             </Link>
           </li>
-          <li className="text-gray-500">/</li>
-          <li className="text-gray-900 truncate">{topic.title}</li>
+          <li className="text-gray-400">/</li>
+          <li className="text-gray-700 truncate">{topic.title}</li>
         </ol>
       </nav>
 
-      {/* Topic Header */}
-      <div className="bg-white shadow-md mb-6">
-        <div className="bg-white px-6 py-4 border-b">
-          <div className="flex items-start justify-between">
-            <div className="flex-1 min-w-0">
-              <h1 className="text-xl font-bold mb-2 text-gray-900">{topic.title}</h1>
-              <div className="text-sm text-gray-900">
-                <span>от </span>
-                <Link 
-                  href={`/profile/${topic.user_id}`}
-                  className="text-blue-600 hover:text-blue-700"
-                >
-                  {topic.user_name || 'Unknown'}
-                </Link>
-                <span> • {formatDate(topic.created_at)}</span>
-              </div>
+      {/* Topic Header - Forum Style with User Photo */}
+      <div className="bg-white mb-4 sm:mb-6">
+        <div className="bg-gray-600 text-white px-2 py-1.5 sm:px-4 sm:py-2">
+          <h1 className="text-lg sm:text-xl font-bold mb-3">{topic.title}</h1>
+          <div className="flex items-center gap-3 sm:gap-4 text-xs sm:text-sm text-gray-200">
+            <div className="flex items-center gap-1.5">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              </svg>
+              <span><span className="font-medium">{posts.length}</span> {posts.length === 1 ? 'комментарий' : posts.length < 5 ? 'комментария' : 'комментариев'}</span>
             </div>
-            <div className="flex items-center space-x-4 text-sm text-gray-900">
-              <span>Ответов: {topic.reply_count}</span>
-              <span>Просмотров: {topic.views}</span>
+            <div className="flex items-center gap-1.5">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+              </svg>
+              <span><span className="font-medium">{topic.views}</span> {topic.views === 1 ? 'просмотр' : 'просмотров'}</span>
             </div>
           </div>
         </div>
 
-        {/* Topic Content */}
-        <div className="p-6">
-          <div className="prose max-w-none">
-            <div className="whitespace-pre-wrap text-gray-900">{topic.content}</div>
-          </div>
-          
-          {/* Display topic media links if any */}
-          {topic.media_links && topic.media_links.length > 0 && (
-            <div className="mt-4 pt-4 border-t border-gray-200">
-              <h4 className="text-sm font-medium text-gray-900 mb-2">Прикрепленные файлы:</h4>
-              <div className="space-y-3">
+        {/* Topic Content with Author Photo */}
+        <div className="p-2 sm:p-3 border-b border-gray-200 bg-white">
+          <div className="flex gap-2 sm:gap-3">
+            {/* User Photo */}
+            <div className="flex-shrink-0">
+              <Link href={`/profile/${topic.user_id}`}>
+                {topic.user_photo ? (
+                  <Image
+                    src={topic.user_photo}
+                    alt={topic.user_name || 'User'}
+                    width={64}
+                    height={64}
+                    className="w-12 h-12 sm:w-16 sm:h-16 rounded-full object-cover hover:opacity-80 transition-opacity"
+                  />
+                ) : (
+                  <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-gray-300 flex items-center justify-center text-lg sm:text-xl font-bold text-gray-600 hover:opacity-80 transition-opacity">
+                    {(topic.user_name || 'U').charAt(0).toUpperCase()}
+                  </div>
+                )}
+              </Link>
+            </div>
+            
+            {/* Content Area */}
+            <div className="flex-1 min-w-0">
+              {/* Author Name and Date */}
+              <div className="mb-2">
+                <Link 
+                  href={`/profile/${topic.user_id}`}
+                  className="text-blue-600 hover:text-blue-800 font-semibold text-lg sm:text-lg"
+                >
+                  {topic.user_name || 'Unknown'}
+                </Link>
+                <span className="text-gray-500 text-sm sm:text-sm ml-2">
+                  {formatDate(topic.created_at)}
+                </span>
+              </div>
+              
+              {/* Topic Content */}
+              <div className="prose max-w-none text-gray-900 text-sm sm:text-base">
+                <ReactMarkdown 
+                  remarkPlugins={[remarkGfm]}
+                  components={{
+                    img: ({node, ...props}) => (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={props.src as string}
+                        alt={props.alt || ''}
+                        className="max-w-full h-auto rounded"
+                        style={{ objectFit: 'contain', maxHeight: '400px' }}
+                      />
+                    ),
+                  }}
+                >
+                  {topic.content}
+                </ReactMarkdown>
+              </div>
+              
+              {/* Display topic media links if any */}
+              {topic.media_links && topic.media_links.length > 0 && (
+                <div className="mt-3 pt-3 border-t border-gray-200">
+                  <h4 className="text-sm font-medium text-gray-900 mb-2">Прикрепленные файлы:</h4>
+                  <div className="space-y-3">
                 {topic.media_links.map((link, linkIndex) => {
                   const filename = link.split('/').pop() || '';
                   const isImage = /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(filename);
@@ -321,9 +502,9 @@ const TopicViewPage: React.FC = () => {
                             src={link}
                             alt={filename}
                             width={800}
-                            height={400}
+                            height={600}
                             className="max-w-full h-auto rounded border"
-                            style={{ maxHeight: '400px' }}
+                            style={{ objectFit: 'contain', maxHeight: '400px', width: 'auto' }}
                             onError={(e) => {
                               e.currentTarget.style.display = 'none';
                               e.currentTarget.nextElementSibling?.classList.remove('hidden');
@@ -372,44 +553,36 @@ const TopicViewPage: React.FC = () => {
                     </div>
                   );
                 })}
-              </div>
-            </div>
-          )}
-          
-          {/* Topic Actions */}
-          <div className="flex items-center justify-between mt-6 pt-6 border-t">
-            <div className="flex items-center space-x-4">
-              <button
-                onClick={() => handleLikeTopic('like')}
-                className="flex items-center space-x-1 text-green-600 hover:text-green-700"
-                disabled={!currentUser}
-              >
-                <span>👍</span>
-                <span>{topic.likes}</span>
-              </button>
-              <button
-                onClick={() => handleLikeTopic('dislike')}
-                className="flex items-center space-x-1 text-red-600 hover:text-red-700"
-                disabled={!currentUser}
-              >
-                <span>👎</span>
-                <span>{topic.dislikes}</span>
-              </button>
-            </div>
-            
-            {topic.is_author && (
-              <div className="flex items-center space-x-4">
-                <div className="text-sm text-gray-900">
-                  Вы автор этой темы
+                  </div>
                 </div>
-                <button
-                  onClick={handleDeleteTopic}
-                  className="px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-colors"
-                >
-                  Удалить тему
-                </button>
+              )}
+              
+              {/* Topic Actions - Forum Style */}
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mt-6 pt-4 border-t border-gray-200 gap-3">
+                <LikeButtonGroup
+                  likes={topic.likes}
+                  dislikes={topic.dislikes}
+                  userVote={topicVote}
+                  onLike={handleLikeTopic}
+                  disabled={!currentUser}
+                  size="md"
+                />
+                
+                {topic.is_author && (
+                  <div className="flex items-center gap-2 sm:gap-3">
+                    <span className="text-sm bg-blue-100 text-blue-800 px-2 py-1 rounded font-medium">
+                      Автор темы
+                    </span>
+                    <button
+                      onClick={handleDeleteTopic}
+                      className="px-3 py-1.5 bg-red-600/20 text-white text-xs sm:text-sm rounded hover:bg-red-600/30 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-colors font-medium"
+                    >
+                      Удалить тему
+                    </button>
+                  </div>
+                )}
               </div>
-            )}
+            </div>
           </div>
         </div>
       </div>
@@ -421,42 +594,88 @@ const TopicViewPage: React.FC = () => {
         </div>
       )}
 
-      {/* Posts */}
-      <div className="space-y-4 mb-6">
+      {/* Posts - Forum Style with User Photos */}
+      <div className="space-y-4 mb-4 sm:mb-6">
         {posts.map((post, index) => (
-          <div key={post.id} className="bg-white shadow-md">
-            <div className="bg-gray-50 px-6 py-3 border-b">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-4">
-                  <Link
-                    href={`/profile/${post.user_id}`}
-                    className="font-medium text-blue-600 hover:text-blue-700"
-                  >
-                    {post.user_name || 'Unknown'}
-                  </Link>
-                  <span className="text-sm text-gray-900">
-                    #{index + 1} • {formatDate(post.created_at)}
-                  </span>
-                </div>
-                
+          <div key={post.id} className="bg-white border border-gray-200">
+            <div className="bg-gray-50 px-4 py-2.5 sm:px-6 sm:py-3 border-b border-gray-200">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <span className="text-xs sm:text-sm text-gray-600 font-medium">
+                  #{index + 1}
+                </span>
+                <span className="text-gray-400">•</span>
+                <span className="text-xs sm:text-sm text-gray-600">
+                  {formatDate(post.created_at)}
+                </span>
                 {post.is_author && (
-                  <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
-                    Автор
-                  </span>
+                  <>
+                    <span className="text-gray-400">•</span>
+                    <span className="text-sm bg-blue-100 text-blue-800 px-2 py-0.5 rounded font-medium">
+                      Автор
+                    </span>
+                  </>
                 )}
               </div>
             </div>
             
-            <div className="p-6">
-              <div className="prose max-w-none">
-                <div className="whitespace-pre-wrap text-gray-900">{post.content}</div>
-              </div>
-              
-              {/* Display media links if any */}
-              {post.media_links && post.media_links.length > 0 && (
-                <div className="mt-4 pt-4 border-t border-gray-200">
-                  <h4 className="text-sm font-medium text-gray-900 mb-2">Прикрепленные файлы:</h4>
-                  <div className="space-y-3">
+            <div className="p-2 sm:p-3">
+              <div className="flex gap-3 sm:gap-4">
+                {/* User Photo */}
+                <div className="flex-shrink-0">
+                  <Link href={`/profile/${post.user_id}`}>
+                    {post.user_photo ? (
+                      <Image
+                        src={post.user_photo}
+                        alt={post.user_name || 'User'}
+                        width={48}
+                        height={48}
+                        className="w-10 h-10 sm:w-12 sm:h-12 rounded-full object-cover hover:opacity-80 transition-opacity"
+                      />
+                    ) : (
+                      <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-gray-300 flex items-center justify-center text-sm sm:text-base font-bold text-gray-600 hover:opacity-80 transition-opacity">
+                        {(post.user_name || 'U').charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                  </Link>
+                </div>
+                
+                {/* Post Content Area */}
+                <div className="flex-1 min-w-0">
+                  {/* Author Name */}
+                  <div className="mb-2">
+                    <Link
+                      href={`/profile/${post.user_id}`}
+                      className="font-semibold text-blue-600 hover:text-blue-800 text-lg sm:text-lg"
+                    >
+                      {post.user_name || 'Unknown'}
+                    </Link>
+                  </div>
+                  
+                  {/* Post Content */}
+                  <div className="prose max-w-none text-gray-900 text-sm sm:text-base">
+                    <ReactMarkdown 
+                      remarkPlugins={[remarkGfm]}
+                      components={{
+                        img: ({node, ...props}) => (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={props.src as string}
+                            alt={props.alt || ''}
+                            className="max-w-full h-auto rounded"
+                            style={{ objectFit: 'contain', maxHeight: '400px' }}
+                          />
+                        ),
+                      }}
+                    >
+                      {post.content}
+                    </ReactMarkdown>
+                  </div>
+                  
+                  {/* Display media links if any */}
+                  {post.media_links && post.media_links.length > 0 && (
+                    <div className="mt-3 pt-3 border-t border-gray-200">
+                      <h4 className="text-sm font-medium text-gray-900 mb-2">Прикрепленные файлы:</h4>
+                      <div className="space-y-3">
                     {post.media_links.map((link, linkIndex) => {
                       const filename = link.split('/').pop() || '';
                       const isImage = /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(filename);
@@ -472,9 +691,9 @@ const TopicViewPage: React.FC = () => {
                                 src={link}
                                 alt={filename}
                                 width={800}
-                                height={400}
+                                height={600}
                                 className="max-w-full h-auto rounded border"
-                                style={{ maxHeight: '400px' }}
+                                style={{ objectFit: 'contain', maxHeight: '400px', width: 'auto' }}
                                 onError={(e) => {
                                   e.currentTarget.style.display = 'none';
                                   e.currentTarget.nextElementSibling?.classList.remove('hidden');
@@ -523,139 +742,121 @@ const TopicViewPage: React.FC = () => {
                         </div>
                       );
                     })}
+                      </div>
+                    </div>
+                  )}
+                  
+                  <div className="flex items-center justify-between gap-3 sm:gap-4 mt-4 pt-3 border-t border-gray-200">
+                    <LikeButtonGroup
+                      likes={post.likes}
+                      dislikes={post.dislikes}
+                      userVote={postVotes[post.id.toString()] || null}
+                      onLike={(type) => handleLikePost(post.id.toString(), type)}
+                      disabled={!currentUser}
+                      size="sm"
+                    />
+                    
+                    {currentUser && (post.is_author || topic.is_author) && (
+                      <button
+                        onClick={() => handleDeletePost(post.id.toString())}
+                        className="px-3 py-1 bg-red-600 text-white text-xs rounded hover:bg-red-700 transition-colors"
+                        title={post.is_author ? "Удалить комментарий" : "Удалить комментарий (вы автор темы)"}
+                      >
+                        Удалить
+                      </button>
+                    )}
                   </div>
                 </div>
-              )}
-              
-              <div className="flex items-center space-x-4 mt-4 pt-4 border-t">
-                <button
-                  onClick={() => handleLikePost(post.id.toString(), 'like')}
-                  className="flex items-center space-x-1 text-green-600 hover:text-green-700"
-                  disabled={!currentUser}
-                >
-                  <span>👍</span>
-                  <span>{post.likes}</span>
-                </button>
-                <button
-                  onClick={() => handleLikePost(post.id.toString(), 'dislike')}
-                  className="flex items-center space-x-1 text-red-600 hover:text-red-700"
-                  disabled={!currentUser}
-                >
-                  <span>👎</span>
-                  <span>{post.dislikes}</span>
-                </button>
               </div>
             </div>
           </div>
         ))}
       </div>
 
-      {/* Reply Form */}
+      {/* Reply Form - Forum Style */}
       {currentUser && !topic.is_locked && (
-        <div className="bg-white shadow-md mb-6">
-          <div className="bg-gray-600 text-white px-6 py-4">
-            <h3 className="text-lg font-bold">Ответить</h3>
+        <div className="bg-white mb-4 sm:mb-6">
+          <div className="bg-gray-600 text-white px-4 py-3 sm:px-6 sm:py-4">
+            <h3 className="text-base sm:text-lg font-bold">Ответить</h3>
           </div>
           
-          <form onSubmit={handleSubmitReply} className="p-6">
-            <textarea
+          <form onSubmit={handleSubmitReply} className="p-4 sm:p-6">
+            {/* Rich Text Editor */}
+            <RichTextEditor
               value={replyContent}
-              onChange={(e) => setReplyContent(e.target.value)}
-              rows={6}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 placeholder-gray-500"
+              onChange={setReplyContent}
               placeholder="Введите ваш ответ..."
-              required
+              rows={6}
+              disabled={submittingReply}
+              onImageUpload={handleEditorImageUpload}
             />
-            
-            {/* File Upload for Reply */}
-            <div className="mt-4">
-              <label className="block text-sm font-medium text-gray-900 mb-2">
-                Прикрепленные файлы
-              </label>
-              <FileUploadWithPreview
-                onUploadSuccess={handleReplyFileUpload}
-                onUploadError={(error) => setError(`Ошибка загрузки файла: ${error}`)}
-                accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.txt"
-                maxSize={50}
-                uploadType="form"
-                multiple={true}
-                showPreview={true}
-              />
               
-              {/* Display uploaded files for reply */}
-              {replyMediaLinks.length > 0 && (
-                <div className="mt-4">
-                  <h4 className="text-sm font-medium text-gray-900 mb-2">Загруженные файлы:</h4>
-                  <div className="space-y-2">
-                    {replyMediaLinks.map((link, index) => (
-                      <div key={index} className="flex items-center justify-between bg-gray-50 p-2 rounded">
-                        <span className="text-sm text-gray-900 truncate">
-                          {link.split('/').pop()}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => removeReplyMediaLink(index)}
-                          className="text-red-600 hover:text-red-800 text-sm"
-                        >
-                          Удалить
-                        </button>
-                      </div>
-                    ))}
-                  </div>
+            {/* Display uploaded files for reply */}
+            {replyMediaLinks.length > 0 && (
+              <div className="mt-4">
+                <h4 className="text-sm font-medium text-gray-900 mb-2">Загруженные файлы:</h4>
+                <div className="space-y-2">
+                  {replyMediaLinks.map((link, index) => (
+                    <div key={index} className="flex items-center justify-between bg-gray-50 p-2 rounded">
+                      <span className="text-sm text-gray-900 truncate">
+                        {link.split('/').pop()}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => removeReplyMediaLink(index)}
+                        className="text-red-600 hover:text-red-800 text-sm"
+                      >
+                        Удалить
+                      </button>
+                    </div>
+                  ))}
                 </div>
-              )}
-            </div>
-            
-            <div className="flex items-center justify-between mt-4">
-              <div className="text-xs text-gray-500">
-                Используйте разметку Markdown для форматирования текста
               </div>
+            )}
+            
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-end mt-4 gap-3">
               <button
                 type="submit"
                 disabled={submittingReply}
-                className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="w-full sm:w-auto px-4 sm:px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium text-sm sm:text-base"
               >
                 {submittingReply ? 'Отправка...' : 'Отправить ответ'}
               </button>
             </div>
+            
           </form>
+        
         </div>
       )}
 
-      {/* Login Prompt for Non-Authenticated Users */}
+      {/* Login Prompt for Non-Authenticated Users - Forum Style */}
       {!currentUser && (
-        <div className="bg-white shadow-md p-6 text-center">
-          <p className="text-gray-600 mb-4">
-            Войдите в аккаунт, чтобы отвечать на сообщения
-          </p>
-          <Link
-            href="/login"
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
-          >
-            Войти
-          </Link>
-        </div>
+        <LoginPrompt 
+          message="Войдите в аккаунт, чтобы отвечать на сообщения"
+          buttonText="Войти"
+          className="mb-4 sm:mb-6"
+        />
       )}
 
-      {/* Pagination */}
+      {/* Pagination - Forum Style */}
       {totalPages > 1 && (
-        <div className="bg-white shadow-md p-6">
-          <div className="flex items-center justify-between">
-            <div className="text-sm text-gray-500">
+        <div className="bg-white p-4 sm:p-6">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div className="text-xs sm:text-sm text-gray-600">
               Страница {page} из {totalPages}
             </div>
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center gap-2">
               <button
                 onClick={() => setPage(Math.max(1, page - 1))}
                 disabled={page === 1}
-                className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
               >
                 Назад
               </button>
               <button
                 onClick={() => setPage(Math.min(totalPages, page + 1))}
                 disabled={page === totalPages}
-                className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
               >
                 Вперед
               </button>
@@ -668,3 +869,4 @@ const TopicViewPage: React.FC = () => {
 };
 
 export default TopicViewPage;
+

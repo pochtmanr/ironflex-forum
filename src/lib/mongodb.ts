@@ -15,7 +15,12 @@ if (!cached) {
 
 async function connectDB() {
   // Use environment variable for MongoDB URI
+  // Falls back to localhost for development if not set
   const MONGODB_URI = process.env.MONGODB_URI || "mongodb://admin:StrongPassword123!@localhost:27017/ironblog?authSource=admin"
+
+  if (!process.env.MONGODB_URI) {
+    console.warn('⚠️  MONGODB_URI not set in environment variables, using localhost default')
+  }
 
   console.log('Attempting to connect to MongoDB...')
 
@@ -27,10 +32,13 @@ async function connectDB() {
         if (!cached.promise) {
           const opts = {
             bufferCommands: false,
-            serverSelectionTimeoutMS: 5000,
-            connectTimeoutMS: 5000,
-            socketTimeoutMS: 10000,
-            maxPoolSize: 1,
+            serverSelectionTimeoutMS: 10000,
+            connectTimeoutMS: 10000,
+            socketTimeoutMS: 45000,
+            maxPoolSize: 10,
+            minPoolSize: 1,
+            maxIdleTimeMS: 30000,
+            retryWrites: true,
           }
 
           console.log('Creating new MongoDB connection...')
@@ -46,7 +54,7 @@ async function connectDB() {
         }
 
   try {
-    cached.conn = await cached.promise
+    cached.conn = await cached.promise 
   } catch (e) {
     console.error('MongoDB connection failed:', e)
     cached.promise = null

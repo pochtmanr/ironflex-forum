@@ -12,6 +12,8 @@ export interface ITopic extends Document {
   views: number
   likes: number
   dislikes: number
+  likedBy: string[]
+  dislikedBy: string[]
   isPinned: boolean
   isLocked: boolean
   isActive: boolean
@@ -65,6 +67,14 @@ const TopicSchema = new Schema<ITopic>({
     type: Number,
     default: 0
   },
+  likedBy: [{
+    type: String,
+    ref: 'User'
+  }],
+  dislikedBy: [{
+    type: String,
+    ref: 'User'
+  }],
   isPinned: {
     type: Boolean,
     default: false
@@ -92,7 +102,7 @@ const TopicSchema = new Schema<ITopic>({
 // Ensure virtual fields are serialized
 TopicSchema.set('toJSON', {
   virtuals: true,
-  transform: function(doc, ret) {
+  transform: function(_doc: any, ret: any) {
     ret.id = ret._id
     delete ret._id
     delete ret.__v

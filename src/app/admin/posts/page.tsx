@@ -184,9 +184,9 @@ export default function AdminPosts() {
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Post Management</h1>
+        <h1 className="text-2xl font-bold text-gray-900">Управление комментариями</h1>
         <div className="text-sm text-gray-500">
-          Total Posts: {posts.length}
+          Общее количество комментариев: {posts.length}
         </div>
       </div>
 
@@ -194,7 +194,7 @@ export default function AdminPosts() {
       <div className="mb-6">
         <input
           type="text"
-          placeholder="Search posts by content, author, topic, or category..."
+          placeholder="Поиск комментариев по контенту, автору, теме или категории..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -207,25 +207,25 @@ export default function AdminPosts() {
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Content
+                  Контент
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Author
+                  Автор
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Topic
+                  Тема
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Stats
+                  Статистика
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
+                  Статус
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Date
+                  Дата
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
+                  Действия
                 </th>
               </tr>
             </thead>
@@ -246,13 +246,13 @@ export default function AdminPosts() {
                             onClick={() => saveEdit(post.id)}
                             className="px-3 py-1 text-xs font-medium rounded bg-green-100 text-green-700 hover:bg-green-200"
                           >
-                            Save
+                            Сохранить
                           </button>
                           <button
                             onClick={cancelEdit}
                             className="px-3 py-1 text-xs font-medium rounded bg-gray-100 text-gray-700 hover:bg-gray-200"
                           >
-                            Cancel
+                            Отменить
                           </button>
                         </div>
                       </div>
@@ -263,13 +263,13 @@ export default function AdminPosts() {
                         </p>
                         {post.mediaLinks && post.mediaLinks.length > 0 && (
                           <div className="mt-1">
-                            <span className="text-xs text-blue-600">📎 {post.mediaLinks.length} attachment(s)</span>
+                            <span className="text-xs text-blue-600">📎 {post.mediaLinks.length} вложение(а)</span>
                           </div>
                         )}
                         {post.isEdited && (
                           <div className="mt-1">
                             <span className="text-xs text-gray-400">
-                              ✏️ Edited {post.editedAt ? new Date(post.editedAt).toLocaleDateString() : ''}
+                              ✏️ Редактировано {post.editedAt ? new Date(post.editedAt).toLocaleDateString() : ''}
                             </span>
                           </div>
                         )}
@@ -298,7 +298,7 @@ export default function AdminPosts() {
                       )}
                       {post.categoryName && (
                         <div className="text-xs text-gray-500 mt-1">
-                          in {post.categoryName}
+                          в {post.categoryName}
                         </div>
                       )}
                     </div>
@@ -319,7 +319,7 @@ export default function AdminPosts() {
                         ? 'bg-green-100 text-green-800' 
                         : 'bg-red-100 text-red-800'
                     }`}>
-                      {post.isActive ? 'Active' : 'Inactive'}
+                      {post.isActive ? 'Активный' : 'Неактивный'}
                     </span>
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-500">
@@ -338,7 +338,7 @@ export default function AdminPosts() {
                             onClick={() => startEdit(post)}
                             className="px-3 py-1 text-xs font-medium rounded bg-blue-100 text-blue-700 hover:bg-blue-200"
                           >
-                            Edit
+                            Редактировать
                           </button>
                           <button
                             onClick={() => togglePostStatus(post.id, post.isActive)}
@@ -348,14 +348,14 @@ export default function AdminPosts() {
                                 : 'bg-green-100 text-green-700 hover:bg-green-200'
                             }`}
                           >
-                            {post.isActive ? 'Hide' : 'Show'}
+                            {post.isActive ? 'Скрыть' : 'Показать'}
                           </button>
                           <button
                             onClick={() => deletePost(post.id)}
                             disabled={deleteLoading === post.id}
                             className="px-3 py-1 text-xs font-medium rounded bg-red-100 text-red-700 hover:bg-red-200 disabled:opacity-50 disabled:cursor-not-allowed"
                           >
-                            {deleteLoading === post.id ? '...' : 'Delete'}
+                            {deleteLoading === post.id ? '...' : 'Удалить'}
                           </button>
                         </>
                       )}
@@ -369,7 +369,7 @@ export default function AdminPosts() {
         
         {filteredPosts.length === 0 && (
           <div className="text-center py-8 text-gray-500">
-            {searchTerm ? 'No posts found matching your search.' : 'No posts found.'}
+            {searchTerm ? 'Ничего не найдено по вашему запросу.' : 'Ничего не найдено.'}
           </div>
         )}
       </div>

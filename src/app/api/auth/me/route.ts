@@ -28,7 +28,8 @@ export async function GET(request: NextRequest) {
         username: user.username,
         displayName: user.displayName,
         photoURL: user.photoURL,
-        isAdmin: user.isAdmin
+        isAdmin: user.isAdmin,
+        role: user.isAdmin ? 'admin' : 'user'
       }
     })
 

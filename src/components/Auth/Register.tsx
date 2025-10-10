@@ -13,8 +13,8 @@ const Register: React.FC = () => {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [oauthLoading, setOauthLoading] = useState(false);
-  const { register, loginWithGoogle } = useAuth();
+  const [vkLoading, setVkLoading] = useState(false);
+  const { register, loginWithVK } = useAuth();
   const router = useRouter();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -51,125 +51,132 @@ const Register: React.FC = () => {
     }
   };
 
-  const handleGoogleLogin = () => {
-    setOauthLoading(true);
-    setError('');
-    
-    const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '857279367101-u5jl443dphtbr7114afnghsg2cm03c3u.apps.googleusercontent.com';
-    
-    if (!clientId) {
-      setError('Google Client ID не настроен');
-      setOauthLoading(false);
-      return;
-    }
-    
-    if (typeof window !== 'undefined' && window.google) {
-      window.google.accounts.id.initialize({
-        client_id: clientId,
-        callback: handleGoogleResponse,
-        auto_select: false,
-        cancel_on_tap_outside: true,
-      });
-      
-      // Render the Google button instead of using prompt
-      const buttonElement = document.getElementById('google-signin-button');
-      if (buttonElement) {
-        window.google.accounts.id.renderButton(
-          buttonElement,
-          {
-            type: 'standard',
-            theme: 'outline',
-            size: 'large',
-            text: 'signin_with',
-            shape: 'rectangular',
-          }
-        );
-      }
-    } else {
-      setError('Google Sign-In не доступен');
-    }
-    setOauthLoading(false);
-  };
-
-  const handleGoogleResponse = async (response: { credential: string }) => {
-    setOauthLoading(true);
+  // VK Authentication handlers
+  const vkidOnSuccess = async (data: { access_token: string; user_id: number }) => {
+    setVkLoading(true);
     setError('');
 
     try {
-      // Decode the JWT token directly like in your React app
-      const payload = JSON.parse(atob(response.credential.split('.')[1]));
-      
-      const userData = {
-        id: payload.sub,
-        name: payload.name,
-        email: payload.email,
-        picture: payload.picture,
-      };
-
-      // Create user object for localStorage (like React app)
-      const user = {
-        id: userData.id,
-        email: userData.email,
-        username: userData.email.split('@')[0],
-        displayName: userData.name,
-        photoURL: userData.picture,
-        isAdmin: false
-      };
-
-      // Store user data in localStorage for persistence (like React app)
-      localStorage.setItem('user', JSON.stringify(user));
-      localStorage.setItem('googleCredential', response.credential);
-      
-      // Also send to server to create/update user in database and get proper tokens
-      try {
-        await loginWithGoogle(response.credential);
-        // If server login succeeds, redirect to home
-        router.push('/');
-        return;
-      } catch (serverError) {
-        console.warn('Server login failed, but continuing with client-side auth:', serverError);
-      }
-      
-      // If server fails, create a simple token for API access
-      // This is a fallback - ideally the server should work
-      const fallbackToken = btoa(JSON.stringify({
-        userId: userData.id,
-        email: userData.email,
-        name: userData.name,
-        picture: userData.picture,
-        exp: Date.now() + (24 * 60 * 60 * 1000) // 24 hours
-      }));
-      localStorage.setItem('accessToken', fallbackToken);
-      
-      // Redirect to home with localStorage auth
+      console.log('VK auth success:', data);
+      // The data contains access_token and user_id after successful exchange
+      await loginWithVK('', ''); // Will use access_token directly
       router.push('/');
-      
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Ошибка регистрации через Google';
+      const errorMessage = error instanceof Error ? error.message : 'Ошибка регистрации через VK';
       setError(errorMessage);
     } finally {
-      setOauthLoading(false);
+      setVkLoading(false);
+    }
+  };
+
+  const vkidOnError = (error: unknown) => {
+    console.error('VK auth error:', error);
+    setError('Ошибка авторизации через VK');
+    setVkLoading(false);
+  };
+
+  const initVKAuth = () => {
+    if (typeof window === 'undefined') return;
+
+    // @ts-ignore - VKIDSDK is loaded via script
+    if ('VKIDSDK' in window) {
+      // @ts-ignore
+      const VKID = window.VKIDSDK;
+
+      if (!VKID) return; // Type guard
+
+      // Use environment variable for redirect URL or window.location.origin as fallback
+      const redirectUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
+      
+      VKID.Config.init({
+        app: 54219432,
+        redirectUrl: redirectUrl,
+        // @ts-ignore
+        responseMode: VKID.ConfigResponseMode.Callback,
+        // @ts-ignore
+        source: VKID.ConfigSource.LOWCODE,
+        scope: '',
+      });
+
+      const oneTap = new VKID.OneTap();
+      const container = document.getElementById('vk-signin-button');
+
+      if (container) {
+        // Clear any existing content
+        container.innerHTML = '';
+        
+        oneTap.render({
+          container: container,
+          showAlternativeLogin: true,
+          // @ts-ignore
+          styles: {
+            borderRadius: 8,
+            height: 40
+          }
+        })
+        // @ts-ignore
+        .on(VKID.WidgetEvents.ERROR, vkidOnError)
+        // @ts-ignore
+        .on(VKID.OneTapInternalEvents.LOGIN_SUCCESS, function (payload: { code: string; device_id: string }) {
+          const code = payload.code;
+          const deviceId = payload.device_id;
+
+          setVkLoading(true);
+          console.log('VK registration success, exchanging code...', { code, deviceId });
+
+          // @ts-ignore
+          VKID.Auth.exchangeCode(code, deviceId)
+            .then(async (tokenData: { access_token: string; user_id: number }) => {
+              console.log('VK token exchanged successfully');
+              
+              // Send access token to backend
+              await loginWithVK('', '', tokenData.access_token);
+              console.log('Registration with VK completed, redirecting...');
+              router.push('/');
+            })
+            .catch((error: unknown) => {
+              console.error('VK token exchange error:', error);
+              vkidOnError(error);
+            });
+        });
+      }
     }
   };
 
 
-  // Load Google Identity Services script - exactly like working React app
+  // Load VK ID SDK script
   useEffect(() => {
-    const script = document.createElement('script');
-    script.src = 'https://accounts.google.com/gsi/client';
-    script.async = true;
-    script.defer = true;
-    script.onload = handleGoogleLogin; // Initialize when script loads
-    document.head.appendChild(script);
+    // Check if script already exists
+    const existingScript = document.querySelector('script[src*="@vkid/sdk"]');
+    if (existingScript) {
+      // Script already loaded, just init
+      if ('VKIDSDK' in window) {
+        initVKAuth();
+      }
+      return;
+    }
+
+    const vkScript = document.createElement('script');
+    vkScript.src = 'https://unpkg.com/@vkid/sdk@<3.0.0/dist-sdk/umd/index.js';
+    vkScript.async = true;
+    vkScript.defer = true;
+    vkScript.onload = () => {
+      console.log('VK SDK loaded');
+      // Small delay to ensure SDK is fully initialized
+      setTimeout(() => {
+        initVKAuth();
+      }, 100);
+    };
+    document.head.appendChild(vkScript);
 
     return () => {
-      // Cleanup
-      const existingScript = document.querySelector('script[src="https://accounts.google.com/gsi/client"]');
-      if (existingScript) {
-        document.head.removeChild(existingScript);
+      // Clear the container on unmount to prevent duplicates
+      const container = document.getElementById('vk-signin-button');
+      if (container) {
+        container.innerHTML = '';
       }
     };
-  }, [handleGoogleLogin]);
+  }, []);
 
   return (
     <div className="flex min-h-full flex-col justify-center px-6 py-12 lg:px-8">
@@ -247,38 +254,27 @@ const Register: React.FC = () => {
             <button
               type="submit"
               disabled={loading}
-              className="flex w-full justify-center rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-semibold leading-6 text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex w-full justify-center rounded-md bg-blue-500 px-4 py-2 text-base font-semibold leading-6 text-white shadow-sm hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {loading ? 'Регистрация...' : 'Зарегистрироваться'}
             </button>
           </div>
-        </form>
 
-        {/* Divider */}
-        <div className="mt-6">
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-300" />
-            </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-white text-gray-500">или</span>
-            </div>
+          {/* VK OAuth Button - Inside form for better flow */}
+          <div className="mt-4">
+            <div id="vk-signin-button" className="w-full flex justify-center items-center min-h-[40px] rounded-md"></div>
+            {vkLoading && (
+              <div className="mt-2 text-center text-sm text-gray-600 flex items-center justify-center">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
+                Регистрация через VK...
+              </div>
+            )}
           </div>
-        </div>
-
-        {/* Google OAuth Button */}
-        <div className="mt-6">
-          <div id="google-signin-button" className="w-full flex justify-center"></div>
-          {oauthLoading && (
-            <div className="mt-2 text-center text-sm text-gray-600">
-              Регистрация через Google...
-            </div>
-          )}
-        </div>
+        </form>
 
         <p className="mt-10 text-center text-sm text-gray-500">
           Уже есть аккаунт?{' '}
-          <Link href="/login" className="font-semibold leading-6 text-indigo-600 hover:text-indigo-500">
+          <Link href="/login" className="font-semibold leading-6 text-blue-500 hover:text-blue-700">
             Войти
           </Link>
         </p>

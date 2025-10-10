@@ -18,7 +18,7 @@ export async function GET(
     const offset = (page - 1) * limit
 
     // Get category
-    const category = await Category.findById(categoryId).lean()
+    const category = await Category.findById(categoryId).lean() as { _id: unknown; name: string; description?: string; slug: string } | null
     if (!category) {
       return NextResponse.json(
         { error: 'Category not found' },
@@ -45,23 +45,23 @@ export async function GET(
     // Get user info for each topic
     const formattedTopics = await Promise.all(
       topics.map(async (topic) => {
-        const user = await User.findById(topic.userId).select('photoURL').lean()
+        const user = await User.findById(topic.userId).select('photoURL').lean() as { photoURL?: string } | null
         
         return {
-          id: topic._id.toString(),
+          id: String(topic._id),
           title: topic.title,
           content: topic.content,
           user_name: topic.userName,
           user_email: topic.userEmail,
           user_id: topic.userId,
-          user_photo_url: user?.photoURL,
+          user_photo_url: user?.photoURL || null,
           category_id: topic.categoryId,
           reply_count: topic.replyCount,
           views: topic.views,
           likes: topic.likes,
           dislikes: topic.dislikes,
-          created_at: topic.createdAt.toISOString(),
-          last_post_at: topic.lastPostAt.toISOString(),
+          created_at: topic.createdAt?.toISOString() || new Date().toISOString(),
+          last_post_at: topic.lastPostAt?.toISOString() || new Date().toISOString(),
           is_pinned: topic.isPinned,
           is_locked: topic.isLocked,
           media_links: topic.mediaLinks?.join('\n') || ''
@@ -71,7 +71,7 @@ export async function GET(
 
     return NextResponse.json({
       category: {
-        id: category._id.toString(),
+        id: String(category._id),
         name: category.name,
         description: category.description,
         slug: category.slug

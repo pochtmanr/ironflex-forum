@@ -89,14 +89,16 @@ const Trainings: React.FC = () => {
   }, [sortBy]);
 
   return (
-    <div className="mx-auto py-3 sm:py-6 px-2 sm:px-4">
-      <TrainingsHeader 
-        sortBy={sortBy} 
-        onSortChange={setSortBy} 
-      />
-      
-      <div className="bg-white shadow-md">
-        <TrainingsList trainings={items} loading={loading} />
+    <div className="mx-auto px-2 sm:px-4 min-h-screen">
+      <div className="mb-4 sm:mb-6 mt-3 sm:mt-6">
+        <TrainingsHeader 
+          sortBy={sortBy} 
+          onSortChange={setSortBy} 
+        />
+        
+        <div className="bg-white">
+          <TrainingsList trainings={items} loading={loading} />
+        </div>
       </div>
     </div>
   );

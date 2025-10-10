@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 
+// Get fileserver URL from environment or use defaults
+const FILESERVER_URL = process.env.FILESERVER_URL || 'http://fileserver:3001'
+const FILESERVER_FALLBACK = process.env.FILESERVER_FALLBACK || 'http://localhost:3001'
+
 export async function POST(request: NextRequest) {
   try {
     console.log('Upload API: Received request');
@@ -18,25 +22,25 @@ export async function POST(request: NextRequest) {
     console.log('Upload API: File found, forwarding to fileserver');
     
     // Forward the request to the fileserver
-    console.log('Upload API: Attempting to connect to fileserver...');
+    console.log(`Upload API: Attempting to connect to fileserver at ${FILESERVER_URL}...`);
     
-    // Try internal Docker hostname first, then fallback to server IP
+    // Try primary fileserver URL first, then fallback
     let fileserverResponse;
     try {
-      fileserverResponse = await fetch('http://fileserver:3001/upload', {
+      fileserverResponse = await fetch(`${FILESERVER_URL}/upload`, {
         method: 'POST',
         body: formData
       });
-    } catch (dockerError) {
-      console.log('Upload API: Docker internal connection failed, trying server IP...');
+    } catch (primaryError: any) {
+      console.log(`Upload API: Primary connection failed, trying fallback at ${FILESERVER_FALLBACK}...`);
       try {
-        fileserverResponse = await fetch('http://95.163.180.91:3001/upload', {
+        fileserverResponse = await fetch(`${FILESERVER_FALLBACK}/upload`, {
           method: 'POST',
           body: formData
         });
-      } catch (ipError) {
+      } catch (fallbackError: any) {
         console.log('Upload API: Both connection attempts failed');
-        throw new Error(`Connection failed: Docker: ${dockerError.message}, IP: ${ipError.message}`);
+        throw new Error(`Upload API: Connection failed: Primary: ${primaryError.message}, Fallback: ${fallbackError.message}`);
       }
     }
 
@@ -52,9 +56,19 @@ export async function POST(request: NextRequest) {
     console.log('Upload API: Success, result:', result);
     
     // Update the file URL to be accessible from the frontend
+    // Remove internal Docker hostname or localhost references
+    let fileUrl = result.file_url;
+    if (fileUrl) {
+      fileUrl = fileUrl
+        .replace('http://fileserver:3001', '')
+        .replace('http://localhost:3001', '')
+        .replace('http://95.163.180.91:3001', '');
+    }
+    
     const updatedResult = {
       ...result,
-      file_url: result.file_url.replace('http://fileserver:3001', '')
+      file_url: fileUrl,
+      url: fileUrl  // Add 'url' field for consistency
     }
 
     return NextResponse.json(updatedResult)

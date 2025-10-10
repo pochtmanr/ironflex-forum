@@ -85,15 +85,20 @@ export async function POST(
     });
 
     // Get the created post
-    const createdPost = await Post.findById(post._id).lean();
-
+    const createdPost = await Post.findById(post._id).lean() as { _id: unknown; content: string; userName: string; userEmail: string; userId: string; createdAt: Date; likes: number; dislikes: number; mediaLinks: string[] } | null;
+    if (!createdPost) {
+      return NextResponse.json(
+        { error: 'Post not found' },
+        { status: 404 }
+      );
+    }
     const formattedPost = {
-      id: createdPost._id,
+      id: String(createdPost._id),
       content: createdPost.content,
       user_name: createdPost.userName || 'Unknown',
       user_email: createdPost.userEmail || '',
-      user_id: createdPost.userId || '',
-      created_at: createdPost.createdAt,
+      user_id: String(createdPost.userId) || '',
+      created_at: createdPost.createdAt?.toISOString() || new Date().toISOString(),
       likes: createdPost.likes || 0,
       dislikes: createdPost.dislikes || 0,
       media_links: createdPost.mediaLinks || [],

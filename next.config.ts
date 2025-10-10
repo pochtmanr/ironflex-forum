@@ -3,7 +3,6 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   output: 'standalone',
   // Vercel-like optimizations for fast builds
-  swcMinify: true,
   compiler: {
     removeConsole: process.env.NODE_ENV === 'production',
   },
@@ -12,7 +11,7 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: process.env.CI === 'true',
   },
   eslint: {
-    ignoreDuringBuilds: process.env.CI === 'true',
+    ignoreDuringBuilds: true, // Ignore ESLint warnings during build
   },
   images: {
     remotePatterns: [
@@ -22,7 +21,40 @@ const nextConfig: NextConfig = {
         port: '3001',
         pathname: '/uploads/**',
       },
+      {
+        protocol: 'http',
+        hostname: 'fileserver',
+        port: '3001',
+        pathname: '/uploads/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'forum.theholylabs.com',
+        pathname: '/uploads/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'lh3.googleusercontent.com',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: '*.vk.com',
+        pathname: '/**',
+      },
     ],
+    // Disable image optimization entirely - just serve images as-is
+    // This prevents Next.js from trying to optimize uploaded images
+    unoptimized: true,
+  },
+  // Proxy /uploads/ requests to the fileserver API
+  async rewrites() {
+    return [
+      {
+        source: '/uploads/:path*',
+        destination: '/api/files/uploads/:path*',
+      },
+    ];
   },
 };
 

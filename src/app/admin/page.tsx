@@ -4,8 +4,8 @@ import Link from 'next/link'
 
 export default function AdminPage() {
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold text-gray-900 mb-8">Admin Panel</h1>
+    <div className="max-w-7xl mx-auto px-4 py-8">
+      <h1 className="text-3xl font-bold text-gray-900 mb-8">Панель управления</h1>
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-2 gap-6">
         {/* Category Management */}
@@ -18,8 +18,8 @@ export default function AdminPage() {
                 </svg>
               </div>
             </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Category Management</h3>
-            <p className="text-gray-600">Create and manage forum categories</p>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Категория управления</h3>
+            <p className="text-gray-600">Создание и управление категориями</p>
           </div>
         </Link>
 
@@ -33,8 +33,8 @@ export default function AdminPage() {
                 </svg>
               </div>
             </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">User Management</h3>
-            <p className="text-gray-600">Manage users and admin permissions</p>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Управление пользователями</h3>
+            <p className="text-gray-600">Управление пользователями и администраторами</p>
           </div>
         </Link>
 
@@ -48,8 +48,8 @@ export default function AdminPage() {
                 </svg>
               </div>
             </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Topic Management</h3>
-            <p className="text-gray-600">Manage forum topics, pin, lock, edit and delete</p>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Управление обсуждениями</h3>
+            <p className="text-gray-600">Управление обсуждениями, закрепление, блокировка, редактирование и удаление</p>
           </div>
         </Link>
 
@@ -63,8 +63,8 @@ export default function AdminPage() {
                 </svg>
               </div>
             </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Post Management</h3>
-            <p className="text-gray-600">Manage forum posts, edit content and moderate discussions</p>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Управление комментариями</h3>
+            <p className="text-gray-600">Управление комментариями, редактирование контента и модерация дискуссий</p>
           </div>
         </Link>
 
@@ -78,8 +78,38 @@ export default function AdminPage() {
                 </svg>
               </div>
             </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Forum Statistics</h3>
-            <p className="text-gray-600">View forum activity and statistics</p>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Статистика форума</h3>
+            <p className="text-gray-600">Просмотр активности и статистики форума</p>
+          </div>
+        </Link>
+
+        {/* Articles Management */}
+        <Link href="/admin/articles" className="block">
+          <div className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
+            <div className="flex items-center mb-4">
+              <div className="w-12 h-12 bg-teal-100 rounded-lg flex items-center justify-center">
+                <svg className="w-6 h-6 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+              </div>
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Управление статьями</h3>
+            <p className="text-gray-600">Создание и редактирование статей для сайта</p>
+          </div>
+        </Link>
+
+        {/* Trainings Management */}
+        <Link href="/admin/trainings" className="block">
+          <div className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
+            <div className="flex items-center mb-4">
+              <div className="w-12 h-12 bg-pink-100 rounded-lg flex items-center justify-center">
+                <svg className="w-6 h-6 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                </svg>
+              </div>
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Управление тренингами</h3>
+            <p className="text-gray-600">Создание и редактирование тренингов и курсов</p>
           </div>
         </Link>
       </div>

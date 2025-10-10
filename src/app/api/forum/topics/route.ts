@@ -35,16 +35,16 @@ export async function GET(request: NextRequest) {
         const [user, category] = await Promise.all([
           User.findById(topic.userId).select('photoURL').lean(),
           Category.findById(topic.categoryId).select('name slug').lean()
-        ])
+        ]) as [{ photoURL?: string } | null, { name: string; slug: string } | null]
 
         return {
-          id: topic._id.toString(),
+          id: String(topic._id),
           title: topic.title,
           content: topic.content,
           user_name: topic.userName,
           user_email: topic.userEmail,
           user_id: topic.userId,
-          user_photo_url: user?.photoURL,
+          user_photo_url: user?.photoURL || null,
           category_id: topic.categoryId,
           category_name: category?.name || 'Unknown Category',
           category_slug: category?.slug || topic.categoryId,

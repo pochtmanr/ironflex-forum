@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { uploadAPI } from '../../services/api';
+import { optimizeImage, isImage } from '../../lib/imageOptimizer';
 
 interface FileUploadProps {
   onUploadSuccess?: (fileUrl: string, filename: string) => void;
@@ -73,18 +74,38 @@ const FileUpload: React.FC<FileUploadProps> = ({
 
     try {
       const uploadPromises = fileArray.map(async (file, index) => {
+        let fileToUpload = file;
+        
+        // Optimize images to AVIF before upload
+        if (isImage(file) && !file.type.includes('svg')) {
+          try {
+            console.log(`Optimizing image: ${file.name} (${(file.size / 1024).toFixed(2)}KB)`);
+            fileToUpload = await optimizeImage(file, {
+              maxWidth: 1920,
+              maxHeight: 1080,
+              quality: 0.85,
+              format: 'avif'
+            });
+            console.log(`Image optimized to ${(fileToUpload.size / 1024).toFixed(2)}KB`);
+          } catch (optimizeError) {
+            console.warn('Image optimization failed, uploading original:', optimizeError);
+            // If optimization fails, upload original
+            fileToUpload = file;
+          }
+        }
+        
         let result: UploadedFile;
         
         switch (uploadType) {
           case 'binary':
-            result = await uploadAPI.uploadBinary(file, customFilename);
+            result = await uploadAPI.uploadBinary(fileToUpload, customFilename);
             break;
           case 'recording':
-            result = await uploadAPI.uploadRecording(file);
+            result = await uploadAPI.uploadRecording(fileToUpload);
             break;
           case 'form':
           default:
-            result = await uploadAPI.uploadFile(file);
+            result = await uploadAPI.uploadFile(fileToUpload);
             break;
         }
 

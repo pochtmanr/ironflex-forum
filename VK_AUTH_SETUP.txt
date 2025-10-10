@@ -1,0 +1,117 @@
+VK AUTHENTICATION SETUP REQUIREMENTS
+
+CURRENT VK APP: 54219432 (WORKING APP - WITH LOCALHOST)
+
+WHAT YOU NEED TO DO:
+
+1. VK Application Settings (developers.vk.com)
+   - Go to: https://dev.vk.com/admin
+   - Select your app (ID: 54219432)
+   - Go to "Settings" tab
+
+2. Configure Redirect URIs:
+   For localhost:
+   - Add: http://localhost:3000
+   
+   For production:
+   - Add: https://forum.theholylabs.com
+
+3. Enable VK ID:
+   - Go to "VK ID" section in app settings
+   - Make sure "VK ID" is ENABLED
+   - Add the redirect URLs in VK ID settings too
+
+4. Get VK Secret Key (if needed):
+   - In app settings, find "Secret Key"
+   - Copy it and add to .env.local:
+     VK_SECRET_KEY=your_secret_key_here
+
+5. Permissions/Scopes:
+   Current setup uses empty scope (basic profile only)
+   If you need more data (email, photo, etc.):
+   - Request additional scopes in app settings
+   - Update scope in Login.tsx line 60
+
+CURRENT ENVIRONMENT VARIABLES:
+
+Required in .env.local:
+- VK_APP_ID=54219432
+- NEXT_PUBLIC_VK_APP_ID=54219432
+- VK_SECRET_KEY=qN5oY1IJe9uUFsxxRTil
+- VK_SERVICE_KEY=e60b849ae60b849ae60b849a0ee530d632ee60be60b849a8eedd4c410c10ed625908ed1
+- NEXT_PUBLIC_SITE_URL=http://localhost:3000 (for local dev)
+
+TESTING CHECKLIST:
+
+1. Open browser console (F12)
+2. Go to login page
+3. Check for these console messages:
+   - "VK SDK loaded"
+   - VK button should appear below main login button
+   - No duplicate buttons
+4. Click VK button
+5. Complete VK authorization
+6. Check console for:
+   - "VK login success, exchanging code..."
+   - "VK token exchanged successfully"
+   - "Login with VK completed, redirecting..."
+7. Should redirect to home page with user logged in
+
+COMMON ISSUES:
+
+Issue: Duplicate VK buttons
+Fix: Already fixed with container.innerHTML = '' and proper cleanup
+
+Issue: VK SDK not loading
+Check: 
+- Browser console for errors
+- Network tab for SDK loading
+- VK app ID is correct
+
+Issue: "Invalid redirect_uri" error
+Fix: 
+- Add your URL to VK app settings
+- Make sure NEXT_PUBLIC_SITE_URL matches exactly
+
+Issue: "Application is not active"
+Fix:
+- Go to VK app settings
+- Make sure app status is "Active"
+- Check VK ID is enabled
+
+Issue: Token exchange fails
+Check:
+- VK app has VK ID enabled
+- Code verifier/PKCE is handled by SDK (automatic)
+- Access token is being sent to backend correctly
+
+BACKEND API FLOW:
+
+1. Client: User clicks VK button
+2. VK SDK: Opens VK login popup
+3. VK SDK: Exchanges code for access_token (client-side)
+4. Client: Sends access_token to /api/auth/vk
+5. Backend: Uses access_token to get user info from VK API
+6. Backend: Creates/updates user in MongoDB
+7. Backend: Returns JWT tokens
+8. Client: Stores tokens, redirects to home
+
+WHAT'S ALREADY CONFIGURED:
+
+✓ VK SDK loaded dynamically
+✓ Button renders without duplicates
+✓ Cleanup on unmount
+✓ Proper error handling
+✓ Loading states
+✓ Code to token exchange (client-side)
+✓ Backend API endpoint ready
+✓ User creation/login logic
+✓ Token management
+
+WHAT YOU NEED TO CHECK:
+
+1. VK app redirect URIs (most important)
+2. VK app is active and VK ID is enabled
+3. Browser console for any VK SDK errors
+4. Network tab to see API calls
+

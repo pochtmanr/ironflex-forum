@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/mongodb'
 import User from '@/models/User'
 import { verifyPassword, generateTokens } from '@/lib/auth'
+import mongoose from 'mongoose'
+import { IUser } from '@/models/User'
 
 export async function POST(request: NextRequest) {
   try {
@@ -9,7 +11,7 @@ export async function POST(request: NextRequest) {
     await connectDB()
     console.log('MongoDB connected for login')
     
-    const { emailOrUsername, password } = await request.json()
+    const { emailOrUsername, password } = await request.json() as { emailOrUsername: string; password: string }
     console.log('Login data received:', { emailOrUsername, passwordLength: password?.length })
 
     // Validation
@@ -54,23 +56,24 @@ export async function POST(request: NextRequest) {
 
     // Update last login
     console.log('Updating last login...')
-    await User.findByIdAndUpdate(user._id, { lastLogin: new Date() })
+    await User.findByIdAndUpdate(user._id, { lastLogin: new Date() }) as IUser
     console.log('Last login updated')
+    const updatedUser = await User.findById(user._id) as IUser
 
     // Generate tokens
     console.log('Generating tokens...')
     const { accessToken, refreshToken } = generateTokens({
-      id: user._id.toString(),
-      email: user.email,
-      username: user.username,
-      isAdmin: user.isAdmin
+      id: updatedUser._id.toString(),
+      email: updatedUser.email,
+      username: updatedUser.username,
+      isAdmin: updatedUser.isAdmin
     })
     console.log('Tokens generated successfully')
 
     const response = {
       message: 'Login successful',
       user: {
-        id: user._id,
+        id: (user._id as mongoose.Types.ObjectId).toString(),
         email: user.email,
         username: user.username,
         displayName: user.displayName,

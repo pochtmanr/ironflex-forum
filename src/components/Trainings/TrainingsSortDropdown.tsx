@@ -28,7 +28,7 @@ const TrainingsSortDropdown: React.FC<TrainingsSortDropdownProps> = ({ currentSo
     <div className="relative">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center space-x-2 px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-gray-500"
+        className="flex items-center px-3 py-1 bg-gray-700 hover:bg-gray-500 rounded text-md transition-colors"
       >
         <span>{currentOption?.label}</span>
         <svg 
@@ -50,13 +50,13 @@ const TrainingsSortDropdown: React.FC<TrainingsSortDropdownProps> = ({ currentSo
           />
           
           {/* Dropdown Menu */}
-          <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-20">
+          <div className="absolute right-0 mt-2 w-48 bg-white rounded-md border border-gray-200 z-20">
             <div className="py-1">
               {sortOptions.map((option) => (
                 <button
                   key={option.value}
                   onClick={() => handleSelect(option.value)}
-                  className={`w-full text-left px-4 py-2 text-sm transition-colors ${
+                  className={`w-full text-left px-4 py-2 text-md transition-colors ${
                     currentSort === option.value
                       ? 'bg-gray-50 text-gray-700 font-medium'
                       : 'text-gray-700 hover:bg-gray-50'

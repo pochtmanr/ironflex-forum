@@ -8,11 +8,14 @@ export interface IUser extends Document {
   displayName?: string
   photoURL?: string
   bio?: string
+  city?: string
+  country?: string
   isActive: boolean
   isAdmin: boolean
   isVerified: boolean
   googleId?: string
   githubId?: string
+  vkId?: string
   refreshToken?: string
   createdAt: Date
   updatedAt: Date
@@ -47,6 +50,14 @@ const UserSchema = new Schema<IUser>({
     type: String,
     maxlength: 500
   },
+  city: {
+    type: String,
+    trim: true
+  },
+  country: {
+    type: String,
+    trim: true
+  },
   isActive: {
     type: Boolean,
     default: true
@@ -67,6 +78,10 @@ const UserSchema = new Schema<IUser>({
     type: String,
     sparse: true
   },
+  vkId: {
+    type: String,
+    sparse: true
+  },
   refreshToken: {
     type: String
   },
@@ -80,7 +95,7 @@ const UserSchema = new Schema<IUser>({
 // Ensure virtual fields are serialized
 UserSchema.set('toJSON', {
   virtuals: true,
-  transform: function(doc, ret) {
+  transform: function(_doc: any, ret: any) {
     ret.id = ret._id
     delete ret._id
     delete ret.__v

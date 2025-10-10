@@ -21,8 +21,8 @@ export default function ProfilePage() {
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
       <div className="text-center">
-        <h1 className="text-2xl font-bold text-gray-900 mb-4">Profile</h1>
-        <p className="text-gray-600">Redirecting...</p>
+        <h1 className="text-2xl font-bold text-gray-900 mb-4 mt-10">Профиль</h1>
+        <p className="text-gray-600">Перенаправление...</p>
       </div>
     </div>
   )

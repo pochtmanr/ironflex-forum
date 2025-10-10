@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useAuth } from '../../contexts/AuthContext';
 import TopTopics from './TopTopics';
 import { forumAPI } from '../../services/api';
+import { FileIcon, MessageCircleIcon, StickyNoteIcon, UserIcon } from 'lucide-react';
 
 // Declare adsbygoogle global variable
 declare global {
@@ -33,7 +34,7 @@ interface ForumStats {
 const ForumHome: React.FC = () => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [stats, setStats] = useState<ForumStats | null>(null);
-  const [onlineUsers, setOnlineUsers] = useState(0);
+  // Removed onlineUsers state - not tracking real-time online users
   const [loading, setLoading] = useState(true);
   const { currentUser } = useAuth();
   const adInitialized = useRef(false);
@@ -43,18 +44,24 @@ const ForumHome: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    // Initialize AdSense ad when component mounts
-    if (!adInitialized.current && typeof window !== 'undefined') {
+    // Initialize AdSense ad when component mounts - only in production
+    if (process.env.NODE_ENV === 'production' && !adInitialized.current && typeof window !== 'undefined') {
       const timer = setTimeout(() => {
         try {
-          if (window.adsbygoogle && !adInitialized.current) {
-            (window.adsbygoogle as unknown[]).push({});
-            adInitialized.current = true;
+          // Check if AdSense is loaded and the ad element exists
+          const adElement = document.querySelector('.adsbygoogle');
+          if (window.adsbygoogle && adElement && !adInitialized.current) {
+            // Only push if the element doesn't already have an ad
+            const hasAd = adElement.getAttribute('data-adsbygoogle-status');
+            if (!hasAd) {
+              (window.adsbygoogle as unknown[]).push({});
+              adInitialized.current = true;
+            }
           }
         } catch (error) {
           console.log('AdSense initialization error:', error);
         }
-      }, 1000); // Wait 1 second for the script to fully load
+      }, 1500); // Wait a bit longer for the script to fully load
 
       return () => clearTimeout(timer);
     }
@@ -68,8 +75,7 @@ const ForumHome: React.FC = () => {
       ]);
 
       setCategories((categoriesResponse as { categories: Category[] }).categories || []);
-      setStats((statsResponse as { stats: ForumStats, onlineUsers: number }).stats || null);
-      setOnlineUsers((statsResponse as { stats: ForumStats, onlineUsers: number }).onlineUsers || 0);
+      setStats((statsResponse as { stats: ForumStats }).stats || null);
     } catch (error) {
       console.error('Error loading forum data:', error);
     } finally {
@@ -81,19 +87,32 @@ const ForumHome: React.FC = () => {
   // Memoized components to reduce re-renders
   const CategoryMobile = useMemo(() => {
     const CategoryMobileComponent = ({ category, index }: { category: Category; index: number }) => (
-    <div key={category.id} className={`border-b ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'} p-4 hover:bg-blue-50 transition-colors`}>
-      <Link href={`/category/${category.id}`} className="text-blue-600 font-semibold hover:text-blue-700 block mb-1 text-sm leading-tight">
-        {category.name}
-      </Link>
-      <p className="text-xs text-gray-600 mb-3 line-clamp-2">{category.description}</p>
-      <div className="flex items-center justify-between text-xs text-gray-500">
-        <div className="flex items-center space-x-4">
-          <span>Тем: <strong className="text-gray-700">{category.topic_count}</strong></span>
-          <span>Ответов: <strong className="text-gray-700">{category.post_count}</strong></span>
+    <Link 
+      href={`/category/${category.id}`}
+      key={category.id} 
+      className={`block border-b border-1 border-gray-100 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'} p-4 active:bg-blue-50 transition-colors`}
+    >
+      <div className="flex items-start justify-between mb-1">
+        <h3 className="text-blue-600 font-semibold text-base leading-tight flex-1 pr-1">
+          {category.name}
+        </h3>
+        <div className="flex items-center space-x-3 flex-shrink-0 text-xs text-gray-500">
+          <div className="text-center">
+            <div className="text-xs">
+              <FileIcon className="w-3 h-3 inline-block mr-1" />
+              {category.topic_count}
+            </div>
+          </div>
+          <div className="text-center">
+            <div className="text-xs">
+              <MessageCircleIcon className="w-3 h-3 inline-block mr-1" />
+              {category.post_count * -1}
+            </div>
+          </div>
         </div>
-        
       </div>
-    </div>
+      <p className="text-sm text-gray-600 line-clamp-2 leading-snug">{category.description}</p>
+    </Link>
     );
     CategoryMobileComponent.displayName = 'CategoryMobile';
     return CategoryMobileComponent;
@@ -101,18 +120,24 @@ const ForumHome: React.FC = () => {
 
   const CategoryDesktop = useMemo(() => {
     const CategoryDesktopComponent = ({ category, index }: { category: Category; index: number }) => (
-    <tr key={category.id} className={`border-b ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'} hover:bg-blue-50 transition-colors`}>
+    <tr key={category.id} className={`${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'} hover:bg-blue-50 transition-colors`}>
       <td className="px-4 py-4">
-        <Link href={`/category/${category.id}`} className="text-blue-600 text-sm font-semibold hover:text-blue-700 block mb-1">
+        <Link href={`/category/${category.id}`} className="text-blue-500 text-md font-semibold hover:text-blue-700 block mb-1">
           {category.name}
         </Link>
-        <span className="text-gray-600">{category.description}</span>
+        <span className="text-gray-600 text-sm">{category.description}</span>
       </td>
       <td className="px-4 py-4 text-center">
-        <div className="text-lg text-gray-800">{category.topic_count}</div>
+        <div className="text-lg text-gray-800 mx-2">
+          <StickyNoteIcon className="w-3 h-3 inline-block mr-1" />
+          {category.topic_count}
+        </div>
       </td>
       <td className="px-4 py-4 text-center">
-        <div className="text-lg text-gray-800">{category.post_count}</div>
+        <div className="text-lg text-gray-800 mx-2">
+          <MessageCircleIcon className="w-3 h-3 inline-block mr-1" />
+          {category.post_count * -1}
+        </div>
       </td>
       
     </tr>
@@ -123,47 +148,36 @@ const ForumHome: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="max-w-9xl mx-auto px-4 py-8">
-        <div className="text-center">
-          <div className="text-gray-500">Загрузка форума...</div>
+      <div className="mx-auto px-4 py-8">
+        <div className="flex flex-col items-center justify-center py-12">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-1 border-blue-600/20 mb-4"></div>
+          <div className="text-gray-600 text-base">Загрузка форума...</div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="mx-auto py-3 sm:py-6 px-2 sm:px-4">
-      {/* Ad Banner - Before Forum Topics */}
-      <div className="text-center mb-4 sm:mb-6 overflow-hidden">
-        <div className="flex justify-center">
-          <div className="w-full max-w-[970px] bg-gray-100 flex items-center justify-center rounded">
-            {/* Google AdSense Ad Unit */}
-            <ins className="adsbygoogle"
-                 style={{display:'block', width:'100%', height:'90px'}}
-                 data-ad-client="ca-pub-9876848164575099"
-                 data-ad-slot="9885806566"
-                 data-ad-format="auto"
-                 data-full-width-responsive="true"></ins>
-          </div>
-        </div>
-      </div>
+    <div className="mx-auto px-2 sm:px-4 min-h-screen max-w-7xl">
 
       {/* Mobile-Optimized Main Forum Categories */}
-      <div className="bg-white shadow-md mb-4 sm:mb-6">
-        <div className="bg-gray-600 text-white px-3 sm:px-3 py-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div className="min-w-0">
-            <h1 className="text-lg sm:text-xl font-bold">Форум</h1>
+      <div className="bg-white mb-4 sm:mb-6 mt-3 sm:mt-6">
+        <div className="bg-gray-600 text-white px-3 rounded-t-sm sm:px-4 py-3 sm:py-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3">
+          <div className="min-w-0 flex-1">
+            <h1 className="text-xl sm:text-xl font-bold mb-1">Форум</h1>
             {stats && (
-              <div className="text-xs sm:text-sm text-gray-200 mt-1">
-                <span className="block sm:hidden">
-                  Тем: {stats.total_topics} • Ответов: {stats.total_posts}
-                  <br />
-                  Пользователей: {stats.total_users}
-                  {onlineUsers > 0 && ` • Онлайн: ${onlineUsers}`}
+              <div className="text-xs text-gray-200 flex flex-wrap gap-x-3 gap-y-1">
+                <span className="flex items-center">
+                  <StickyNoteIcon className="w-3 h-3 inline-block mr-1" />
+                  {stats.total_topics} обсуждений
                 </span>
-                <span className="hidden sm:block">
-                  Тем: {stats.total_topics} • Ответов: {stats.total_posts} • Пользователей: {stats.total_users}
-                  {onlineUsers > 0 && ` • Онлайн: ${onlineUsers}`}
+                <span className="flex items-center">
+                  <MessageCircleIcon className="w-3 h-3 inline-block mr-1" />
+                  {stats.total_posts} комментариев
+                </span>
+                <span className="flex items-center">
+                  <UserIcon className="w-3 h-3 inline-block mr-1" />
+                  {stats.total_users} пользователей
                 </span>
               </div>
             )}
@@ -171,13 +185,12 @@ const ForumHome: React.FC = () => {
           {currentUser && (
             <Link
               href="/create-topic"
-              className="px-3 sm:px-3 py-1.5 bg-blue-500 text-white  hover:bg-blue-700 transition-colors font-medium flex items-center justify-center space-x-2 text-sm sm:text-base flex-shrink-0 touch-manipulation"
+              className="px-3 py-1.5 bg-blue-500 text-white rounded-lg hover:bg-blue-500 active:bg-blue-600 transition-colors font-medium flex items-center justify-center space-x-2 text-sm flex-shrink-0 touch-manipulation shadow-md"
             >
-              <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
               </svg>
-              <span className="block sm:hidden">Создать</span>
-              <span className="hidden sm:block">Создать тему</span>
+              <span>Создать тему</span>
             </Link>
           )}
         </div>
@@ -191,13 +204,13 @@ const ForumHome: React.FC = () => {
         </div>
 
         {/* Desktop Layout (sm breakpoint and above) */}
-        <div className="hidden sm:block overflow-x-auto">
+        <div className="hidden sm:block overflow-x-auto rounded-b-sm border-b border-l border-r border-gray-100">
           <table className="w-full">
             <thead>
-              <tr className="bg-gray-100 text-gray-600 text-sm">
+              <tr className="bg-gray-100 text-gray-600 text-md">
                 <th className="px-4 py-3 text-left font-medium">Категория</th>
-                <th className="px-4 py-3 text-center font-medium w-24">Тем</th>
-                <th className="px-4 py-3 text-center font-medium w-24">Ответов</th>
+                <th className="px-4 py-3 text-center font-medium w-24">Обсуждений</th>
+                <th className="px-4 py-3 text-center font-medium w-24">Комментариев</th>
                 
               </tr>
             </thead>
@@ -212,21 +225,26 @@ const ForumHome: React.FC = () => {
 
       {/* Mobile-Optimized Call to Action for Non-Logged In Users */}
       {!currentUser && (
-        <div className="bg-white p-4 sm:p-6 mb-4 sm:mb-6 text-center">
-          <h2 className="text-base sm:text-lg font-semibold text-blue-900 mb-2">Присоединяйтесь к обсуждению</h2>
-          <p className="text-gray-700 mb-8 text-sm sm:text-base">
-            Зарегистрируйтесь или войдите в аккаунт, чтобы создавать темы, отвечать на сообщения и участвовать в жизни сообщества.
-          </p>
-          <div className="flex flex-col sm:flex-row items-center justify-center space-y-3 sm:space-y-0 sm:space-x-4">
+        <div className="bg-gradient-to-br from-blue-50/20 to-white  sm:mx-0 p-6 mb-4 sm:mb-6 text-center rounded-sm shadow-sm border-1 border-gray-100 ">
+          <div className="mb-4">
+            <svg className="w-12 h-12 mx-auto text-blue-500 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z" />
+            </svg>
+            <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-2">Присоединяйтесь к обсуждению</h2>
+            <p className="text-gray-600 text-sm sm:text-base leading-relaxed max-w-md mx-auto">
+              Зарегистрируйтесь или войдите, чтобы создавать темы и участвовать в жизни сообщества
+            </p>
+          </div>
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3">
             <Link
               href="/register"
-              className="w-full sm:w-auto px-4 sm:px-6 py-2 sm:py-3 bg-blue-600 text-white hover:bg-blue-700 transition-colors font-medium text-sm sm:text-base touch-manipulation"
+              className="px-3 py-1.5 bg-blue-500 text-white rounded-lg hover:bg-blue-700 active:bg-blue-800 transition-colors font-semibold text-base touch-manipulation shadow-md"
             >
               Регистрация
             </Link>
             <Link
               href="/login"
-              className="w-full sm:w-auto px-4 sm:px-6 py-2 sm:py-3 border border-blue-600 text-blue-600  hover:bg-blue-50 transition-colors font-medium text-sm sm:text-base touch-manipulation"
+              className="px-3 py-1.5 bg-white  shadow-md shadow-blue-500/10 text-blue-600 rounded-lg hover:bg-blue-50 active:bg-blue-100 transition-colors font-semibold text-base touch-manipulation shadow-md"
             >
               Вход
             </Link>

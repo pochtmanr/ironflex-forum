@@ -54,3 +54,32 @@ export const getUserFromToken = async (token: string) => {
   const user = await User.findById(payload.id).select('-passwordHash')
   return user
 }
+
+// Verify token and return payload with role information
+export const verifyToken = async (token: string): Promise<{ id: string; email: string; username: string; role: string; isAdmin: boolean } | null> => {
+  try {
+    const payload = jwt.verify(token, JWT_SECRET) as UserPayload
+    if (!payload) return null
+
+    // Import connectDB here to avoid circular dependencies
+    const connectDB = (await import('@/lib/mongodb')).default
+    await connectDB()
+
+    // Get user from DB to check role
+    const user = await User.findById(payload.id).select('email username isAdmin').lean() as { _id: unknown; email: string; username?: string; isAdmin?: boolean } | null
+    if (!user) return null
+
+    const isAdmin = user.isAdmin || false
+
+    return {
+      id: String(user._id),
+      email: user.email,
+      username: user.username || user.email.split('@')[0],
+      role: isAdmin ? 'admin' : 'user',
+      isAdmin: isAdmin
+    }
+  } catch (error) {
+    console.error('verifyToken error:', error)
+    return null
+  }
+}

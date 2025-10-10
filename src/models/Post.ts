@@ -10,6 +10,8 @@ export interface IPost extends Document {
   mediaLinks: string[]
   likes: number
   dislikes: number
+  likedBy: string[]
+  dislikedBy: string[]
   isEdited: boolean
   editedAt?: Date
   isActive: boolean
@@ -52,6 +54,14 @@ const PostSchema = new Schema<IPost>({
     type: Number,
     default: 0
   },
+  likedBy: [{
+    type: String,
+    ref: 'User'
+  }],
+  dislikedBy: [{
+    type: String,
+    ref: 'User'
+  }],
   isEdited: {
     type: Boolean,
     default: false
@@ -74,7 +84,7 @@ const PostSchema = new Schema<IPost>({
 // Ensure virtual fields are serialized
 PostSchema.set('toJSON', {
   virtuals: true,
-  transform: function(doc, ret) {
+  transform: function(_doc: any, ret: any) {
     ret.id = ret._id
     delete ret._id
     delete ret.__v

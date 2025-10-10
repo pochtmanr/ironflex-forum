@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import { verifyAccessToken } from '@/lib/auth';
 import Post from '@/models/Post';
+import { processVote } from '@/services/likeService';
 
 export async function POST(
   request: NextRequest,
@@ -39,24 +40,22 @@ export async function POST(
 
     await connectDB();
 
-    // Verify post exists
-    const post = await Post.findById(postId);
-    if (!post) {
+    // Process the vote using the like service
+    const result = await processVote(Post, postId, userPayload.id, likeType);
+
+    if (!result.success) {
       return NextResponse.json(
-        { error: 'Post not found' },
+        { error: result.message },
         { status: 404 }
       );
     }
 
-    // Update like/dislike count
-    const updateField = likeType === 'like' ? 'likes' : 'dislikes';
-    await Post.findByIdAndUpdate(postId, {
-      $inc: { [updateField]: 1 }
-    });
-
     return NextResponse.json({
-      message: `${likeType} added successfully`,
-      likeType
+      message: result.message,
+      likeType,
+      likes: result.likes,
+      dislikes: result.dislikes,
+      userVote: result.userVote
     });
 
   } catch (error) {

@@ -43,7 +43,7 @@ const CategorySchema = new Schema<ICategory>({
 // Ensure virtual fields are serialized
 CategorySchema.set('toJSON', {
   virtuals: true,
-  transform: function(doc, ret) {
+  transform: function(_doc: any, ret: any) {
     ret.id = ret._id
     delete ret._id
     delete ret.__v

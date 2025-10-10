@@ -31,13 +31,13 @@ const SearchComponent: React.FC<{ isMobile?: boolean }> = ({ isMobile = false })
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         className={isMobile 
-          ? "flex-1 px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent text-sm"
-          : "px-3 py-1.5 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent text-sm w-72"
+          ? "flex-1 px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent text-md"
+          : "px-3 py-1.5 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent text-md w-72"
         }
       />
       <button 
         type="submit" 
-        className={`px-4 ${isMobile ? 'py-2' : 'py-1.5'} bg-gray-600 text-white hover:bg-gray-700 transition-colors text-sm font-medium`}
+        className={`px-4 ${isMobile ? 'py-2' : 'py-1.5'} bg-gray-600 text-white hover:bg-gray-700 transition-colors text-md font-medium`}
       >
         Найти
       </button>
@@ -114,23 +114,23 @@ const Header: React.FC = () => {
       <div className="hidden md:block">
           
         {/* Navigation bar */}
-        <div className="bg-gray-50 shadow-sm">
-          <div className=" mx-auto px-4">
+        <div className="bg-gray-50">
+          <div className=" mx-auto px-4 py-1">
             <div className="flex items-center justify-between">
               {/* Group logo and navigation menu */}
               <div className="flex items-center space-x-6">
                 <Link href="/" className="inline-flex items-center">
-                    <img src="/images/4_logo1.svg" alt="Протокол Тарновского" className="h-8" />
+                    <img src="/images/4_logo1.svg" alt="Протокол Тарновского" className="h-10" />
                 </Link>
                 <nav>
                   <ul className="flex items-center">
                     <li className="relative">
                       <Link 
                         href="/" 
-                        className={`block px-4 py-3 transition-colors text-sm ${
+                        className={`block px-4 py-3 transition-colors text-md ${
                           isActive('/') 
                             ? 'text-white bg-gray-600' 
-                            : 'text-gray-700 hover:text-white hover:bg-gray-600'
+                            : 'text-gray-700 hover:bg-gray-200'
                         }`}
                       >
                         Форум
@@ -139,10 +139,10 @@ const Header: React.FC = () => {
                     <li className="relative">
                       <Link 
                         href="/articles" 
-                        className={`block px-4 py-3 transition-colors text-sm ${
+                        className={`block px-4 py-3 transition-colors text-md ${
                           isActive('/articles') 
                             ? 'text-white bg-gray-600' 
-                            : 'text-gray-700 dark:text-gray-300 hover:text-white hover:bg-gray-600'
+                            : 'text-gray-700 hover:bg-gray-200'
                         }`}
                       >
                         Статьи
@@ -151,10 +151,10 @@ const Header: React.FC = () => {
                     <li className="relative">
                       <Link 
                         href="/trainings" 
-                        className={`block px-4 py-3 transition-colors text-sm ${
+                        className={`block px-4 py-3 transition-colors text-md ${
                           isActive('/trainings') 
                             ? 'text-white bg-gray-600' 
-                            : 'text-gray-700 dark:text-gray-300 hover:text-white hover:bg-gray-600'
+                            : 'text-gray-700 hover:bg-gray-200'
                         }`}
                       >
                         Тренировки
@@ -187,7 +187,7 @@ const Header: React.FC = () => {
                     {/* Dropdown Menu */}
                     {profileDropdownOpen && (
                       <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg border border-gray-200 py-1 z-50">
-                        <div className="px-4 py-2 border-b border-gray-100">
+                        <div className="px-4 py-2 ">
                           <p className="text-sm font-medium text-gray-900 truncate">
                             {currentUser.displayName || 'Пользователь'}
                           </p>
@@ -207,18 +207,20 @@ const Header: React.FC = () => {
                             Профиль
                           </div>
                         </Link>
-                        <Link
-                          href="/admin"
-                          onClick={() => setProfileDropdownOpen(false)}
-                          className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
-                        >
-                          <div className="flex items-center">
-                            <svg className="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                            </svg>
-                            Админ-панель
-                          </div>
-                        </Link>
+                        {currentUser.isAdmin && (
+                          <Link
+                            href="/admin"
+                            onClick={() => setProfileDropdownOpen(false)}
+                            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                          >
+                            <div className="flex items-center">
+                              <svg className="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                              </svg>
+                              Админ-панель
+                            </div>
+                          </Link>
+                        )}
                         <button
                           onClick={() => {
                             handleLogout();
@@ -243,7 +245,7 @@ const Header: React.FC = () => {
                   <div className="flex items-center gap-2">
                     <Link
                       href="/login"
-                      className="px-3 py-1.5 text-sm text-gray-700 hover:text-gray-900 transition-colors"
+                      className="px-3 py-1.5 text-md text-gray-700 hover:text-gray-900 transition-colors"
                     >
                       Вход
                     </Link>
@@ -285,7 +287,7 @@ const Header: React.FC = () => {
         </div>
 
         {/* Mobile search - always visible */}
-        <div className="bg-gray-50 px-4 py-3 border-b">
+        <div className="bg-gray-50 px-4 py-3 shadow-sm shadow-gray-200/50">
           <Suspense fallback={<div className="h-8 bg-gray-200 animate-pulse rounded"></div>}>
             <SearchComponent isMobile={true} />
           </Suspense>
@@ -294,7 +296,7 @@ const Header: React.FC = () => {
         {/* Mobile menu overlay */}
         {mobileOpen && (
           <div 
-            className="fixed inset-0 bg-black bg-opacity-50 z-40"
+            className="fixed inset-0 bg-white/20 backdrop-blur-sm z-40"
             onClick={() => setMobileOpen(false)}
           />
         )}
@@ -304,7 +306,7 @@ const Header: React.FC = () => {
           mobileOpen ? 'translate-x-0' : 'translate-x-full'
         }`}>
           {/* Drawer header */}
-          <div className="flex items-center justify-between p-4 border-b bg-gray-50">
+          <div className="flex items-center justify-between p-4">
             <span className="text-lg font-semibold text-gray-800">Меню</span>
             <button
               onClick={() => setMobileOpen(false)}
@@ -363,7 +365,7 @@ const Header: React.FC = () => {
           </nav>
 
           {/* User section in drawer */}
-          <div className="border-t p-4 mt-4">
+          <div className=" p-4 mt-4">
             {currentUser ? (
               <div className="space-y-4">
                 <div className="flex items-center mb-4">
@@ -396,18 +398,20 @@ const Header: React.FC = () => {
                       Мой профиль
                     </div>
                   </Link>
-                  <Link 
-                    href="/admin" 
-                    onClick={() => setMobileOpen(false)}
-                    className="block px-4 py-2 text-gray-700 hover:bg-gray-100 rounded transition-colors"
-                  >
-                    <div className="flex items-center">
-                      <svg className="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                      </svg>
-                      Админ-панель
-                    </div>
-                  </Link>
+                  {currentUser.isAdmin && (
+                    <Link 
+                      href="/admin" 
+                      onClick={() => setMobileOpen(false)}
+                      className="block px-4 py-2 text-gray-700 hover:bg-gray-100 rounded transition-colors"
+                    >
+                      <div className="flex items-center">
+                        <svg className="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                        </svg>
+                        Админ-панель
+                      </div>
+                    </Link>
+                  )}
                   <button 
                     onClick={() => {
                       handleLogout();
@@ -425,21 +429,21 @@ const Header: React.FC = () => {
                 </div>
               </div>
             ) : (
-              <div className="space-y-3">
-                <p className="text-sm text-gray-600 mb-3">
-                  Войдите в аккаунт для доступа ко всем функциям
+              <div className="space-y-4">
+                <p className="text-sm text-gray-400 mb-3 text-center">
+                  Войдите в аккаунт или зарегистрируйтесь для доступа ко всем функциям
                 </p>
                 <Link 
                   href="/login" 
                   onClick={() => setMobileOpen(false)}
-                  className="block w-full px-4 py-2 text-center bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors font-medium"
+                  className="block w-full px-3 py-1.5 text-center bg-blue-500 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
                 >
                   Вход
                 </Link>
                 <Link 
                   href="/register" 
                   onClick={() => setMobileOpen(false)}
-                  className="block w-full px-4 py-2 text-center border border-blue-600 text-blue-600 rounded-md hover:bg-blue-50 transition-colors font-medium"
+                  className="block w-full px-3 py-1.5 text-center shadow-md shadow-blue-500/20 text-blue-500 rounded-lg hover:bg-blue-50 transition-colors font-medium"
                 >
                   Регистрация
                 </Link>

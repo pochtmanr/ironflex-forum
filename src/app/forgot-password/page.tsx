@@ -14,8 +14,21 @@ const ForgotPassword: React.FC = () => {
     setMessage('');
 
     try {
-      // TODO: Implement password reset API
-      setMessage('Функция восстановления пароля пока не реализована. Обратитесь к администратору.');
+      const response = await fetch('/api/auth/forgot-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setMessage(data.message);
+      } else {
+        setMessage(data.error || 'Произошла ошибка. Попробуйте позже.');
+      }
     } catch (error) {
       setMessage('Произошла ошибка. Попробуйте позже.');
     } finally {

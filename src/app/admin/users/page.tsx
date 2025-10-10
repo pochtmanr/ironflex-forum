@@ -155,9 +155,9 @@ export default function AdminUsers() {
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">User Management</h1>
+        <h1 className="text-2xl font-bold text-gray-900"> Управление пользователями </h1>
         <div className="text-sm text-gray-500">
-          Total Users: {users.length}
+          Общее количество пользователей: {users.length}
         </div>
       </div>
 
@@ -167,22 +167,22 @@ export default function AdminUsers() {
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  User
+                  Пользователь
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
+                  Статус
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Role
+                  Роль
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   OAuth
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Joined
+                  Дата регистрации
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
+                  Действия
                 </th>
               </tr>
             </thead>
@@ -224,11 +224,11 @@ export default function AdminUsers() {
                           ? 'bg-green-100 text-green-800' 
                           : 'bg-red-100 text-red-800'
                       }`}>
-                        {user.isActive ? 'Active' : 'Inactive'}
+                        {user.isActive ? 'Активный' : 'Неактивный'} 
                       </span>
                       {user.isVerified && (
                         <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
-                          Verified
+                          Подтвержден
                         </span>
                       )}
                     </div>
@@ -239,23 +239,23 @@ export default function AdminUsers() {
                         ? 'bg-purple-100 text-purple-800' 
                         : 'bg-gray-100 text-gray-800'
                     }`}>
-                      {user.isAdmin ? 'Admin' : 'User'}
+                      {user.isAdmin ? 'Админ' : 'Пользователь'}
                     </span>
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex space-x-1">
                       {user.googleId && (
                         <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">
-                          Google
+                          Google OAuth
                         </span>
                       )}
                       {user.githubId && (
                         <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">
-                          GitHub
+                          GitHub OAuth
                         </span>
                       )}
                       {!user.googleId && !user.githubId && (
-                        <span className="text-xs text-gray-400">Email</span>
+                        <span className="text-xs text-gray-400">Email OAuth</span>
                       )}
                     </div>
                   </td>
@@ -265,7 +265,7 @@ export default function AdminUsers() {
                     </div>
                     {user.lastLogin && (
                       <div className="text-xs text-gray-400">
-                        Last: {new Date(user.lastLogin).toLocaleDateString()}
+                        Последний вход: {new Date(user.lastLogin).toLocaleDateString()}
                       </div>
                     )}
                   </td>
@@ -274,33 +274,33 @@ export default function AdminUsers() {
                       <button
                         onClick={() => toggleUserRole(user.id, user.isAdmin)}
                         disabled={roleLoading === user.id || user.id === currentUser?.id}
-                        className={`px-3 py-1 text-xs font-medium rounded ${
+                        className={`px-3 py-1 text-xs font-medium rounded bg-purple-100/20 text-purple-700 hover:bg-purple-100/30 ${
                           user.isAdmin
                             ? 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                             : 'bg-purple-100 text-purple-700 hover:bg-purple-200'
                         } disabled:opacity-50 disabled:cursor-not-allowed`}
                       >
-                        {roleLoading === user.id ? '...' : user.isAdmin ? 'Remove Admin' : 'Make Admin'}
+                        {roleLoading === user.id ? '...' : user.isAdmin ? 'Убрать админа' : 'Сделать админом'}
                       </button>
                       
                       <button
                         onClick={() => toggleUserStatus(user.id, user.isActive)}
                         disabled={user.id === currentUser?.id}
-                        className={`px-3 py-1 text-xs font-medium rounded ${
+                        className={`px-3 py-1 text-xs font-medium rounded bg-red-100/20 text-red-700 hover:bg-red-100/30 ${
                           user.isActive
                             ? 'bg-red-100 text-red-700 hover:bg-red-200'
                             : 'bg-green-100 text-green-700 hover:bg-green-200'
                         } disabled:opacity-50 disabled:cursor-not-allowed`}
                       >
-                        {user.isActive ? 'Deactivate' : 'Activate'}
+                        {user.isActive ? 'Деактивировать' : 'Активировать'}
                       </button>
                       
                       <button
                         onClick={() => deleteUser(user.id)}
                         disabled={deleteLoading === user.id || user.id === currentUser?.id}
-                        className="px-3 py-1 text-xs font-medium rounded bg-red-100 text-red-700 hover:bg-red-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {deleteLoading === user.id ? '...' : 'Delete'}
+                        className="px-3 py-1 text-xs font-medium rounded bg-red-100/20 text-red-700 hover:bg-red-100/30 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                        {deleteLoading === user.id ? '...' : 'Удалить'}
                       </button>
                     </div>
                   </td>
@@ -312,7 +312,7 @@ export default function AdminUsers() {
         
         {users.length === 0 && (
           <div className="text-center py-8 text-gray-500">
-            No users found.
+            Ничего не найдено.
           </div>
         )}
       </div>

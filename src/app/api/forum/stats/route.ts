@@ -25,8 +25,8 @@ export async function GET() {
         total_posts: totalPosts,
         total_users: totalUsers,
         latest_username: latestUser?.username || null
-      },
-      onlineUsers: Math.floor(Math.random() * 50) + 10 // Mock online users for now
+      }
+      // Removed onlineUsers - real-time online tracking is complex and not implemented
     })
   } catch (error) {
     console.error('Error fetching forum stats:', error)

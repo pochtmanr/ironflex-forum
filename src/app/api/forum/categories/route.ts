@@ -9,28 +9,29 @@ export async function GET() {
     
     const categories = await Category.find({ isActive: true })
       .sort({ orderIndex: 1 })
-      .lean()
+      .lean() as unknown as Array<{ _id: unknown; name: string; description?: string; slug: string; createdAt: Date }>
 
     // Get topic counts for each category
     const categoriesWithCounts = await Promise.all(
       categories.map(async (category) => {
+        const categoryId = String(category._id)
         const topicCount = await Topic.countDocuments({ 
-          categoryId: category._id.toString(),
+          categoryId: categoryId,
           isActive: true 
         })
         
         const postCount = await Topic.aggregate([
-          { $match: { categoryId: category._id.toString(), isActive: true } },
+          { $match: { categoryId: categoryId, isActive: true } },
           { $group: { _id: null, total: { $sum: '$replyCount' } } }
         ])
 
         const lastTopic = await Topic.findOne({ 
-          categoryId: category._id.toString(),
+          categoryId: categoryId,
           isActive: true 
         }).sort({ lastPostAt: -1 })
 
         return {
-          id: category._id.toString(),
+          id: categoryId,
           name: category.name,
           description: category.description,
           slug: category.slug,

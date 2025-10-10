@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/mongodb'
 import User from '@/models/User'
+import ResetToken from '@/models/ResetToken'
 import { hashPassword, generateTokens } from '@/lib/auth'
+import { generateSecureToken, sendEmailVerificationEmail } from '@/lib/email'
 
 export async function POST(request: NextRequest) {
   try {
@@ -64,7 +66,8 @@ export async function POST(request: NextRequest) {
       passwordHash,
       displayName: displayName || username,
       isActive: true,
-      isAdmin: false
+      isAdmin: false,
+      isVerified: false // User needs to verify email
     })
     console.log('User created successfully:', user._id)
 
@@ -79,18 +82,44 @@ export async function POST(request: NextRequest) {
       })
       console.log('Tokens generated successfully')
 
+      // Generate email verification token
+      const verificationToken = generateSecureToken()
+      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours
+
+      // Save verification token
+      await ResetToken.create({
+        userId: user._id.toString(),
+        token: verificationToken,
+        type: 'email_verification',
+        expiresAt
+      })
+
+      // Send verification email
+      const emailSent = await sendEmailVerificationEmail(
+        user.email,
+        user.username,
+        verificationToken
+      )
+
+      if (!emailSent) {
+        console.error('Failed to send verification email, but user was created')
+        // Don't fail registration if email fails, just log it
+      }
+
       const response = {
-        message: 'User created successfully',
+        message: 'User created successfully. Please check your email to verify your account.',
         user: {
           id: user._id,
           email: user.email,
           username: user.username,
           displayName: user.displayName,
           photoURL: user.photoURL,
-          isAdmin: user.isAdmin
+          isAdmin: user.isAdmin,
+          isVerified: user.isVerified
         },
         accessToken,
-        refreshToken
+        refreshToken,
+        emailSent: emailSent
       }
       
       console.log('Returning successful response')

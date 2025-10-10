@@ -86,9 +86,10 @@ const CategoryView: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        <div className="text-center">
-          <div className="text-gray-500">Загрузка категории...</div>
+      <div className="mx-auto px-4 py-8 min-h-screen">
+        <div className="flex flex-col items-center justify-center py-12">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-1 border-blue-600/20 mb-4"></div>
+          <div className="text-gray-600 text-base">Загрузка категории...</div>
         </div>
       </div>
     );
@@ -96,139 +97,209 @@ const CategoryView: React.FC = () => {
 
   if (!category) {
     return (
-      <div className="max-w-9xl mx-auto px-4 py-8">
-        <div className="text-center">
-          <div className="text-gray-500">Категория не найдена</div>
+      <div className="mx-auto px-4 py-8 min-h-screen">
+        <div className="flex flex-col items-center justify-center py-12">
+          <svg className="w-16 h-16 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <div className="text-gray-600 text-lg font-medium">Категория не найдена</div>
+          <Link href="/" className="mt-4 text-blue-600 hover:text-blue-700">
+            Вернуться на главную
+          </Link>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-9xl mx-auto px-4 py-8">
-      {/* Breadcrumb */}
-      <nav className="mb-6">
-        <ol className="flex items-center space-x-2 text-sm">
+    <div className="mx-auto px-2 sm:px-4 min-h-screen">
+      {/* Breadcrumb - Mobile Optimized */}
+      <nav className="mb-3 sm:mb-4 px-2 sm:px-0 py-3">
+        <ol className="flex items-center space-x-2 text-xs sm:text-sm">
           <li>
-            <Link href="/" className="text-blue-600 hover:text-blue-700">Форум</Link>
+            <Link href="/" className="text-blue-600 hover:text-blue-700 flex items-center">
+              <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+              </svg>
+              <span className="hidden sm:inline">Форум</span>
+            </Link>
           </li>
-          <li className="text-gray-500">/</li>
-          <li className="text-gray-900">{category.name}</li>
+          <li className="text-gray-400">/</li>
+          <li className="text-gray-900 font-medium truncate">{category.name}</li>
         </ol>
       </nav>
 
-      {/* Category Header */}
-      <div className="bg-white shadow-md mb-6">
-        <div className="bg-gray-600 text-white px-6 py-4 flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-bold">{category.name}</h1>
-            <p className="text-sm text-gray-200 mt-1">{category.description}</p>
+      {/* Category Header - Mobile Optimized */}
+      <div className="bg-white mb-4 sm:mb-6">
+        <div className="bg-gradient-to-r from-gray-700 to-gray-600 text-white px-3 sm:px-4 py-3 sm:py-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3">
+          <div className="min-w-0 flex-1">
+            <h1 className="text-xl sm:text-xl font-bold mb-1">{category.name}</h1>
+            <p className="text-sm text-gray-200">{category.description}</p>
           </div>
           {currentUser && (
             <Link
               href={`/create-topic?category=${categoryId}`}
-              className="px-4 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors font-medium"
+              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 active:bg-blue-700 transition-colors font-medium flex items-center justify-center space-x-2 text-sm flex-shrink-0 touch-manipulation shadow-md"
             >
-             + Создать тему
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              <span>Новая тема</span>
             </Link>
           )}
         </div>
 
-        {/* Topics Table */}
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="bg-gray-100 text-gray-600 text-xs sm:text-sm">
-                <th className="px-6 py-3 text-left font-medium">Тема</th>
-                <th className="px-6 py-3 text-center font-medium w-24">Ответов</th>
-                <th className="px-6 py-3 text-center font-medium w-24">Просмотров</th>
-                <th className="px-6 py-3 text-center font-medium w-24">Рейтинг</th>
-                <th className="px-6 py-3 text-left font-medium w-24">Последнее сообщение</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                <SkeletonLoader type="topic" count={5} />
-              ) : topics.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
-                    В этой категории пока нет тем.
-                    {currentUser && (
-                      <>
-                        {' '}
-                        <Link href={`/create-topic?category=${categoryId}`} className="text-blue-600 hover:text-blue-700">
-                          Создайте первую тему!
-                        </Link>
-                      </>
-                    )}
-                  </td>
-                </tr>
-              ) : (
-                topics.map((topic, index) => (
-                  <tr key={topic.id} className={`border-b hover:bg-gray-50 transition-colors ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
-                    <td className="px-6 py-4">
-                      <div>
+        {/* Topics List - Mobile Cards / Desktop Table */}
+        {loading ? (
+          <div className="p-4">
+            <SkeletonLoader type="topic" count={5} />
+          </div>
+        ) : topics.length === 0 ? (
+          <div className="px-4 py-12 text-center">
+            <svg className="w-16 h-16 mx-auto text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+            </svg>
+            <p className="text-gray-600 mb-4">В этой категории пока нет тем.</p>
+            {currentUser && (
+              <Link 
+                href={`/create-topic?category=${categoryId}`} 
+                className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Создайте первую тему!
+              </Link>
+            )}
+          </div>
+        ) : (
+          <>
+            {/* Mobile Layout */}
+            <div className="block sm:hidden">
+              {topics.map((topic, index) => (
+                <Link
+                  key={topic.id}
+                  href={`/topic/${topic.id}`}
+                  className={`block border-b border-gray-200 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'} p-4 active:bg-blue-100 transition-colors`}
+                >
+                  <div className="flex items-start justify-between mb-2">
+                    <h3 className="text-blue-600 font-semibold text-base leading-tight flex-1 pr-2">
+                      {topic.title}
+                    </h3>
+                    <div className="flex items-center space-x-2 flex-shrink-0">
+                      <span className="text-xs text-green-600 font-medium">+{topic.likes}</span>
+                      <span className="text-xs text-red-600 font-medium">-{topic.dislikes}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center text-xs text-gray-500 mb-2">
+                    <span className="font-medium text-blue-600">{topic.user_name}</span>
+                    <span className="mx-2">•</span>
+                    <span>{new Date(topic.created_at).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs text-gray-500">
+                    <div className="flex items-center space-x-3">
+                      <span className="flex items-center">
+                        <svg className="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                        </svg>
+                        {topic.reply_count}
+                      </span>
+                      <span className="flex items-center">
+                        <svg className="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                        {topic.views}
+                      </span>
+                    </div>
+                    <span className="text-gray-400">
+                      {new Date(topic.last_post_at).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}
+                    </span>
+                  </div>
+                </Link>
+              ))}
+            </div>
+
+            {/* Desktop Table Layout */}
+            <div className="hidden sm:block overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="bg-gray-100 text-gray-600 text-sm">
+                    <th className="px-4 py-3 text-left font-medium">Тема</th>
+                    <th className="px-4 py-3 text-center font-medium w-24">Комментариев</th>
+                    <th className="px-4 py-3 text-center font-medium w-24">Просмотров</th>
+                    <th className="px-4 py-3 text-center font-medium w-24">Рейтинг</th>
+                    <th className="px-4 py-3 text-left font-medium w-32">Последний</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {topics.map((topic, index) => (
+                    <tr key={topic.id} className={`border-b border-gray-200 hover:bg-blue-50 transition-colors ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
+                      <td className="px-4 py-4">
                         <Link 
                           href={`/topic/${topic.id}`}
-                          className="text-blue-600 text-sm font-semibold hover:text-blue-700 block mb-1"
+                          className="text-gray-900 text-base font-semibold hover:text-blue-700 block mb-1"
                         >
                           {topic.title}
                         </Link>
-                        <div className="text-gray-500">
-                          от <Link 
+                        <div className="text-sm text-gray-500">
+                          <Link 
                             href={`/profile/${topic.user_id}`}
-                            className="font-medium text-blue-600 hover:text-blue-800 transition-colors"
+                            className="font-medium text-blue-600 hover:text-blue-700"
                           >
                             {topic.user_name}
-                          </Link> • {formatDate(topic.created_at)}
+                          </Link>{' '}
+                          {new Date(topic.created_at).toLocaleDateString('ru-RU', {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric',
+                          })}
                         </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-center">
-                      <div className="text-lg text-gray-800">{topic.reply_count}</div>
-                    </td>
-                    <td className="px-6 py-4 text-center">
-                      <div className="text-gray-600">{topic.views}</div>
-                    </td>
-                    <td className="px-6 py-4 text-center">
-                      <div className="flex items-center justify-center space-x-2">
-                        <span className="text-green-600 text-xs sm:text-sm">+{topic.likes}</span>
-                        <span className="text-red-600 text-xs sm:text-sm">-{topic.dislikes}</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="text-xs sm:text-sm">
-                        <div className="text-gray-600">{formatDate(topic.last_post_at)}</div>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                      </td>
+                      <td className="px-4 py-4 text-center">
+                        <div className="text-base text-gray-800 font-medium">{topic.reply_count}</div>
+                      </td>
+                      <td className="px-4 py-4 text-center">
+                        <div className="text-gray-600">{topic.views}</div>
+                      </td>
+                      <td className="px-4 py-4 text-center">
+                        <div className="flex items-center justify-center space-x-2">
+                          <span className="text-green-600 text-sm font-medium">+{topic.likes}</span>
+                          <span className="text-red-600 text-sm font-medium">-{topic.dislikes}</span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-4">
+                        <div className="text-sm text-gray-600">{formatDate(topic.last_post_at)}</div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
 
-        {/* Pagination */}
+        {/* Pagination - Mobile Optimized */}
         {totalPages > 1 && (
-          <div className="px-6 py-4 bg-gray-50">
-            <div className="flex items-center justify-between">
-              <div className="text-sm text-gray-500">
+          <div className="px-4 py-4 bg-gray-50 border-t border-gray-200">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+              <div className="text-sm text-gray-600 font-medium">
                 Страница {page} из {totalPages}
               </div>
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center gap-2 w-full sm:w-auto">
                 <button
                   onClick={() => setPage(Math.max(1, page - 1))}
                   disabled={page === 1}
-                  className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 sm:flex-none px-4 py-2 text-sm font-medium border border-gray-300 rounded-lg hover:bg-gray-100 active:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors touch-manipulation"
                 >
-                  Назад
+                  ← Назад
                 </button>
                 <button
                   onClick={() => setPage(Math.min(totalPages, page + 1))}
                   disabled={page === totalPages}
-                  className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 sm:flex-none px-4 py-2 text-sm font-medium border border-gray-300 rounded-lg hover:bg-gray-100 active:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors touch-manipulation"
                 >
-                  Вперед
+                  Вперед →
                 </button>
               </div>
             </div>

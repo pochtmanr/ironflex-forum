@@ -19,18 +19,26 @@ services:
       - my_custom_network
 
   fileserver:
+    container_name: fileserver
     build:
       context: ./fileserver
       dockerfile: Dockerfile
     ports:
       - "3001:3001"
     volumes:
-      - ./uploads:/app/uploads
+      - fileserver_uploads:/app/uploads
     environment:
       - PORT=3001
     restart: unless-stopped
     networks:
-      - my_custom_network
+      my_custom_network:
+        aliases:
+          - fileserver
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   nextjs-app:
     build:
@@ -39,10 +47,12 @@ services:
     ports:
       - "3000:3000"
     env_file:
-      - .env.local
+      - .env.production
     environment:
       - NODE_ENV=production
       - MONGODB_URI=mongodb://admin:StrongPassword123!@mongodb:27017/ironblog?authSource=admin
+      - FILESERVER_URL=http://fileserver:3001
+      - FILESERVER_FALLBACK=http://localhost:3001
     depends_on:
       - mongodb
       - fileserver
@@ -96,6 +106,7 @@ services:
 
 volumes:
   mongodb_data:
+  fileserver_uploads:
 
 networks:
   my_custom_network:
