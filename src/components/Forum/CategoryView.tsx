@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { contentAPI } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import SkeletonLoader from '../UI/SkeletonLoader';
+import { NewDiscussionButton, PaginationButton } from '@/components/UI';
 
 interface Topic {
   id: number | string;
@@ -86,7 +87,7 @@ const CategoryView: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="mx-auto px-4 py-8 min-h-screen">
+      <div className="mx-auto px-4 py-8 min-h-screen max-w-7xl">
         <div className="flex flex-col items-center justify-center py-12">
           <div className="animate-spin rounded-full h-12 w-12 border-b-1 border-blue-600/20 mb-4"></div>
           <div className="text-gray-600 text-base">Загрузка категории...</div>
@@ -97,13 +98,13 @@ const CategoryView: React.FC = () => {
 
   if (!category) {
     return (
-      <div className="mx-auto px-4 py-8 min-h-screen">
+      <div className="mx-auto px-4 py-8 min-h-screen max-w-7xl">
         <div className="flex flex-col items-center justify-center py-12">
           <svg className="w-16 h-16 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
           <div className="text-gray-600 text-lg font-medium">Категория не найдена</div>
-          <Link href="/" className="mt-4 text-blue-600 hover:text-blue-700">
+          <Link href="/" className="mt-4 text-gray-600 hover:text-gray-700">
             Вернуться на главную
           </Link>
         </div>
@@ -112,58 +113,49 @@ const CategoryView: React.FC = () => {
   }
 
   return (
-    <div className="mx-auto px-2 sm:px-4 min-h-screen">
+    <div className="mx-auto px-2 sm:px-4 min-h-screen max-w-7xl">
       {/* Breadcrumb - Mobile Optimized */}
-      <nav className="mb-3 sm:mb-4 px-2 sm:px-0 py-3">
+      <nav className="py-4">
         <ol className="flex items-center space-x-2 text-xs sm:text-sm">
           <li>
-            <Link href="/" className="text-blue-600 hover:text-blue-700 flex items-center">
-              <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-              </svg>
-              <span className="hidden sm:inline">Форум</span>
+            <Link href="/" className="text-gray-600 hover:text-gray-900 flex items-center">
+              Форум
             </Link>
           </li>
           <li className="text-gray-400">/</li>
-          <li className="text-gray-900 font-medium truncate">{category.name}</li>
+          <li className="text-blue-500 font-medium truncate">{category.name}</li>
         </ol>
       </nav>
 
-      {/* Category Header - Mobile Optimized */}
+      {/* Category Header - Consistent with TopTopics */}
       <div className="bg-white mb-4 sm:mb-6">
-        <div className="bg-gradient-to-r from-gray-700 to-gray-600 text-white px-3 sm:px-4 py-3 sm:py-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3">
+        <div className="bg-gray-600 text-white px-3 rounded-t-sm sm:px-4 py-3 sm:py-2 flex items-center justify-between">
           <div className="min-w-0 flex-1">
-            <h1 className="text-xl sm:text-xl font-bold mb-1">{category.name}</h1>
-            <p className="text-sm text-gray-200">{category.description}</p>
+            <h1 className="text-xl font-bold">{category.name}</h1>
+            <p className="text-xs text-gray-200 mt-1">{category.description}</p>
           </div>
-          {currentUser && (
-            <Link
-              href={`/create-topic?category=${categoryId}`}
-              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 active:bg-blue-700 transition-colors font-medium flex items-center justify-center space-x-2 text-sm flex-shrink-0 touch-manipulation shadow-md"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              <span>Новая тема</span>
-            </Link>
-          )}
+            {currentUser && (
+              <NewDiscussionButton categoryId={categoryId} />
+            )}
         </div>
 
-        {/* Topics List - Mobile Cards / Desktop Table */}
-        {loading ? (
-          <div className="p-4">
-            <SkeletonLoader type="topic" count={5} />
+        {loading && (
+          <div className="flex flex-col items-center justify-center py-8 border-b border-l border-r border-1 border-gray-100">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600/20 mb-4"></div>
+            <div className="text-gray-500 text-base">Загрузка тем...</div>
           </div>
-        ) : topics.length === 0 ? (
-          <div className="px-4 py-12 text-center">
-            <svg className="w-16 h-16 mx-auto text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        )}
+
+        {!loading && topics.length === 0 && (
+          <div className="text-center py-8 text-gray-500 border-b border-l border-r border-1 border-gray-100">
+            <svg className="w-12 h-12 mx-auto mb-3 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
             </svg>
-            <p className="text-gray-600 mb-4">В этой категории пока нет тем.</p>
+            <p className="text-sm sm:text-base mb-4">В этой категории пока нет тем.</p>
             {currentUser && (
               <Link 
                 href={`/create-topic?category=${categoryId}`} 
-                className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                className="inline-flex items-center px-3 py-1.5 bg-blue-500 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm"
               >
                 <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -172,7 +164,9 @@ const CategoryView: React.FC = () => {
               </Link>
             )}
           </div>
-        ) : (
+        )}
+
+        {!loading && topics.length > 0 && (
           <>
             {/* Mobile Layout */}
             <div className="block sm:hidden">
@@ -221,15 +215,15 @@ const CategoryView: React.FC = () => {
             </div>
 
             {/* Desktop Table Layout */}
-            <div className="hidden sm:block overflow-x-auto">
+            <div className="hidden sm:block overflow-x-auto rounded-b-sm border-b border-l border-r border-gray-100">
               <table className="w-full">
                 <thead>
-                  <tr className="bg-gray-100 text-gray-600 text-sm">
+                  <tr className="bg-gray-100 text-gray-600 text-md">
                     <th className="px-4 py-3 text-left font-medium">Тема</th>
-                    <th className="px-4 py-3 text-center font-medium w-24">Комментариев</th>
-                    <th className="px-4 py-3 text-center font-medium w-24">Просмотров</th>
+                    <th className="px-4 py-3 text-center font-medium w-32">Ответов</th>
+                    <th className="px-4 py-3 text-center font-medium w-32">Просмотров</th>
                     <th className="px-4 py-3 text-center font-medium w-24">Рейтинг</th>
-                    <th className="px-4 py-3 text-left font-medium w-32">Последний</th>
+                    <th className="px-4 py-3 text-left font-medium w-40">Последний</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -287,20 +281,18 @@ const CategoryView: React.FC = () => {
                 Страница {page} из {totalPages}
               </div>
               <div className="flex items-center gap-2 w-full sm:w-auto">
-                <button
+                <PaginationButton
                   onClick={() => setPage(Math.max(1, page - 1))}
                   disabled={page === 1}
-                  className="flex-1 sm:flex-none px-4 py-2 text-sm font-medium border border-gray-300 rounded-lg hover:bg-gray-100 active:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors touch-manipulation"
-                >
-                  ← Назад
-                </button>
-                <button
+                  direction="prev"
+                  className="flex-1 sm:flex-none"
+                />
+                <PaginationButton
                   onClick={() => setPage(Math.min(totalPages, page + 1))}
                   disabled={page === totalPages}
-                  className="flex-1 sm:flex-none px-4 py-2 text-sm font-medium border border-gray-300 rounded-lg hover:bg-gray-100 active:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors touch-manipulation"
-                >
-                  Вперед →
-                </button>
+                  direction="next"
+                  className="flex-1 sm:flex-none"
+                />
               </div>
             </div>
           </div>

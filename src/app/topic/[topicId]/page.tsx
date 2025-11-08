@@ -3,15 +3,11 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import Image from 'next/image';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
 import { useAuth } from '@/contexts/AuthContext';
 import { forumAPI } from '@/services/api';
-import { RichTextEditor } from '@/components/UI/RichTextEditor';
-import { LikeButtonGroup } from '@/components/UI/LikeButton';
 import { LoginPrompt } from '@/components/UI/LoginPrompt';
-
+import { PaginationButton } from '@/components/UI';
+import { TopicHeader, PostsList, ReplyForm } from '@/components/Topic';
 interface Post {
   id: number | string;
   content: string;
@@ -61,10 +57,9 @@ const TopicViewPage: React.FC = () => {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   
-  // Reply form
+  const [sortOrder, setSortOrder] = useState('recent');
   const [replyContent, setReplyContent] = useState('');
   const [submittingReply, setSubmittingReply] = useState(false);
-  const [replyMediaLinks, setReplyMediaLinks] = useState<string[]>([]);
   
   // Vote tracking
   const [topicVote, setTopicVote] = useState<'like' | 'dislike' | null>(null);
@@ -164,17 +159,43 @@ const TopicViewPage: React.FC = () => {
       return;
     }
 
+    // Store previous state for rollback
+    const previousVote = topicVote;
+    const previousTopic = topic;
+
+    // Optimistic UI update - immediate feedback
+    const newVote = topicVote === likeType ? null : likeType;
+    setTopicVote(newVote);
+    
+    if (topic) {
+      let newLikes = topic.likes;
+      let newDislikes = topic.dislikes;
+      
+      // Remove previous vote counts
+      if (previousVote === 'like') newLikes--;
+      if (previousVote === 'dislike') newDislikes--;
+      
+      // Add new vote counts
+      if (newVote === 'like') newLikes++;
+      if (newVote === 'dislike') newDislikes++;
+      
+      setTopic({
+        ...topic,
+        likes: newLikes,
+        dislikes: newDislikes
+      });
+    }
+
     try {
+      // Send request in background
       const response = await forumAPI.likeTopic(topicId, likeType) as {
         likes: number;
         dislikes: number;
         userVote: 'like' | 'dislike' | null;
       };
       
-      // Update vote state from response
+      // Update with actual server response (in case of discrepancy)
       setTopicVote(response.userVote);
-      
-      // Update topic counts without reloading
       if (topic) {
         setTopic({
           ...topic,
@@ -183,6 +204,11 @@ const TopicViewPage: React.FC = () => {
         });
       }
     } catch (error: unknown) {
+      // Rollback on error
+      setTopicVote(previousVote);
+      if (previousTopic) {
+        setTopic(previousTopic);
+      }
       const errorMessage = error instanceof Error ? error.message : 'Ошибка при голосовании';
       setError(errorMessage);
     }
@@ -194,21 +220,45 @@ const TopicViewPage: React.FC = () => {
       return;
     }
 
-    console.log('Liking post:', { postId, likeType, currentUser });
-    console.log('Access token in localStorage:', localStorage.getItem('accessToken'));
+    // Store previous state for rollback
+    const previousVote = postVotes[postId] || null;
+    const previousPosts = [...posts];
+
+    // Optimistic UI update - immediate feedback
+    const newVote = previousVote === likeType ? null : likeType;
+    setPostVotes(prev => ({ ...prev, [postId]: newVote }));
+    
+    // Update post counts immediately
+    setPosts(prevPosts => 
+      prevPosts.map(p => {
+        if (p.id.toString() === postId) {
+          let newLikes = p.likes;
+          let newDislikes = p.dislikes;
+          
+          // Remove previous vote counts
+          if (previousVote === 'like') newLikes--;
+          if (previousVote === 'dislike') newDislikes--;
+          
+          // Add new vote counts
+          if (newVote === 'like') newLikes++;
+          if (newVote === 'dislike') newDislikes++;
+          
+          return { ...p, likes: newLikes, dislikes: newDislikes };
+        }
+        return p;
+      })
+    );
 
     try {
+      // Send request in background
       const response = await forumAPI.likePost(postId, likeType) as {
         likes: number;
         dislikes: number;
         userVote: 'like' | 'dislike' | null;
       };
-      console.log('Post liked successfully', response);
       
-      // Update vote state from response
+      // Update with actual server response (in case of discrepancy)
       setPostVotes(prev => ({ ...prev, [postId]: response.userVote }));
-      
-      // Update post counts without reloading
       setPosts(prevPosts => 
         prevPosts.map(p => 
           p.id.toString() === postId 
@@ -218,20 +268,18 @@ const TopicViewPage: React.FC = () => {
       );
     } catch (error: unknown) {
       console.error('Like post error:', error);
+      // Rollback on error
+      setPostVotes(prev => ({ ...prev, [postId]: previousVote }));
+      setPosts(previousPosts);
+      
       const errorMessage = error instanceof Error ? error.message : 'Ошибка при голосовании';
       
       // If token is invalid, ask user to re-login
       if (errorMessage.includes('token') || errorMessage.includes('Invalid') || errorMessage.includes('Unauthorized')) {
         setError('Ваша сессия истекла. Пожалуйста, войдите снова.');
-        alert('Ваша сессия истекла. Пожалуйста, войдите снова.');
-        // Clear tokens and redirect to login
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('refreshToken');
-        localStorage.removeItem('user');
         setTimeout(() => router.push('/login'), 2000);
       } else {
         setError(errorMessage);
-        alert('Ошибка при голосовании: ' + errorMessage);
       }
     }
   };
@@ -279,10 +327,6 @@ const TopicViewPage: React.FC = () => {
   };
 
 
-  const removeReplyMediaLink = (index: number) => {
-    setReplyMediaLinks(prev => prev.filter((_, i) => i !== index));
-  };
-
   const handleSubmitReply = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -295,10 +339,9 @@ const TopicViewPage: React.FC = () => {
     setError('');
 
     try {
-      console.log('Creating post with mediaLinks:', replyMediaLinks);
-      await forumAPI.createPost(topicId, replyContent.trim(), replyMediaLinks.length > 0 ? replyMediaLinks : undefined);
+      // Images are now embedded in the markdown content, no separate media links needed
+      await forumAPI.createPost(topicId, replyContent.trim());
       setReplyContent('');
-      setReplyMediaLinks([]);
       loadTopicData(); // Reload to show new post
     } catch (error: unknown) {
       console.error('Post creation error:', error);
@@ -311,23 +354,35 @@ const TopicViewPage: React.FC = () => {
 
   // Handle image upload for RichTextEditor
   const handleEditorImageUpload = async (file: File): Promise<string> => {
-    const formData = new FormData();
-    formData.append('file', file);
-    
-    const response = await fetch('/api/upload', {
-      method: 'POST',
-      body: formData,
-    });
-    
-    if (!response.ok) throw new Error('Upload failed');
-    
-    const data = await response.json();
-    const fileUrl = data.url || data.file_url;
-    
-    // Don't add to media links - the image will be in the markdown content
-    // This prevents duplicate display
-    
-    return fileUrl;
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Upload failed');
+      }
+      
+      const data = await response.json();
+      const fileUrl = data.url || data.file_url;
+      
+      if (!fileUrl) {
+        throw new Error('No file URL returned from upload');
+      }
+      
+      // Return the full URL - the image will be embedded in markdown content
+      return fileUrl;
+    } catch (error) {
+      console.error('Image upload error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Upload failed';
+      setError(`Ошибка загрузки изображения: ${errorMessage}`);
+      throw error;
+    }
   };
 
   const formatDate = (dateString: string) => {
@@ -351,9 +406,9 @@ const TopicViewPage: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="max-w-6xl mx-auto px-4 py-8">
+      <div className="max-w-7xl mx-auto px-4 py-8 min-h-screen">
         <div className="text-center">
-          <div className="text-gray-500">Загрузка темы...</div>
+          <div className="text-gray-500 mt-10">Загрузка темы...</div>
         </div>
       </div>
     );
@@ -361,7 +416,7 @@ const TopicViewPage: React.FC = () => {
 
   if (error && !topic) {
     return (
-      <div className="max-w-6xl mx-auto px-4 py-8">
+      <div className="max-w-7xl mx-auto px-4 py-8 min-h-screen">
         <div className="text-center">
           <div className="text-red-500">{error}</div>
           <button
@@ -377,7 +432,7 @@ const TopicViewPage: React.FC = () => {
 
   if (!topic) {
     return (
-      <div className="max-w-6xl mx-auto px-4 py-8">
+      <div className="max-w-7xl mx-auto px-4 py-8 min-h-screen">
         <div className="text-center">
           <div className="text-gray-500">Тема не найдена</div>
         </div>
@@ -386,206 +441,34 @@ const TopicViewPage: React.FC = () => {
   }
 
   return (
-    <div className="mx-auto px-2 sm:px-4 py-4 sm:py-6">
+    <div className="mx-auto px-2 sm:px-4 py-4 sm:py-4 max-w-7xl min-h-screen">
       {/* Breadcrumb */}
-      <nav className="mb-4 sm:mb-6">
+      <nav className="mb-4 sm:mb-4">
         <ol className="flex items-center space-x-2 text-xs sm:text-sm">
           <li>
-            <Link href="/" className="text-blue-500 hover:text-blue-700">Форум</Link>
+            <Link href="/" className="text-gray-500 hover:text-gray-700">Форум</Link>
           </li>
           <li className="text-gray-400">/</li>
           <li>
-            <Link href={`/category/${topic.category_id}`} className="text-blue-500 hover:text-blue-700">
+            <Link href={`/category/${topic.category_id}`} className="text-gray-500 hover:text-gray-700">
               {topic.category_name}
             </Link>
           </li>
           <li className="text-gray-400">/</li>
-          <li className="text-gray-700 truncate">{topic.title}</li>
+          <li className="text-blue-500 truncate">{topic.title}</li>
         </ol>
       </nav>
 
-      {/* Topic Header - Forum Style with User Photo */}
-      <div className="bg-white mb-4 sm:mb-6">
-        <div className="bg-gray-600 text-white px-2 py-1.5 sm:px-4 sm:py-2">
-          <h1 className="text-lg sm:text-xl font-bold mb-3">{topic.title}</h1>
-          <div className="flex items-center gap-3 sm:gap-4 text-xs sm:text-sm text-gray-200">
-            <div className="flex items-center gap-1.5">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-              </svg>
-              <span><span className="font-medium">{posts.length}</span> {posts.length === 1 ? 'комментарий' : posts.length < 5 ? 'комментария' : 'комментариев'}</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-              </svg>
-              <span><span className="font-medium">{topic.views}</span> {topic.views === 1 ? 'просмотр' : 'просмотров'}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Topic Content with Author Photo */}
-        <div className="p-2 sm:p-3 border-b border-gray-200 bg-white">
-          <div className="flex gap-2 sm:gap-3">
-            {/* User Photo */}
-            <div className="flex-shrink-0">
-              <Link href={`/profile/${topic.user_id}`}>
-                {topic.user_photo ? (
-                  <Image
-                    src={topic.user_photo}
-                    alt={topic.user_name || 'User'}
-                    width={64}
-                    height={64}
-                    className="w-12 h-12 sm:w-16 sm:h-16 rounded-full object-cover hover:opacity-80 transition-opacity"
-                  />
-                ) : (
-                  <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-gray-300 flex items-center justify-center text-lg sm:text-xl font-bold text-gray-600 hover:opacity-80 transition-opacity">
-                    {(topic.user_name || 'U').charAt(0).toUpperCase()}
-                  </div>
-                )}
-              </Link>
-            </div>
-            
-            {/* Content Area */}
-            <div className="flex-1 min-w-0">
-              {/* Author Name and Date */}
-              <div className="mb-2">
-                <Link 
-                  href={`/profile/${topic.user_id}`}
-                  className="text-blue-600 hover:text-blue-800 font-semibold text-lg sm:text-lg"
-                >
-                  {topic.user_name || 'Unknown'}
-                </Link>
-                <span className="text-gray-500 text-sm sm:text-sm ml-2">
-                  {formatDate(topic.created_at)}
-                </span>
-              </div>
-              
-              {/* Topic Content */}
-              <div className="prose max-w-none text-gray-900 text-sm sm:text-base">
-                <ReactMarkdown 
-                  remarkPlugins={[remarkGfm]}
-                  components={{
-                    img: ({node, ...props}) => (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={props.src as string}
-                        alt={props.alt || ''}
-                        className="max-w-full h-auto rounded"
-                        style={{ objectFit: 'contain', maxHeight: '400px' }}
-                      />
-                    ),
-                  }}
-                >
-                  {topic.content}
-                </ReactMarkdown>
-              </div>
-              
-              {/* Display topic media links if any */}
-              {topic.media_links && topic.media_links.length > 0 && (
-                <div className="mt-3 pt-3 border-t border-gray-200">
-                  <h4 className="text-sm font-medium text-gray-900 mb-2">Прикрепленные файлы:</h4>
-                  <div className="space-y-3">
-                {topic.media_links.map((link, linkIndex) => {
-                  const filename = link.split('/').pop() || '';
-                  const isImage = /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(filename);
-                  const isVideo = /\.(mp4|webm|ogg|avi|mov)$/i.test(filename);
-                  
-                  console.log('Topic media link:', { link, filename, isImage, isVideo });
-                  
-                  return (
-                    <div key={linkIndex} className="bg-gray-50 p-3 rounded-lg">
-                      {isImage ? (
-                        <div className="space-y-2">
-                          <Image
-                            src={link}
-                            alt={filename}
-                            width={800}
-                            height={600}
-                            className="max-w-full h-auto rounded border"
-                            style={{ objectFit: 'contain', maxHeight: '400px', width: 'auto' }}
-                            onError={(e) => {
-                              e.currentTarget.style.display = 'none';
-                              e.currentTarget.nextElementSibling?.classList.remove('hidden');
-                            }}
-                          />
-                          <div className="hidden">
-                            <a
-                              href={link}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-sm text-blue-600 hover:text-blue-800"
-                            >
-                              {filename}
-                            </a>
-                          </div>
-                        </div>
-                      ) : isVideo ? (
-                        <div className="space-y-2">
-                          <video
-                            src={link}
-                            controls
-                            className="max-w-full h-auto rounded border"
-                            style={{ maxHeight: '400px' }}
-                          >
-                            Your browser does not support the video tag.
-                          </video>
-                          <div className="text-xs text-gray-500">
-                            {filename}
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="flex items-center justify-between">
-                          <a
-                            href={link}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-sm text-blue-600 hover:text-blue-800 truncate flex-1"
-                          >
-                            {filename}
-                          </a>
-                          <span className="text-xs text-gray-500 ml-2">
-                            {link.includes('bucket.theholylabs.com') ? 'Файл' : 'Ссылка'}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-                  </div>
-                </div>
-              )}
-              
-              {/* Topic Actions - Forum Style */}
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mt-6 pt-4 border-t border-gray-200 gap-3">
-                <LikeButtonGroup
-                  likes={topic.likes}
-                  dislikes={topic.dislikes}
-                  userVote={topicVote}
-                  onLike={handleLikeTopic}
-                  disabled={!currentUser}
-                  size="md"
-                />
-                
-                {topic.is_author && (
-                  <div className="flex items-center gap-2 sm:gap-3">
-                    <span className="text-sm bg-blue-100 text-blue-800 px-2 py-1 rounded font-medium">
-                      Автор темы
-                    </span>
-                    <button
-                      onClick={handleDeleteTopic}
-                      className="px-3 py-1.5 bg-red-600/20 text-white text-xs sm:text-sm rounded hover:bg-red-600/30 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-colors font-medium"
-                    >
-                      Удалить тему
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      {/* Topic Header */}
+      <TopicHeader
+        topic={topic}
+        postsCount={posts.length}
+        topicVote={topicVote}
+        onLikeTopic={handleLikeTopic}
+        onDeleteTopic={handleDeleteTopic}
+        formatDate={formatDate}
+        currentUser={currentUser}
+      />
 
       {/* Error Display */}
       {error && (
@@ -594,242 +477,49 @@ const TopicViewPage: React.FC = () => {
         </div>
       )}
 
-      {/* Posts - Forum Style with User Photos */}
-      <div className="space-y-4 mb-4 sm:mb-6">
-        {posts.map((post, index) => (
-          <div key={post.id} className="bg-white border border-gray-200">
-            <div className="bg-gray-50 px-4 py-2.5 sm:px-6 sm:py-3 border-b border-gray-200">
-              <div className="flex items-center gap-2 sm:gap-3">
-                <span className="text-xs sm:text-sm text-gray-600 font-medium">
-                  #{index + 1}
-                </span>
-                <span className="text-gray-400">•</span>
-                <span className="text-xs sm:text-sm text-gray-600">
-                  {formatDate(post.created_at)}
-                </span>
-                {post.is_author && (
-                  <>
-                    <span className="text-gray-400">•</span>
-                    <span className="text-sm bg-blue-100 text-blue-800 px-2 py-0.5 rounded font-medium">
-                      Автор
-                    </span>
-                  </>
-                )}
-              </div>
-            </div>
-            
-            <div className="p-2 sm:p-3">
-              <div className="flex gap-3 sm:gap-4">
-                {/* User Photo */}
-                <div className="flex-shrink-0">
-                  <Link href={`/profile/${post.user_id}`}>
-                    {post.user_photo ? (
-                      <Image
-                        src={post.user_photo}
-                        alt={post.user_name || 'User'}
-                        width={48}
-                        height={48}
-                        className="w-10 h-10 sm:w-12 sm:h-12 rounded-full object-cover hover:opacity-80 transition-opacity"
-                      />
-                    ) : (
-                      <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-gray-300 flex items-center justify-center text-sm sm:text-base font-bold text-gray-600 hover:opacity-80 transition-opacity">
-                        {(post.user_name || 'U').charAt(0).toUpperCase()}
-                      </div>
-                    )}
-                  </Link>
-                </div>
-                
-                {/* Post Content Area */}
-                <div className="flex-1 min-w-0">
-                  {/* Author Name */}
-                  <div className="mb-2">
-                    <Link
-                      href={`/profile/${post.user_id}`}
-                      className="font-semibold text-blue-600 hover:text-blue-800 text-lg sm:text-lg"
-                    >
-                      {post.user_name || 'Unknown'}
-                    </Link>
-                  </div>
-                  
-                  {/* Post Content */}
-                  <div className="prose max-w-none text-gray-900 text-sm sm:text-base">
-                    <ReactMarkdown 
-                      remarkPlugins={[remarkGfm]}
-                      components={{
-                        img: ({node, ...props}) => (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={props.src as string}
-                            alt={props.alt || ''}
-                            className="max-w-full h-auto rounded"
-                            style={{ objectFit: 'contain', maxHeight: '400px' }}
-                          />
-                        ),
-                      }}
-                    >
-                      {post.content}
-                    </ReactMarkdown>
-                  </div>
-                  
-                  {/* Display media links if any */}
-                  {post.media_links && post.media_links.length > 0 && (
-                    <div className="mt-3 pt-3 border-t border-gray-200">
-                      <h4 className="text-sm font-medium text-gray-900 mb-2">Прикрепленные файлы:</h4>
-                      <div className="space-y-3">
-                    {post.media_links.map((link, linkIndex) => {
-                      const filename = link.split('/').pop() || '';
-                      const isImage = /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(filename);
-                      const isVideo = /\.(mp4|webm|ogg|avi|mov)$/i.test(filename);
-                      
-                      console.log('Media link:', { link, filename, isImage, isVideo });
-                      
-                      return (
-                        <div key={linkIndex} className="bg-gray-50 p-3 rounded-lg">
-                          {isImage ? (
-                            <div className="space-y-2">
-                              <Image
-                                src={link}
-                                alt={filename}
-                                width={800}
-                                height={600}
-                                className="max-w-full h-auto rounded border"
-                                style={{ objectFit: 'contain', maxHeight: '400px', width: 'auto' }}
-                                onError={(e) => {
-                                  e.currentTarget.style.display = 'none';
-                                  e.currentTarget.nextElementSibling?.classList.remove('hidden');
-                                }}
-                              />
-                              <div className="hidden">
-                                <a
-                                  href={link}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-sm text-blue-600 hover:text-blue-800"
-                                >
-                                  {filename}
-                                </a>
-                              </div>
-                            </div>
-                          ) : isVideo ? (
-                            <div className="space-y-2">
-                              <video
-                                src={link}
-                                controls
-                                className="max-w-full h-auto rounded border"
-                                style={{ maxHeight: '400px' }}
-                              >
-                                Your browser does not support the video tag.
-                              </video>
-                              <div className="text-xs text-gray-500">
-                                {filename}
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="flex items-center justify-between">
-                              <a
-                                href={link}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-sm text-blue-600 hover:text-blue-800 truncate flex-1"
-                              >
-                                {filename}
-                              </a>
-                              <span className="text-xs text-gray-500 ml-2">
-                                {link.includes('bucket.theholylabs.com') ? 'Файл' : 'Ссылка'}
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                      </div>
-                    </div>
-                  )}
-                  
-                  <div className="flex items-center justify-between gap-3 sm:gap-4 mt-4 pt-3 border-t border-gray-200">
-                    <LikeButtonGroup
-                      likes={post.likes}
-                      dislikes={post.dislikes}
-                      userVote={postVotes[post.id.toString()] || null}
-                      onLike={(type) => handleLikePost(post.id.toString(), type)}
-                      disabled={!currentUser}
-                      size="sm"
-                    />
-                    
-                    {currentUser && (post.is_author || topic.is_author) && (
-                      <button
-                        onClick={() => handleDeletePost(post.id.toString())}
-                        className="px-3 py-1 bg-red-600 text-white text-xs rounded hover:bg-red-700 transition-colors"
-                        title={post.is_author ? "Удалить комментарий" : "Удалить комментарий (вы автор темы)"}
-                      >
-                        Удалить
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        ))}
+      {/* Comments Header */}
+      <div className="flex items-center justify-between mb-2 gap-4">
+        <h2 className="text-sm text-gray-900/70">Комментарии: {posts.length}</h2>
+        <div className="flex items-center gap-2">
+          <label htmlFor="comment-sort" className="text-sm text-gray-900/70">
+            Сортировать:
+          </label>
+          <select
+            id="comment-sort"
+            value={sortOrder}
+            onChange={(e) => setSortOrder(e.target.value)}
+            className="text-sm text-gray-900/70 bg-white border border-gray-300 rounded px-2 py-1 focus:outline-none focus:border-blue-500"
+          >
+            <option value="recent" className="text-sm text-gray-900/70">Самые новые</option>
+            <option value="popular" className="text-sm text-gray-900/70">Самые популярные</option>
+          </select>
+        </div>
       </div>
 
-      {/* Reply Form - Forum Style */}
+      {/* Posts List */}
+      <PostsList
+        posts={posts}
+        sortOrder={sortOrder}
+        postVotes={postVotes}
+        onLikePost={handleLikePost}
+        onDeletePost={handleDeletePost}
+        formatDate={formatDate}
+        currentUser={currentUser}
+        isTopicAuthor={topic.is_author}
+      />
+
+      {/* Reply Form */}
       {currentUser && !topic.is_locked && (
-        <div className="bg-white mb-4 sm:mb-6">
-          <div className="bg-gray-600 text-white px-4 py-3 sm:px-6 sm:py-4">
-            <h3 className="text-base sm:text-lg font-bold">Ответить</h3>
-          </div>
-          
-          <form onSubmit={handleSubmitReply} className="p-4 sm:p-6">
-            {/* Rich Text Editor */}
-            <RichTextEditor
-              value={replyContent}
-              onChange={setReplyContent}
-              placeholder="Введите ваш ответ..."
-              rows={6}
-              disabled={submittingReply}
-              onImageUpload={handleEditorImageUpload}
-            />
-              
-            {/* Display uploaded files for reply */}
-            {replyMediaLinks.length > 0 && (
-              <div className="mt-4">
-                <h4 className="text-sm font-medium text-gray-900 mb-2">Загруженные файлы:</h4>
-                <div className="space-y-2">
-                  {replyMediaLinks.map((link, index) => (
-                    <div key={index} className="flex items-center justify-between bg-gray-50 p-2 rounded">
-                      <span className="text-sm text-gray-900 truncate">
-                        {link.split('/').pop()}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => removeReplyMediaLink(index)}
-                        className="text-red-600 hover:text-red-800 text-sm"
-                      >
-                        Удалить
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-            
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-end mt-4 gap-3">
-              <button
-                type="submit"
-                disabled={submittingReply}
-                className="w-full sm:w-auto px-4 sm:px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium text-sm sm:text-base"
-              >
-                {submittingReply ? 'Отправка...' : 'Отправить ответ'}
-              </button>
-            </div>
-            
-          </form>
-        
-        </div>
+        <ReplyForm
+          replyContent={replyContent}
+          setReplyContent={setReplyContent}
+          submittingReply={submittingReply}
+          onSubmit={handleSubmitReply}
+          onImageUpload={handleEditorImageUpload}
+        />
       )}
 
-      {/* Login Prompt for Non-Authenticated Users - Forum Style */}
+      {/* Login Prompt for Non-Authenticated Users */}
       {!currentUser && (
         <LoginPrompt 
           message="Войдите в аккаунт, чтобы отвечать на сообщения"
@@ -838,7 +528,7 @@ const TopicViewPage: React.FC = () => {
         />
       )}
 
-      {/* Pagination - Forum Style */}
+      {/* Pagination */}
       {totalPages > 1 && (
         <div className="bg-white p-4 sm:p-6">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
@@ -846,20 +536,16 @@ const TopicViewPage: React.FC = () => {
               Страница {page} из {totalPages}
             </div>
             <div className="flex items-center gap-2">
-              <button
+              <PaginationButton
                 onClick={() => setPage(Math.max(1, page - 1))}
                 disabled={page === 1}
-                className="px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
-              >
-                Назад
-              </button>
-              <button
+                direction="prev"
+              />
+              <PaginationButton
                 onClick={() => setPage(Math.min(totalPages, page + 1))}
                 disabled={page === totalPages}
-                className="px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
-              >
-                Вперед
-              </button>
+                direction="next"
+              />
             </div>
           </div>
         </div>
@@ -869,4 +555,5 @@ const TopicViewPage: React.FC = () => {
 };
 
 export default TopicViewPage;
+
 

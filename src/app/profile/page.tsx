@@ -19,7 +19,7 @@ export default function ProfilePage() {
   }, [currentUser, router])
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8">
+    <div className="max-w-4xl mx-auto px-4 py-8 min-h-screen">
       <div className="text-center">
         <h1 className="text-2xl font-bold text-gray-900 mb-4 mt-10">Профиль</h1>
         <p className="text-gray-600">Перенаправление...</p>

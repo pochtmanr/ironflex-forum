@@ -21,7 +21,7 @@ interface ArticleCardProps {
 const ArticleCard: React.FC<ArticleCardProps> = ({ article }) => {
   return (
     <Link 
-      href={`/articles/${article.slug || article.id}`}
+      href={`/article/${article.slug || article.id}`}
       className="block border border-gray-200 rounded-lg overflow-hidden hover:shadow-md active:bg-blue-50 transition-all bg-white"
     >
       <div className="flex">

@@ -56,7 +56,7 @@ export const getUserFromToken = async (token: string) => {
 }
 
 // Verify token and return payload with role information
-export const verifyToken = async (token: string): Promise<{ id: string; email: string; username: string; role: string; isAdmin: boolean } | null> => {
+export const verifyToken = async (token: string): Promise<{ userId: string; id: string; email: string; username: string; role: string; isAdmin: boolean } | null> => {
   try {
     const payload = jwt.verify(token, JWT_SECRET) as UserPayload
     if (!payload) return null
@@ -70,9 +70,11 @@ export const verifyToken = async (token: string): Promise<{ id: string; email: s
     if (!user) return null
 
     const isAdmin = user.isAdmin || false
+    const userId = String(user._id)
 
     return {
-      id: String(user._id),
+      userId: userId, // For backward compatibility
+      id: userId,
       email: user.email,
       username: user.username || user.email.split('@')[0],
       role: isAdmin ? 'admin' : 'user',

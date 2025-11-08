@@ -395,6 +395,19 @@ export const contentAPI = {
     }
     return response.json();
   },
+  getArticleBySlug: async (slug: string) => {
+    const response = await fetch(`/api/content/articles/${slug}`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch article');
+    }
+    return response.json();
+  },
+  createArticleComment: async (articleId: string, content: string) => {
+    return apiRequest(`/content/articles/${articleId}/comments`, {
+      method: 'POST',
+      body: JSON.stringify({ content })
+    });
+  },
   getTrainings: async (page = 1, limit = 20) => {
     const response = await fetch(`/api/content/trainings?page=${page}&limit=${limit}`);
     if (!response.ok) {
@@ -409,6 +422,19 @@ export const contentAPI = {
       return null;
     }
     return response.json();
+  },
+  getTrainingBySlug: async (slug: string) => {
+    const response = await fetch(`/api/content/trainings/${slug}`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch training');
+    }
+    return response.json();
+  },
+  createTrainingComment: async (trainingId: string, content: string) => {
+    return apiRequest(`/content/trainings/${trainingId}/comments`, {
+      method: 'POST',
+      body: JSON.stringify({ content })
+    });
   },
   // Use forumAPI for category functionality
   getCategory: async (categoryId: string, page = 1, limit = 20) => {

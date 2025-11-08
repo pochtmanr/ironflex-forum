@@ -9,13 +9,20 @@ const Register: React.FC = () => {
   const [formData, setFormData] = useState({
     email: '',
     password: '',
-    displayName: ''
+    displayName: '',
+    confirmPassword: ''
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [vkLoading, setVkLoading] = useState(false);
-  const { register, loginWithVK } = useAuth();
+  const { register, currentUser } = useAuth();
   const router = useRouter();
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (currentUser) {
+      router.push('/');
+    }
+  }, [currentUser, router]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
@@ -24,13 +31,51 @@ const Register: React.FC = () => {
     });
   };
 
+  const validatePassword = (password: string): { isValid: boolean; message: string } => {
+    if (password.length < 6) {
+      return { isValid: false, message: 'Пароль должен содержать не менее 6 символов' };
+    }
+
+    if (!/[a-zA-Z]/.test(password)) {
+      return { isValid: false, message: 'Пароль должен содержать хотя бы одну букву' };
+    }
+
+    if (!/[0-9]/.test(password)) {
+      return { isValid: false, message: 'Пароль должен содержать хотя бы одну цифру' };
+    }
+
+    return { isValid: true, message: '' };
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
-    // Validate password length
-    if (formData.password.length < 6) {
-      setError('Пароль должен быть не менее 6 символов');
+    // Validate all required fields
+    if (!formData.email.trim()) {
+      setError('Email обязателен для заполнения');
+      return;
+    }
+
+    if (!formData.displayName.trim()) {
+      setError('Отображаемое имя обязательно для заполнения');
+      return;
+    }
+
+    if (!formData.password) {
+      setError('Пароль обязателен для заполнения');
+      return;
+    }
+
+    // Validate password strength
+    const passwordValidation = validatePassword(formData.password);
+    if (!passwordValidation.isValid) {
+      setError(passwordValidation.message);
+      return;
+    }
+
+    if (formData.password !== formData.confirmPassword) {
+      setError('Пароли не совпадают');
       return;
     }
 
@@ -51,132 +96,22 @@ const Register: React.FC = () => {
     }
   };
 
-  // VK Authentication handlers
-  const vkidOnSuccess = async (data: { access_token: string; user_id: number }) => {
-    setVkLoading(true);
-    setError('');
+  // Show loading while checking authentication
+  if (currentUser === undefined) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <div className="text-gray-600">Загрузка...</div>
+        </div>
+      </div>
+    );
+  }
 
-    try {
-      console.log('VK auth success:', data);
-      // The data contains access_token and user_id after successful exchange
-      await loginWithVK('', ''); // Will use access_token directly
-      router.push('/');
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Ошибка регистрации через VK';
-      setError(errorMessage);
-    } finally {
-      setVkLoading(false);
-    }
-  };
-
-  const vkidOnError = (error: unknown) => {
-    console.error('VK auth error:', error);
-    setError('Ошибка авторизации через VK');
-    setVkLoading(false);
-  };
-
-  const initVKAuth = () => {
-    if (typeof window === 'undefined') return;
-
-    // @ts-ignore - VKIDSDK is loaded via script
-    if ('VKIDSDK' in window) {
-      // @ts-ignore
-      const VKID = window.VKIDSDK;
-
-      if (!VKID) return; // Type guard
-
-      // Use environment variable for redirect URL or window.location.origin as fallback
-      const redirectUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
-      
-      VKID.Config.init({
-        app: 54219432,
-        redirectUrl: redirectUrl,
-        // @ts-ignore
-        responseMode: VKID.ConfigResponseMode.Callback,
-        // @ts-ignore
-        source: VKID.ConfigSource.LOWCODE,
-        scope: '',
-      });
-
-      const oneTap = new VKID.OneTap();
-      const container = document.getElementById('vk-signin-button');
-
-      if (container) {
-        // Clear any existing content
-        container.innerHTML = '';
-        
-        oneTap.render({
-          container: container,
-          showAlternativeLogin: true,
-          // @ts-ignore
-          styles: {
-            borderRadius: 8,
-            height: 40
-          }
-        })
-        // @ts-ignore
-        .on(VKID.WidgetEvents.ERROR, vkidOnError)
-        // @ts-ignore
-        .on(VKID.OneTapInternalEvents.LOGIN_SUCCESS, function (payload: { code: string; device_id: string }) {
-          const code = payload.code;
-          const deviceId = payload.device_id;
-
-          setVkLoading(true);
-          console.log('VK registration success, exchanging code...', { code, deviceId });
-
-          // @ts-ignore
-          VKID.Auth.exchangeCode(code, deviceId)
-            .then(async (tokenData: { access_token: string; user_id: number }) => {
-              console.log('VK token exchanged successfully');
-              
-              // Send access token to backend
-              await loginWithVK('', '', tokenData.access_token);
-              console.log('Registration with VK completed, redirecting...');
-              router.push('/');
-            })
-            .catch((error: unknown) => {
-              console.error('VK token exchange error:', error);
-              vkidOnError(error);
-            });
-        });
-      }
-    }
-  };
-
-
-  // Load VK ID SDK script
-  useEffect(() => {
-    // Check if script already exists
-    const existingScript = document.querySelector('script[src*="@vkid/sdk"]');
-    if (existingScript) {
-      // Script already loaded, just init
-      if ('VKIDSDK' in window) {
-        initVKAuth();
-      }
-      return;
-    }
-
-    const vkScript = document.createElement('script');
-    vkScript.src = 'https://unpkg.com/@vkid/sdk@<3.0.0/dist-sdk/umd/index.js';
-    vkScript.async = true;
-    vkScript.defer = true;
-    vkScript.onload = () => {
-      console.log('VK SDK loaded');
-      // Small delay to ensure SDK is fully initialized
-      setTimeout(() => {
-        initVKAuth();
-      }, 100);
-    };
-    document.head.appendChild(vkScript);
-
-    return () => {
-      // Clear the container on unmount to prevent duplicates
-      const container = document.getElementById('vk-signin-button');
-      if (container) {
-        container.innerHTML = '';
-      }
-    };
-  }, []);
+  // Don't render register form if already authenticated
+  if (currentUser) {
+    return null;
+  }
 
   return (
     <div className="flex min-h-full flex-col justify-center px-6 py-12 lg:px-8">
@@ -188,11 +123,7 @@ const Register: React.FC = () => {
 
       <div className="mt-10 sm:mx-auto sm:w-full sm:max-w-sm">
         <form onSubmit={handleSubmit} className="space-y-6">
-          {error && (
-            <div className="rounded-md bg-red-50 p-4">
-              <div className="text-sm text-red-800">{error}</div>
-            </div>
-          )}
+
           
           <div>
             <label htmlFor="email" className="block text-sm font-medium leading-6 text-gray-900">
@@ -223,9 +154,10 @@ const Register: React.FC = () => {
                 name="displayName"
                 type="text"
                 autoComplete="name"
+                required={true}
                 value={formData.displayName}
                 onChange={handleChange}
-                placeholder="Ваше имя (необязательно)"
+                placeholder="Ваше имя"
                 className="block w-full h-10 rounded-md border-0 px-3 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
               />
             </div>
@@ -244,9 +176,52 @@ const Register: React.FC = () => {
                 required
                 value={formData.password}
                 onChange={handleChange}
-                placeholder="Минимум 6 символов"
+                placeholder="••••••••"
+                minLength={6}
                 className="block w-full h-10 rounded-md border-0 px-3 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
               />
+            </div>
+            <p className="mt-1 text-xs text-gray-500">
+              Минимум 6 символов, включая хотя бы одну букву и одну цифру
+            </p>
+          </div>
+          <div>
+            <label htmlFor="confirmPassword" className="block text-sm font-medium leading-6 text-gray-900">
+              Подтвердите пароль
+            </label>
+            <div className="mt-2">
+              <input
+                id="confirmPassword"
+                name="confirmPassword"
+                type="password"
+                autoComplete="new-password"
+                required
+                value={formData.confirmPassword}
+                onChange={handleChange}
+                placeholder="••••••••"
+                minLength={6}
+                className="block w-full h-10 rounded-md border-0 px-3 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+              />
+            </div>
+          </div>
+          
+          {error && (
+            <div className="rounded-md bg-red-50 p-4">
+              <div className="text-sm text-red-800">{error}</div>
+            </div>
+          )}
+          <div>
+            <div className="mt-2 flex mx-auto px-3 items-center">
+              <input
+                id="confirmTerms"
+                name="confirmTerms"
+                type="checkbox"
+                required
+                className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              />
+              <label htmlFor="confirmTerms" className="block text-sm font-medium mx-2 text-gray-900">
+                Я согласен с <Link href="/terms-of-service" className="font-semibold leading-6 text-blue-500 hover:text-blue-700">условиями использования</Link>
+              </label>
             </div>
           </div>
 
@@ -258,17 +233,6 @@ const Register: React.FC = () => {
             >
               {loading ? 'Регистрация...' : 'Зарегистрироваться'}
             </button>
-          </div>
-
-          {/* VK OAuth Button - Inside form for better flow */}
-          <div className="mt-4">
-            <div id="vk-signin-button" className="w-full flex justify-center items-center min-h-[40px] rounded-md"></div>
-            {vkLoading && (
-              <div className="mt-2 text-center text-sm text-gray-600 flex items-center justify-center">
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
-                Регистрация через VK...
-              </div>
-            )}
           </div>
         </form>
 

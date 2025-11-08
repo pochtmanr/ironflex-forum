@@ -5,8 +5,8 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { forumAPI } from '@/services/api';
-import FileUploadWithPreview from '@/components/FileUpload/FileUploadWithPreview';
-import '@/components/FileUpload/FileUploadWithPreview.css';
+import { RichTextEditor } from '@/components/UI/RichTextEditor';
+import { LinkButton } from '@/components/UI/Buttons';
 
 interface Category {
   id: number | string;
@@ -24,7 +24,6 @@ const CreateTopicContent: React.FC = () => {
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('');
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
-  const [mediaLinks, setMediaLinks] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [loadingCategories, setLoadingCategories] = useState(true);
@@ -62,14 +61,36 @@ const CreateTopicContent: React.FC = () => {
     }
   };
 
-  const handleFileUpload = (fileUrl: string, filename: string) => {
-    console.log('File uploaded successfully:', { fileUrl, filename });
-    setMediaLinks(prev => [...prev, fileUrl]);
-    console.log('Updated mediaLinks:', [...mediaLinks, fileUrl]);
-  };
-
-  const removeMediaLink = (index: number) => {
-    setMediaLinks(prev => prev.filter((_, i) => i !== index));
+  // Handle image upload for RichTextEditor
+  const handleEditorImageUpload = async (file: File): Promise<string> => {
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Upload failed');
+      }
+      
+      const data = await response.json();
+      const fileUrl = data.url || data.file_url;
+      
+      if (!fileUrl) {
+        throw new Error('No file URL returned from upload');
+      }
+      
+      return fileUrl;
+    } catch (error) {
+      console.error('Image upload error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Upload failed';
+      setError(`Ошибка загрузки изображения: ${errorMessage}`);
+      throw error;
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -94,12 +115,11 @@ const CreateTopicContent: React.FC = () => {
     setError('');
 
     try {
-      console.log('Creating topic with mediaLinks:', mediaLinks);
+      // Images are now embedded in the markdown content
       await forumAPI.createTopic({
         categoryId: selectedCategoryId,
         title: title.trim(),
-        content: content.trim(),
-        mediaLinks: mediaLinks.length > 0 ? mediaLinks : undefined
+        content: content.trim()
       });
 
       // Redirect to the category page
@@ -115,7 +135,7 @@ const CreateTopicContent: React.FC = () => {
 
   if (!currentUser) {
     return (
-      <div className="max-w-4xl mx-auto px-4 py-8">
+      <div className="max-w-4xl mx-auto px-4 py-8 min-h-screen">
         <div className="text-center">
           <div className="text-gray-500">Перенаправление на страницу входа...</div>
         </div>
@@ -125,7 +145,7 @@ const CreateTopicContent: React.FC = () => {
 
   if (loadingCategories) {
     return (
-      <div className="max-w-4xl mx-auto px-4 py-8">
+      <div className="max-w-4xl mx-auto px-4 py-8 min-h-screen">
         <div className="text-center">
           <div className="text-gray-500">Загрузка категорий...</div>
         </div>
@@ -134,21 +154,21 @@ const CreateTopicContent: React.FC = () => {
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8">
+    <div className="max-w-7xl mx-auto px-4 py-8 min-h-screen">
       {/* Breadcrumb */}
       <nav className="mb-6">
-        <ol className="flex items-center space-x-2 text-sm">
+        <ol className="flex items-center space-x-2 text-sm text-gray-800/80">
           <li>
-            <Link href="/" className="text-blue-600 hover:text-blue-700">Форум</Link>
+            <Link href="/" className="text-gray-800/80 hover:text-gray-800">Форум</Link>
           </li>
-          <li className="text-gray-500">/</li>
-          <li className="text-gray-900">Создать тему</li>
+          <li className="text-gray-800/80">/</li>
+          <li className="text-blue-500">Создать тему</li>
         </ol>
       </nav>
 
       {/* Header */}
-      <div className="bg-white shadow-md mb-6">
-        <div className="bg-gray-600 text-white px-6 py-4">
+      <div className="bg-white">
+        <div className="bg-gray-600 text-white px-6 py-4 rounded-t-md">
           <h1 className="text-xl font-bold">Создать новую тему</h1>
           <p className="text-sm text-gray-200 mt-1">
             Создайте новую тему для обсуждения в форуме
@@ -168,13 +188,13 @@ const CreateTopicContent: React.FC = () => {
           {/* Category Selection */}
           <div>
             <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-2">
-              Категория *
+              Категория
             </label>
             <select
               id="category"
               value={selectedCategoryId}
               onChange={(e) => setSelectedCategoryId(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900"
+              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900"
               required
             >
               <option value="">Выберите категорию</option>
@@ -188,94 +208,52 @@ const CreateTopicContent: React.FC = () => {
 
           {/* Title */}
           <div>
-            <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-2">
-              Заголовок темы *
+            <label htmlFor="title" className="block text-sm font-medium text-gray-900/70 mb-2">
+              Заголовок *
             </label>
             <input
               type="text"
               id="title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 placeholder-gray-500"
-              placeholder="Введите заголовок темы"
+              className="w-full text-sm px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 placeholder-gray-500"
+              placeholder="Введите заголовок"
               maxLength={200}
               required
             />
-            <div className="text-xs text-gray-500 mt-1">
-              {title.length}/200 символов
+            <div className="text-xs mt-1 ml-1 text-gray-900/70">
+              {title.length}/200 
             </div>
           </div>
 
           {/* Content */}
           <div>
-            <label htmlFor="content" className="block text-sm font-medium text-gray-700 mb-2">
-              Содержимое темы *
+            <label htmlFor="content" className="block text-sm font-medium text-gray-900/70 mb-2">
+              Содержимое *
             </label>
-            <textarea
-              id="content"
+            <RichTextEditor
               value={content}
-              onChange={(e) => setContent(e.target.value)}
-              rows={12}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 placeholder-gray-500"
+              onChange={setContent}
               placeholder="Опишите вашу тему подробно..."
-              required
+              rows={12}
+              disabled={loading}
+              onImageUpload={handleEditorImageUpload}
+              className="text-sm text-gray-900/70 border-2 border-gray-200/50 rounded-md"
             />
-            <div className="text-xs text-gray-500 mt-1">
-              Используйте разметку Markdown для форматирования текста
+            <div className="text-xs text-gray-500/70 mt-2">
+              Используйте кнопки на панели инструментов для форматирования текста (жирный, курсив, подчеркнутый). 
             </div>
           </div>
 
-          {/* File Upload with Preview */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Прикрепленные файлы
-            </label>
-            <FileUploadWithPreview
-              onUploadSuccess={handleFileUpload}
-              onUploadError={(error) => setError(`Ошибка загрузки файла: ${error}`)}
-              accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.txt"
-              maxSize={50}
-              uploadType="form"
-              multiple={true}
-              showPreview={true}
-            />
-            
-            {/* Display uploaded files */}
-            {mediaLinks.length > 0 && (
-              <div className="mt-4">
-                <h4 className="text-sm font-medium text-gray-700 mb-2">Загруженные файлы:</h4>
-                <div className="space-y-2">
-                  {mediaLinks.map((link, index) => (
-                    <div key={index} className="flex items-center justify-between bg-gray-50 p-2 rounded">
-                      <span className="text-sm text-gray-600 truncate">
-                        {link.split('/').pop()}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => removeMediaLink(index)}
-                        className="text-red-600 hover:text-red-800 text-sm"
-                      >
-                        Удалить
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-
           {/* Submit Buttons */}
-          <div className="flex items-center justify-between pt-6 border-t">
-            <Link
-              href="/"
-              className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 transition-colors"
-            >
+          <div className="flex items-center justify-between pt-6 border-t border-gray-200/50 gap-3">
+            <LinkButton href="/" variant="secondary">
               Отмена
-            </Link>
+            </LinkButton>
             <button
               type="submit"
               disabled={loading}
-              className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm"
             >
               {loading ? 'Создание...' : 'Создать тему'}
             </button>

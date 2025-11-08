@@ -179,28 +179,32 @@ export default function AdminTrainings() {
 
   if (loading) {
     return (
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        <div className="text-center">Loading trainings...</div>
+      <div className="max-w-7xl mx-auto px-4 py-8 min-h-screen">
+        <div className="text-center">Загрузка тренировок...</div>
       </div>
     )
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8">
+    <div className="max-w-7xl mx-auto px-4 py-8 min-h-screen">
       <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Manage Trainings</h1>
+        <h1 className="text-3xl font-bold text-gray-900">Управление тренировками</h1>
         <div className="flex gap-4">
           <Link href="/admin" className="px-4 py-2 text-gray-600 hover:text-gray-900">
-            ← Back to Admin
+            ← Назад в админку
           </Link>
           <button
             onClick={() => {
-              resetForm()
-              setShowCreateForm(!showCreateForm)
+              if (showCreateForm) {
+                setShowCreateForm(false);
+                resetForm();
+              } else {
+                setShowCreateForm(true);
+              }
             }}
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
           >
-            {showCreateForm ? 'Cancel' : '+ New Training'}
+            {showCreateForm ? 'Отменить' : '+ Новая тренировка'}
           </button>
         </div>
       </div>
@@ -209,13 +213,13 @@ export default function AdminTrainings() {
       {showCreateForm && (
         <div className="bg-white rounded-lg shadow-md p-6 mb-8">
           <h2 className="text-xl font-bold mb-4">
-            {editingTraining ? 'Edit Training' : 'Create New Training'}
+            {editingTraining ? 'Редактировать тренировку' : 'Создать новую тренировку'}
           </h2>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Title *
+                  Заголовок *
                 </label>
                 <input
                   type="text"
@@ -243,7 +247,7 @@ export default function AdminTrainings() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Subheader
+                Подзаголовок
               </label>
               <input
                 type="text"
@@ -256,7 +260,7 @@ export default function AdminTrainings() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Level *
+                  Уровень *
                 </label>
                 <select
                   value={level}
@@ -264,15 +268,15 @@ export default function AdminTrainings() {
                   required
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
-                  <option value="beginner">Beginner</option>
-                  <option value="intermediate">Intermediate</option>
-                  <option value="advanced">Advanced</option>
+                    <option value="beginner">Начальный</option>
+                  <option value="intermediate">Средний</option>
+                  <option value="advanced">Продвинутый</option>
                 </select>
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Duration (minutes)
+                  Продолжительность (минуты)
                 </label>
                 <input
                   type="number"
@@ -285,7 +289,7 @@ export default function AdminTrainings() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Author Name *
+                  Имя автора *
                 </label>
                 <input
                   type="text"
@@ -299,7 +303,7 @@ export default function AdminTrainings() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Cover Image URL
+                Изображение обложки
               </label>
               <input
                 type="text"
@@ -312,12 +316,12 @@ export default function AdminTrainings() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Content *
+                Контент *
               </label>
               <RichTextEditor
                 value={content}
                 onChange={setContent}
-                placeholder="Write your training content here..."
+                placeholder="Напишите вашу тренировку здесь..."
                 rows={15}
                 onImageUpload={handleImageUpload}
               />
@@ -327,20 +331,21 @@ export default function AdminTrainings() {
               <button
                 type="submit"
                 disabled={submitLoading}
-                className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+                className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
-                {submitLoading ? 'Saving...' : (editingTraining ? 'Update Training' : 'Create Training')}
+                {submitLoading ? 'Сохранение...' : (editingTraining ? 'Обновить тренировку' : 'Создать тренировку')}
               </button>
               <button
                 type="button"
                 onClick={() => {
-                  resetForm()
-                  setShowCreateForm(false)
+                  setShowCreateForm(false);
+                  resetForm();
                 }}
-                className="px-6 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
+                className="px-6 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors"
               >
-                Cancel
+                Отменить
               </button>
+             
             </div>
           </form>
         </div>
@@ -353,22 +358,22 @@ export default function AdminTrainings() {
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Title
+                  Заголовок
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Level
+                  Уровень
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Duration
+                    Продолжительность
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Author
+                  Автор
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Stats
+                  Статистика
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
+                  Действия
                 </th>
               </tr>
             </thead>
@@ -376,7 +381,7 @@ export default function AdminTrainings() {
               {trainings.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-6 py-4 text-center text-gray-500">
-                    No trainings found. Create your first training!
+                    Тренировки не найдены. Создайте вашу первую тренировку!
                   </td>
                 </tr>
               ) : (
@@ -410,13 +415,13 @@ export default function AdminTrainings() {
                         onClick={() => handleEdit(training)}
                         className="text-indigo-600 hover:text-indigo-900"
                       >
-                        Edit
+                        Редактировать
                       </button>
                       <button
                         onClick={() => handleDelete(training.id)}
                         className="text-red-600 hover:text-red-900"
                       >
-                        Delete
+                        Удалить
                       </button>
                     </td>
                   </tr>

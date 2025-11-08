@@ -11,6 +11,7 @@ interface Category {
   topic_count: number
   post_count: number
   last_activity: string
+  isActive?: boolean
 }
 
 export default function AdminCategories() {
@@ -18,6 +19,7 @@ export default function AdminCategories() {
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -44,8 +46,11 @@ export default function AdminCategories() {
     e.preventDefault()
     
     try {
-      const response = await fetch('/api/admin/categories', {
-        method: 'POST',
+      const url = editingId ? `/api/admin/categories/${editingId}` : '/api/admin/categories'
+      const method = editingId ? 'PUT' : 'POST'
+      
+      const response = await fetch(url, {
+        method,
         headers: {
           'Content-Type': 'application/json',
         },
@@ -55,15 +60,56 @@ export default function AdminCategories() {
       if (response.ok) {
         setFormData({ name: '', description: '', slug: '' })
         setShowForm(false)
+        setEditingId(null)
         fetchCategories()
+        alert(editingId ? 'Категория обновлена!' : 'Категория создана!')
       } else {
         const error = await response.json()
-        alert(error.error || 'Failed to create category')
+        alert(error.error || `Failed to ${editingId ? 'update' : 'create'} category`)
       }
     } catch (error) {
-      console.error('Error creating category:', error)
-      alert('Failed to create category')
+      console.error(`Error ${editingId ? 'updating' : 'creating'} category:`, error)
+      alert(`Failed to ${editingId ? 'update' : 'create'} category`)
     }
+  }
+
+  const handleEdit = (category: Category) => {
+    setFormData({
+      name: category.name,
+      description: category.description,
+      slug: category.slug
+    })
+    setEditingId(category.id)
+    setShowForm(true)
+  }
+
+  const handleDelete = async (id: string, name: string) => {
+    if (!confirm(`Вы уверены, что хотите удалить категорию "${name}"?`)) {
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/admin/categories/${id}`, {
+        method: 'DELETE'
+      })
+
+      if (response.ok) {
+        fetchCategories()
+        alert('Категория удалена!')
+      } else {
+        const error = await response.json()
+        alert(error.error || 'Failed to delete category')
+      }
+    } catch (error) {
+      console.error('Error deleting category:', error)
+      alert('Failed to delete category')
+    }
+  }
+
+  const handleCancelEdit = () => {
+    setFormData({ name: '', description: '', slug: '' })
+    setEditingId(null)
+    setShowForm(false)
   }
 
   const generateSlug = (name: string) => {
@@ -86,22 +132,24 @@ export default function AdminCategories() {
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Category Management</h1>
+        <h1 className="text-2xl font-bold text-gray-900">Управление категориями</h1>
         <button
           onClick={() => setShowForm(!showForm)}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+          className="bg-gray-500 text-white px-3 py-1.5 rounded-xl border-2 border-gray-200/80 hover:bg-gray-600 transition-colors"
         >
-          {showForm ? 'Cancel' : 'Add Category'}
+          {showForm ? 'Закрыть' : 'Добавить категорию'}
         </button>
       </div>
 
       {showForm && (
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <h2 className="text-lg font-semibold mb-4">Create New Category</h2>
+          <h2 className="text-lg font-semibold mb-4">
+            {editingId ? 'Редактировать категорию' : 'Создать новую категорию'}
+          </h2>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Category Name
+                Название категории
               </label>
               <input
                 type="text"
@@ -114,7 +162,7 @@ export default function AdminCategories() {
             
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Description
+                Описание категории
               </label>
               <textarea
                 value={formData.description}
@@ -127,7 +175,7 @@ export default function AdminCategories() {
             
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Slug
+                Slug (URL)
               </label>
               <input
                 type="text"
@@ -141,16 +189,16 @@ export default function AdminCategories() {
             <div className="flex space-x-3">
               <button
                 type="submit"
-                className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition-colors"
+                className="bg-blue-500 text-white px-3 py-1.5 rounded-xl border-2 border-blue-200/80 hover:bg-blue-600 transition-colors shadow-md"
               >
-                Create Category
+                {editingId ? 'Обновить категорию' : 'Создать категорию'}
               </button>
               <button
                 type="button"
-                onClick={() => setShowForm(false)}
-                className="bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700 transition-colors"
+                onClick={handleCancelEdit}
+                className="bg-gray-500 text-white px-3 py-1.5 rounded-xl border-2 border-gray-200/80 hover:bg-gray-600 transition-colors shadow-md"
               >
-                Cancel
+                Отменить
               </button>
             </div>
           </form>
@@ -159,7 +207,7 @@ export default function AdminCategories() {
 
       {loading ? (
         <div className="text-center py-8">
-          <div className="text-gray-500">Loading categories...</div>
+          <div className="text-gray-500">Загрузка категорий...</div>
         </div>
       ) : (
         <div className="bg-white rounded-lg shadow-md overflow-hidden">
@@ -167,16 +215,19 @@ export default function AdminCategories() {
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Category
+                  Категория
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Topics
+                  Темы
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Posts
+                  Посты
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Last Activity
+                  Последняя активность
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Действия
                 </th>
               </tr>
             </thead>
@@ -202,14 +253,31 @@ export default function AdminCategories() {
                   <td className="px-6 py-4 text-sm text-gray-500">
                     {new Date(category.last_activity).toLocaleDateString()}
                   </td>
+                  <td className="px-6 py-4 text-sm">
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={() => handleEdit(category)}
+                        className="text-blue-600 hover:text-blue-800 font-medium"
+                      >
+                        Редактировать
+                      </button>
+                      <span className="text-gray-300">|</span>
+                      <button
+                        onClick={() => handleDelete(category.id, category.name)}
+                        className="text-red-600 hover:text-red-800 font-medium"
+                      >
+                        Удалить
+                      </button>
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
           
           {categories.length === 0 && (
-            <div className="text-center py-8 text-gray-500">
-              No categories found. Create your first category above.
+            <div className="text-center py-8 text-gray-500/90">
+              Нет категорий. Создайте свою первую категорию выше.
             </div>
           )}
         </div>

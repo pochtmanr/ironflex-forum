@@ -185,20 +185,20 @@ export default function AdminTopics() {
 
   if (loading) {
     return (
-      <div className="max-w-7xl mx-auto px-4 py-8">
+      <div className="max-w-7xl mx-auto px-4 py-8 min-h-screen">
         <div className="text-center py-8">
-          <div className="text-gray-500">Loading topics...</div>
+          <div className="text-gray-500">Загрузка тем...</div>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8">
+    <div className="max-w-7xl mx-auto px-4 py-8 min-h-screen">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Topic Management</h1>
+        <h1 className="text-2xl font-bold text-gray-900">Управление темами</h1>
         <div className="text-sm text-gray-500">
-          Total Topics: {topics.length}
+          Общее количество тем: {topics.length}
         </div>
       </div>
 
@@ -206,7 +206,7 @@ export default function AdminTopics() {
       <div className="mb-6">
         <input
           type="text"
-          placeholder="Search topics by title, content, author, or category..."
+          placeholder="Поиск тем по заголовку, контенту, автору или категории..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -219,25 +219,25 @@ export default function AdminTopics() {
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Topic
+                  Тема
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Author
+                  Автор
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Category
+                  Категория
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Stats
+                  Статистика
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
+                  Статус
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Date
+                  Дата
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
+                  Действия
                 </th>
               </tr>
             </thead>
@@ -252,27 +252,27 @@ export default function AdminTopics() {
                           value={editTitle}
                           onChange={(e) => setEditTitle(e.target.value)}
                           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          placeholder="Topic title"
+                            placeholder="Заголовок темы"
                         />
                         <textarea
                           value={editContent}
                           onChange={(e) => setEditContent(e.target.value)}
                           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                           rows={4}
-                          placeholder="Topic content"
+                          placeholder="Содержимое темы"
                         />
                         <div className="flex space-x-2">
                           <button
                             onClick={() => saveEdit(topic.id)}
                             className="px-3 py-1 text-xs font-medium rounded bg-green-100 text-green-700 hover:bg-green-200"
                           >
-                            Save
+                            Сохранить
                           </button>
                           <button
                             onClick={cancelEdit}
                             className="px-3 py-1 text-xs font-medium rounded bg-gray-100 text-gray-700 hover:bg-gray-200"
                           >
-                            Cancel
+                            Отменить
                           </button>
                         </div>
                       </div>
@@ -327,12 +327,12 @@ export default function AdminTopics() {
                       <div className="flex flex-wrap gap-1">
                         {topic.isPinned && (
                           <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">
-                            📌 Pinned
+                            📌 Закрепленная
                           </span>
                         )}
                         {topic.isLocked && (
                           <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">
-                            🔒 Locked
+                            🔒 Заблокированная
                           </span>
                         )}
                         <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
@@ -340,7 +340,7 @@ export default function AdminTopics() {
                             ? 'bg-green-100 text-green-800' 
                             : 'bg-gray-100 text-gray-800'
                         }`}>
-                          {topic.isActive ? 'Active' : 'Hidden'}
+                          {topic.isActive ? 'Активная' : 'Скрытая'}
                         </span>
                       </div>
                     </div>
@@ -350,7 +350,7 @@ export default function AdminTopics() {
                       {new Date(topic.createdAt).toLocaleDateString()}
                     </div>
                     <div className="text-xs text-gray-400">
-                      Last: {new Date(topic.lastPostAt).toLocaleDateString()}
+                      Последнее: {new Date(topic.lastPostAt).toLocaleDateString()}
                     </div>
                   </td>
                   <td className="px-6 py-4">
@@ -361,7 +361,7 @@ export default function AdminTopics() {
                             onClick={() => startEdit(topic)}
                             className="px-2 py-1 text-xs font-medium rounded bg-blue-100 text-blue-700 hover:bg-blue-200"
                           >
-                            Edit
+                            Редактировать
                           </button>
                           <button
                             onClick={() => toggleTopicStatus(topic.id, 'isPinned', topic.isPinned)}
@@ -371,7 +371,7 @@ export default function AdminTopics() {
                                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                             }`}
                           >
-                            {topic.isPinned ? 'Unpin' : 'Pin'}
+                            {topic.isPinned ? 'Открепить' : 'Закрепить'}
                           </button>
                           <button
                             onClick={() => toggleTopicStatus(topic.id, 'isLocked', topic.isLocked)}
@@ -381,7 +381,7 @@ export default function AdminTopics() {
                                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                             }`}
                           >
-                            {topic.isLocked ? 'Unlock' : 'Lock'}
+                            {topic.isLocked ? 'Разблокировать' : 'Заблокировать'}
                           </button>
                           <button
                             onClick={() => toggleTopicStatus(topic.id, 'isActive', topic.isActive)}
@@ -391,14 +391,14 @@ export default function AdminTopics() {
                                 : 'bg-green-100 text-green-700 hover:bg-green-200'
                             }`}
                           >
-                            {topic.isActive ? 'Hide' : 'Show'}
+                            {topic.isActive ? 'Скрыть' : 'Показать'}
                           </button>
                           <button
                             onClick={() => deleteTopic(topic.id)}
                             disabled={deleteLoading === topic.id}
                             className="px-2 py-1 text-xs font-medium rounded bg-red-100 text-red-700 hover:bg-red-200 disabled:opacity-50 disabled:cursor-not-allowed"
                           >
-                            {deleteLoading === topic.id ? '...' : 'Delete'}
+                            {deleteLoading === topic.id ? '...' : 'Удалить'}
                           </button>
                         </>
                       )}
@@ -412,7 +412,7 @@ export default function AdminTopics() {
         
         {filteredTopics.length === 0 && (
           <div className="text-center py-8 text-gray-500">
-            {searchTerm ? 'No topics found matching your search.' : 'No topics found.'}
+            {searchTerm ? 'Темы не найдены по вашему запросу.' : 'Темы не найдены.'}
           </div>
         )}
       </div>

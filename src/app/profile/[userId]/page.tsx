@@ -697,15 +697,15 @@ const UserProfile: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-gray-500">Загрузка профиля...</div>
+      <div className="min-h-screen flex items-center justify-center ">
+        <div className="text-gray-500"></div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="bg-white shadow-md rounded-lg p-8 text-center max-w-md">
           <div className="text-red-500 text-lg mb-4">{error}</div>
           <Link
@@ -720,13 +720,13 @@ const UserProfile: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen ">
       
       <div className="max-w-5xl mx-auto px-4 py-6 space-y-4">
         {/* LinkedIn-Style Профильный заголовок */}
         <div className="bg-white rounded-lg shadow overflow-hidden">
           {/* Profile Info */}
-          <div className="px-6 py-6">
+          <div className="px-4 py-4">
             <div className="flex items-center gap-6 relative">
               {/* Фото профиля - Левая сторона */}
               <div className="flex-shrink-0">
@@ -735,16 +735,16 @@ const UserProfile: React.FC = () => {
                     <img
                       src={photoPreview}
                       alt="Preview"
-                      className="h-32 w-32 rounded-full object-cover bg-white border-4 border-gray-200"
+                      className="h-30 w-30 rounded-full object-cover bg-white border-4 border-gray-200"
                     />
                   ) : user?.photoURL ? (
                     <img
                       src={user.photoURL}
                       alt={user.username}
-                      className="h-32 w-32 rounded-full object-cover bg-white border-4 border-gray-200"
+                      className="h-30 w-30 rounded-full object-cover bg-white border-4 border-gray-200"
                     />
                   ) : (
-                    <div className="h-32 w-32 rounded-full bg-gray-300 flex items-center justify-center text-3xl font-bold text-gray-600 border-4 border-gray-200">
+                    <div className="h-30 w-30 rounded-full bg-gray-300 flex items-center justify-center text-3xl font-bold text-gray-600 border-4 border-gray-200">
                       {user ? getUserInitials(user) : 'U'}
                     </div>
                   )}
@@ -775,7 +775,7 @@ const UserProfile: React.FC = () => {
                 
                 {/* Upload Photo Controls (when file selected) */}
                 {selectedFile && canEdit && isEditing && (
-                  <div className="absolute top-0 left-40 bg-white rounded-lg shadow-lg p-3 border border-gray-200 z-10 min-w-max">
+                  <div className="absolute top-0 left-36 bg-white rounded-lg shadow-lg p-3 border border-gray-200 z-10 min-w-max">
                     <p className="text-xs text-gray-600 mb-2">
                       {selectedFile.name} ({(selectedFile.size / 1024).toFixed(1)} KB)
                     </p>
@@ -784,7 +784,7 @@ const UserProfile: React.FC = () => {
                         type="button"
                         onClick={handlePhotoUpload}
                         disabled={uploadingPhoto}
-                        className="px-3 py-1.5 bg-indigo-600 text-white text-xs font-medium rounded hover:bg-indigo-700 disabled:opacity-50"
+                        className="px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded hover:bg-blue-700 disabled:opacity-50"
                       >
                         {uploadingPhoto ? 'Загрузка...' : 'Загрузить'}
                       </button>
@@ -826,7 +826,7 @@ const UserProfile: React.FC = () => {
                         </span>
                         {/* Badges */}
                         {user?.isVerified && (
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                             <svg className="mr-1 h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
                               <path fillRule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                             </svg>
@@ -834,7 +834,7 @@ const UserProfile: React.FC = () => {
                           </span>
                         )}
                         {user?.isAdmin && (
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                             Админ
                           </span>
                         )}
@@ -858,7 +858,7 @@ const UserProfile: React.FC = () => {
                   </div>
                   
                   {/* Stats */}
-                  <div className="mt-4 flex items-center gap-6 text-sm flex-wrap">
+                  <div className="mt-4 flex items-center gap-4 text-sm flex-wrap">
                     <div>
                       <span className="font-semibold text-gray-900">{user?.topicCount || 0}</span>
                       <span className="text-gray-600 ml-1">Темы</span>
@@ -867,9 +867,7 @@ const UserProfile: React.FC = () => {
                       <span className="font-semibold text-gray-900">{user?.postCount || 0}</span>
                       <span className="text-gray-600 ml-1">Посты</span>
                     </div>
-                    <div className="text-gray-600">
-                      Зарегистрирован с {user?.createdAt ? formatDate(user.createdAt.split('T')[0]) : 'Неизвестно'}
-                    </div>
+                
                   </div>
                 </div>
               )}
@@ -879,12 +877,12 @@ const UserProfile: React.FC = () => {
                   <button 
                     type="button"
                     onClick={() => setIsEditing(true)}
-                    className="inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-lg text-gray-500 border-2 border-gray-400 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                    className="inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-lg text-gray-500 border-2 border-gray-400 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                   >
-                    <svg className="mr-2 h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                     </svg>
-                    Изменить профиль
+                    Изменить
                   </button>
                 </div>
               )}
@@ -901,7 +899,7 @@ const UserProfile: React.FC = () => {
                       value={formData.username}
                       onChange={(e) => handleFormChange('username', e.target.value)}
                       maxLength={30}
-                      className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
                   <p className="mt-1 text-xs text-gray-500">{formData.username.length}/30 символов</p>
@@ -915,7 +913,7 @@ const UserProfile: React.FC = () => {
                     onChange={(e) => handleFormChange('displayName', e.target.value)}
                     maxLength={50}
                     placeholder="Ваше полное имя"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                   <p className="mt-1 text-xs text-gray-500">{formData.displayName.length}/50 символов</p>
                 </div>
@@ -928,7 +926,7 @@ const UserProfile: React.FC = () => {
                     maxLength={500}
                     rows={3}
                     placeholder="Напишите несколько предложений о себе"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                   <p className="mt-1 text-xs text-gray-500">{formData.bio.length}/500 символов</p>
                 </div>
@@ -942,7 +940,7 @@ const UserProfile: React.FC = () => {
                       onChange={(e) => handleFormChange('city', e.target.value)}
                       maxLength={100}
                       placeholder="Ваш город"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
                   <div>
@@ -953,7 +951,7 @@ const UserProfile: React.FC = () => {
                       onChange={(e) => handleFormChange('country', e.target.value)}
                       maxLength={100}
                       placeholder="Ваша страна"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
                 </div>
@@ -964,7 +962,7 @@ const UserProfile: React.FC = () => {
                     type="button"
                     onClick={handleSaveProfile}
                     disabled={modalLoading}
-                    className="px-6 py-2 bg-indigo-600 text-white font-medium rounded-md hover:bg-indigo-700 disabled:opacity-50"
+                    className="px-6 py-2 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 disabled:opacity-50"
                   >
                     {modalLoading ? 'Сохранение...' : 'Сохранить'}
                   </button>
@@ -1012,13 +1010,39 @@ const UserProfile: React.FC = () => {
           <div className="bg-white rounded-lg shadow p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Настройки аккаунта</h2>
             <div className="space-y-4">
+              {/* Admin Panel Link */}
+              {user?.isAdmin && (
+                <div className="pb-4 border-b border-gray-200">
+                  <Link 
+                    href="/admin"
+                    className="flex items-center justify-between p-3 bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg hover:from-purple-100 hover:to-blue-100 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center">
+                        <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                      </div>
+                      <div>
+                        <div className="font-semibold text-blue-900">Панель администратора</div>
+                        <div className="text-sm text-blue-700">Управление сайтом</div>
+                      </div>
+                    </div>
+                    <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </Link>
+                </div>
+              )}
+              
               <div>
                 <h3 className="text-sm font-medium text-gray-700 mb-2">Email</h3>
                 <div className="flex items-center justify-between">
                   <span className="text-gray-600">{user?.email}</span>
                   <button 
                     onClick={() => setShowChangeEmailModal(true)}
-                    className="text-sm text-indigo-600 hover:text-indigo-700 font-medium"
+                    className="text-sm text-blue-600 hover:text-blue-700 font-medium"
                   >
                     Изменить email
                   </button>
@@ -1030,7 +1054,7 @@ const UserProfile: React.FC = () => {
                   <span className="text-gray-600">{user?.password ? 'Пароль установлен' : 'Пароль не установлен'}</span>
                   <button 
                   onClick={() => setShowChangePasswordModal(true)}
-                  className="text-sm text-indigo-600 hover:text-indigo-700 font-medium"
+                  className="text-sm text-blue-600 hover:text-blue-700 font-medium"
                   >
                   Изменить пароль
                 </button>
@@ -1055,7 +1079,7 @@ const UserProfile: React.FC = () => {
                       <div className="flex items-center justify-between">
                         <Link
                           href={`/topic/${topic.id}`}
-                          className="text-indigo-600 hover:text-indigo-700 font-medium"
+                          className="text-blue-600 hover:text-blue-700 font-medium"
                         >
                           {topic.title}
                         </Link>
@@ -1087,7 +1111,7 @@ const UserProfile: React.FC = () => {
                         <span>•</span>
                         <Link
                           href={`/topic/${post.topicId}`}
-                          className="text-indigo-600 hover:text-indigo-700"
+                          className="text-blue-600 hover:text-blue-700"
                         >
                           Просмотр темы
                         </Link>
@@ -1102,6 +1126,9 @@ const UserProfile: React.FC = () => {
 
         {/* Back to Forum */}
         <div className="text-center py-4">
+        <div className="text-gray-500/90 mb-4">
+            Зарегистрирован с {user?.createdAt ? formatDate(user.createdAt.split('T')[0]) : 'Неизвестно'}
+        </div>
           <Link
             href="/"
             className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
@@ -1134,7 +1161,7 @@ const UserProfile: React.FC = () => {
                   id="newEmail"
                   value={newEmail}
                   onChange={(e) => setNewEmail(e.target.value)}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                   placeholder="new@example.com"
                   disabled={modalLoading}
                 />
@@ -1156,7 +1183,7 @@ const UserProfile: React.FC = () => {
                 <button
                   onClick={handleChangeEmail}
                   disabled={modalLoading || !newEmail}
-                  className="flex-1 bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {modalLoading ? 'Отправка...' : 'Далее'}
                 </button>
@@ -1188,7 +1215,7 @@ const UserProfile: React.FC = () => {
                     type="button"
                     onClick={handleResetPassword}
                     disabled={modalLoading}
-                    className="text-xs text-indigo-600 hover:text-indigo-700 font-medium disabled:opacity-50"
+                    className="text-xs text-blue-600 hover:text-blue-700 font-medium disabled:opacity-50"
                   >
                     Сбросить пароль
                   </button>
@@ -1198,7 +1225,7 @@ const UserProfile: React.FC = () => {
                   id="currentPassword"
                   value={currentPassword}
                   onChange={(e) => setCurrentPassword(e.target.value)}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                   disabled={modalLoading}
                 />
               </div>
@@ -1212,7 +1239,7 @@ const UserProfile: React.FC = () => {
                   id="newPassword"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                   disabled={modalLoading}
                   placeholder="Минимум 6 символов"
                 />
@@ -1227,7 +1254,7 @@ const UserProfile: React.FC = () => {
                   id="confirmPassword"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                   disabled={modalLoading}
                 />
               </div>
@@ -1248,7 +1275,7 @@ const UserProfile: React.FC = () => {
                 <button
                   onClick={handleChangePassword}
                   disabled={modalLoading || !currentPassword || !newPassword || !confirmPassword}
-                  className="flex-1 bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {modalLoading ? 'Изменение...' : 'Далее'}
                 </button>

@@ -5,7 +5,8 @@ import Link from 'next/link';
 import { useAuth } from '../../contexts/AuthContext';
 import TopTopics from './TopTopics';
 import { forumAPI } from '../../services/api';
-import { FileIcon, MessageCircleIcon, StickyNoteIcon, UserIcon } from 'lucide-react';
+import { FileIcon, MessageCircleIcon, StickyNoteIcon, UserIcon, StickyNoteIcon as EyeIcon } from 'lucide-react';
+import { CreateTopicButton, LinkButton } from '@/components/UI';
 
 // Declare adsbygoogle global variable
 declare global {
@@ -148,7 +149,7 @@ const ForumHome: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="mx-auto px-4 py-8">
+      <div className="mx-auto px-4 py-8 min-h-screen">
         <div className="flex flex-col items-center justify-center py-12">
           <div className="animate-spin rounded-full h-12 w-12 border-b-1 border-blue-600/20 mb-4"></div>
           <div className="text-gray-600 text-base">Загрузка форума...</div>
@@ -158,7 +159,7 @@ const ForumHome: React.FC = () => {
   }
 
   return (
-    <div className="mx-auto px-2 sm:px-4 min-h-screen max-w-7xl">
+    <div className="mx-auto px-2 sm:px-2 min-h-screen max-w-7xl">
 
       {/* Mobile-Optimized Main Forum Categories */}
       <div className="bg-white mb-4 sm:mb-6 mt-3 sm:mt-6">
@@ -182,17 +183,7 @@ const ForumHome: React.FC = () => {
               </div>
             )}
           </div>
-          {currentUser && (
-            <Link
-              href="/create-topic"
-              className="px-3 py-1.5 bg-blue-500 text-white rounded-lg hover:bg-blue-500 active:bg-blue-600 transition-colors font-medium flex items-center justify-center space-x-2 text-sm flex-shrink-0 touch-manipulation shadow-md"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              <span>Создать тему</span>
-            </Link>
-          )}
+          {currentUser && <CreateTopicButton />}
         </div>
         
         {/* Mobile-first responsive design */}
@@ -221,6 +212,23 @@ const ForumHome: React.FC = () => {
             </tbody>
           </table>
         </div>
+        {!loading && categories.length === 0 && (
+          <div className="text-center py-8 text-gray-500 flex flex-col gap-4 w-full">
+            <svg className="w-12 h-12 mx-auto mb-3 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+            </svg>
+            <p className="text-sm sm:text-base">Нет категорий.</p>
+            <div className="flex justify-center w-full">
+              <LinkButton 
+                href="/create-topic"
+                 variant="primary"
+              >
+                Создать первое обсуждение
+              </LinkButton>
+            </div>
+          </div>
+        
+        )} 
       </div>
 
       {/* Mobile-Optimized Call to Action for Non-Logged In Users */}
@@ -236,18 +244,12 @@ const ForumHome: React.FC = () => {
             </p>
           </div>
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3">
-            <Link
-              href="/register"
-              className="px-3 py-1.5 bg-blue-500 text-white rounded-lg hover:bg-blue-700 active:bg-blue-800 transition-colors font-semibold text-base touch-manipulation shadow-md"
-            >
+            <LinkButton href="/register" variant="primary">
               Регистрация
-            </Link>
-            <Link
-              href="/login"
-              className="px-3 py-1.5 bg-white  shadow-md shadow-blue-500/10 text-blue-600 rounded-lg hover:bg-blue-50 active:bg-blue-100 transition-colors font-semibold text-base touch-manipulation shadow-md"
-            >
+            </LinkButton>
+            <LinkButton href="/login" variant="secondary">
               Вход
-            </Link>
+            </LinkButton>
           </div>
         </div>
       )}

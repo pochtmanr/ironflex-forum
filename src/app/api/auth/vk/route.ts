@@ -6,7 +6,8 @@ import { generateTokens } from '@/lib/auth';
 const VK_APP_ID = process.env.VK_APP_ID || '54219432';
 const VK_SECRET_KEY = process.env.VK_SECRET_KEY || 'qN5oY1IJe9uUFsxxRTil';
 const VK_SERVICE_KEY = process.env.VK_SERVICE_KEY || 'e60b849ae60b849ae60b849a0ee530d632ee60be60b849a8eedd4c410c10ed625908ed1';
-const VK_REDIRECT_URI = process.env.NEXT_PUBLIC_SITE_URL || 'https://forum.theholylabs.com/';
+// VK requires exact redirect URL match - no trailing slash
+const VK_REDIRECT_URI = process.env.NEXT_PUBLIC_SITE_URL || 'https://forum.theholylabs.com';
 
 export async function POST(request: NextRequest) {
   try {

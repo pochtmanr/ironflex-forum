@@ -10,9 +10,15 @@ const Login: React.FC = () => {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [vkLoading, setVkLoading] = useState(false);
-  const { login, loginWithVK } = useAuth();
+  const { login, currentUser } = useAuth();
   const router = useRouter();
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (currentUser) {
+      router.push('/');
+    }
+  }, [currentUser, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,114 +36,22 @@ const Login: React.FC = () => {
     }
   };
 
-  // VK Authentication handlers
-  const vkidOnError = (error: unknown) => {
-    console.error('VK auth error:', error);
-    setError('Ошибка авторизации через VK');
-    setVkLoading(false);
-  };
+  // Show loading while checking authentication
+  if (currentUser === undefined) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <div className="text-gray-600">Загрузка...</div>
+        </div>
+      </div>
+    );
+  }
 
-  const initVKAuth = () => {
-    if (typeof window === 'undefined') return;
-
-    // @ts-ignore - VKIDSDK is loaded via script
-    if ('VKIDSDK' in window) {
-      // @ts-ignore
-      const VKID = window.VKIDSDK;
-
-      if (!VKID) return; // Type guard
-
-      // Use environment variable for redirect URL or window.location.origin as fallback
-      const redirectUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
-      
-      VKID.Config.init({
-        app: 54219432,
-        redirectUrl: redirectUrl,
-        // @ts-ignore
-        responseMode: VKID.ConfigResponseMode.Callback,
-        // @ts-ignore
-        source: VKID.ConfigSource.LOWCODE,
-        scope: '',
-      });
-
-      const oneTap = new VKID.OneTap();
-      const container = document.getElementById('vk-signin-button');
-
-      if (container) {
-        // Clear any existing content
-        container.innerHTML = '';
-        
-        oneTap.render({
-          container: container,
-          showAlternativeLogin: true,
-          // @ts-ignore
-          styles: {
-            borderRadius: 8,
-            height: 40
-          }
-        })
-        // @ts-ignore
-        .on(VKID.WidgetEvents.ERROR, vkidOnError)
-        // @ts-ignore
-        .on(VKID.OneTapInternalEvents.LOGIN_SUCCESS, function (payload: { code: string; device_id: string }) {
-          const code = payload.code;
-          const deviceId = payload.device_id;
-
-          setVkLoading(true);
-          console.log('VK login success, exchanging code...', { code, deviceId });
-
-          // @ts-ignore
-          VKID.Auth.exchangeCode(code, deviceId)
-            .then(async (tokenData: { access_token: string; user_id: number }) => {
-              console.log('VK token exchanged successfully');
-              
-              // Send access token to backend
-              await loginWithVK('', '', tokenData.access_token);
-              console.log('Login with VK completed, redirecting...');
-              router.push('/');
-            })
-            .catch((error: unknown) => {
-              console.error('VK token exchange error:', error);
-              vkidOnError(error);
-            });
-        });
-      }
-    }
-  };
-
-  // Load VK ID SDK script
-  useEffect(() => {
-    // Check if script already exists
-    const existingScript = document.querySelector('script[src*="@vkid/sdk"]');
-    if (existingScript) {
-      // Script already loaded, just init
-      if ('VKIDSDK' in window) {
-        initVKAuth();
-      }
-      return;
-    }
-
-    const vkScript = document.createElement('script');
-    vkScript.src = 'https://unpkg.com/@vkid/sdk@<3.0.0/dist-sdk/umd/index.js';
-    vkScript.async = true;
-    vkScript.defer = true;
-    vkScript.onload = () => {
-      console.log('VK SDK loaded');
-      // Small delay to ensure SDK is fully initialized
-      setTimeout(() => {
-        initVKAuth();
-      }, 100);
-    };
-    document.head.appendChild(vkScript);
-
-    return () => {
-      // Clear the container on unmount to prevent duplicates
-      const container = document.getElementById('vk-signin-button');
-      if (container) {
-        container.innerHTML = '';
-      }
-    };
-  }, []);
+  // Don't render login form if already authenticated
+  if (currentUser) {
+    return null;
+  }
 
   return (
     <div className="flex min-h-full flex-col px-6 py-12 lg:px-8 min-h-screen">
@@ -150,11 +64,7 @@ const Login: React.FC = () => {
 
       <div className="mt-10 sm:mx-auto sm:w-full sm:max-w-sm">
         <form onSubmit={handleSubmit} className="space-y-6">
-          {error && (
-            <div className="rounded-md bg-red-50 p-4">
-              <div className="text-sm text-red-800">{error}</div>
-            </div>
-          )}
+          
           
           <div>
             <label htmlFor="email" className="block text-base font-medium leading-6 text-gray-700">
@@ -201,6 +111,12 @@ const Login: React.FC = () => {
             </div>
           </div>
 
+          {error && (
+            <div className="rounded-md bg-red-50 p-4 mb-4">
+              <div className="text-sm text-red-800">{error}</div>
+            </div>
+          )}
+
           <div>
             <button
               type="submit"
@@ -209,17 +125,6 @@ const Login: React.FC = () => {
             >
               {loading ? 'Вход...' : 'Войти'}
             </button>
-          </div>
-
-          {/* VK OAuth Button - Moved inside form for better flow */}
-          <div className="mt-4">
-            <div id="vk-signin-button" className="w-full flex justify-center items-center min-h-[40px] rounded-md"></div>
-            {vkLoading && (
-              <div className="mt-2 text-center text-sm text-gray-600 flex items-center justify-center">
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
-                Вход через VK...
-              </div>
-            )}
           </div>
         </form>
 

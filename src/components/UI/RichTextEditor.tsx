@@ -10,13 +10,14 @@ import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext
 import { HeadingNode, QuoteNode } from '@lexical/rich-text';
 import { ListItemNode, ListNode } from '@lexical/list';
 import { LinkNode } from '@lexical/link';
-import { $getRoot, $createParagraphNode, $createTextNode, EditorState, $getSelection, $isRangeSelection } from 'lexical';
+import { $getRoot, $createParagraphNode, $createTextNode, EditorState, $getSelection, $isRangeSelection, TextNode, $isParagraphNode, LexicalNode } from 'lexical';
 import {
   FORMAT_TEXT_COMMAND,
   SELECTION_CHANGE_COMMAND,
   COMMAND_PRIORITY_CRITICAL,
 } from 'lexical';
 import { mergeRegister } from '@lexical/utils';
+import { $isTextNode } from 'lexical';
 
 interface RichTextEditorProps {
   value: string;
@@ -162,14 +163,14 @@ function ToolbarPlugin({ onImageUpload }: { onImageUpload?: (file: File) => Prom
   };
 
   return (
-    <div className="flex items-center gap-1 sm:gap-2 flex-wrap border border-gray-300 rounded-t-md bg-gray-50 p-2 relative">
+    <div className="flex items-center gap-1 sm:gap-2 flex-wrap bg-gray-50 p-2 relative">
       <button
         type="button"
         onClick={formatBold}
         className={`p-2 hover:bg-gray-200 rounded transition-colors ${isBold ? 'bg-blue-200 text-blue-800' : 'text-gray-700'}`}
         title="Жирный (Ctrl+B)"
       >
-        <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 4h8a4 4 0 014 4 4 4 0 01-4 4H6z M6 12h9a4 4 0 014 4 4 4 0 01-4 4H6z" />
         </svg>
       </button>
@@ -178,9 +179,10 @@ function ToolbarPlugin({ onImageUpload }: { onImageUpload?: (file: File) => Prom
         type="button"
         onClick={formatItalic}
         className={`p-2 hover:bg-gray-200 rounded transition-colors ${isItalic ? 'bg-blue-200 text-blue-800' : 'text-gray-700'}`}
+      
         title="Курсив (Ctrl+I)"
       >
-        <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <line x1="14" y1="4" x2="10" y2="20" strokeWidth={2.5} strokeLinecap="round" />
         </svg>
       </button>
@@ -191,7 +193,7 @@ function ToolbarPlugin({ onImageUpload }: { onImageUpload?: (file: File) => Prom
         className={`p-2 hover:bg-gray-200 rounded transition-colors ${isUnderline ? 'bg-blue-200 text-blue-800' : 'text-gray-700'}`}
         title="Подчеркнутый (Ctrl+U)"
       >
-        <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 5v8a5 5 0 0010 0V5M5 19h14" />
         </svg>
       </button>
@@ -202,7 +204,7 @@ function ToolbarPlugin({ onImageUpload }: { onImageUpload?: (file: File) => Prom
         className={`p-2 hover:bg-gray-200 rounded transition-colors ${isStrikethrough ? 'bg-blue-200 text-blue-800' : 'text-gray-700'}`}
         title="Зачеркнутый"
       >
-        <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 12h12M7 5h10M8 19h8" />
         </svg>
       </button>
@@ -214,10 +216,10 @@ function ToolbarPlugin({ onImageUpload }: { onImageUpload?: (file: File) => Prom
         <button
           type="button"
           onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-          className="p-2 hover:bg-gray-200 rounded transition-colors text-gray-700"
+          className="p-2 hover:bg-gray-200 rounded transition-colors text-gray-900/70"
           title="Вставить эмодзи"
         >
-          <span className="text-lg">😀</span>
+          <span className="text-base">😀</span>
         </button>
         
         {showEmojiPicker && (
@@ -227,14 +229,14 @@ function ToolbarPlugin({ onImageUpload }: { onImageUpload?: (file: File) => Prom
               className="fixed inset-0 z-40" 
               onClick={() => setShowEmojiPicker(false)}
             />
-            <div className="absolute top-full left-0 mt-1 bg-white border border-gray-300 rounded-lg shadow-xl p-3 z-50 max-h-[300px] overflow-y-auto w-[320px]">
+            <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200/50 rounded-lg shadow-xl p-3 z-50 max-h-[300px] overflow-y-auto w-[320px]">
               <div className="grid grid-cols-8 gap-1">
                 {emojis.map((emoji, index) => (
                   <button
                     key={index}
                     type="button"
                     onClick={() => insertEmoji(emoji)}
-                    className="p-2 hover:bg-gray-100 rounded text-xl transition-colors"
+                    className="p-2 hover:bg-gray-100 rounded text-base transition-colors text-gray-900/70"
                   >
                     {emoji}
                   </button>
@@ -248,9 +250,9 @@ function ToolbarPlugin({ onImageUpload }: { onImageUpload?: (file: File) => Prom
       {onImageUpload && (
         <>
           <div className="w-px h-6 bg-gray-300"></div>
-          <label className="p-2 hover:bg-gray-200 rounded transition-colors text-gray-700 cursor-pointer" title="Загрузить изображение">
+          <label className="p-2 hover:bg-gray-200 rounded transition-colors text-gray-900/70 cursor-pointer" title="Загрузить изображение">
             <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
-            <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
             </svg>
           </label>
@@ -289,8 +291,46 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
   const handleChange = (editorState: EditorState) => {
     editorState.read(() => {
       const root = $getRoot();
-      const text = root.getTextContent();
-      onChange(text);
+      let markdown = '';
+      
+      // Convert Lexical state to markdown
+      const children = root.getChildren();
+      children.forEach((node: LexicalNode) => {
+        if ($isParagraphNode(node)) {
+          const paragraphChildren = node.getChildren();
+          let paragraphText = '';
+          
+          paragraphChildren.forEach((child: LexicalNode) => {
+            if ($isTextNode(child)) {
+              const text = child.getTextContent();
+              let formattedText = text;
+              
+              // Apply markdown formatting based on text format
+              if (child.hasFormat('bold') && child.hasFormat('italic')) {
+                formattedText = `***${text}***`;
+              } else if (child.hasFormat('bold')) {
+                formattedText = `**${text}**`;
+              } else if (child.hasFormat('italic')) {
+                formattedText = `*${text}*`;
+              }
+              
+              if (child.hasFormat('strikethrough')) {
+                formattedText = `~~${formattedText}~~`;
+              }
+              
+              if (child.hasFormat('underline')) {
+                formattedText = `__${formattedText}__`;
+              }
+              
+              paragraphText += formattedText;
+            }
+          });
+          
+          markdown += paragraphText + '\n';
+        }
+      });
+      
+      onChange(markdown.trim());
     });
   };
 
@@ -298,7 +338,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
     <div className={`rich-text-editor-wrapper ${className}`}>
       <LexicalComposer initialConfig={initialConfig}>
         <ToolbarPlugin onImageUpload={onImageUpload} />
-        <div className="relative border border-gray-300 border-t-0 rounded-b-md">
+        <div className="relative rounded-b-md">
           <RichTextPlugin
             contentEditable={
               <ContentEditable 
@@ -307,7 +347,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
               />
             }
             placeholder={
-              <div className="absolute top-3 left-3 text-gray-400 pointer-events-none">
+              <div className="absolute top-3 left-3 text-gray-900/70 pointer-events-none">
                 {placeholder}
               </div>
             }

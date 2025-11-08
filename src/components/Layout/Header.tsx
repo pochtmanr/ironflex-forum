@@ -2,48 +2,9 @@
 
 import React, { useEffect, useState, useRef, Suspense } from 'react';
 import Link from 'next/link';
-import { useRouter, usePathname, useSearchParams } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { useAuth } from '../../contexts/AuthContext';
-
-// Search component that uses useSearchParams
-const SearchComponent: React.FC<{ isMobile?: boolean }> = ({ isMobile = false }) => {
-  const searchParams = useSearchParams();
-  const router = useRouter();
-  const [search, setSearch] = useState('');
-
-  useEffect(() => {
-    const q = searchParams.get('q') || '';
-    setSearch(q);
-  }, [searchParams]);
-
-  const onSubmitSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    const q = search.trim();
-    const base = '/';
-    router.push(`${base}${q ? `?q=${encodeURIComponent(q)}` : ''}`);
-  };
-
-  return (
-    <form onSubmit={onSubmitSearch} className={`flex items-center gap-2 ${isMobile ? '' : 'py-2'}`}>
-      <input
-        type="search"
-        placeholder="Поиск..."
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        className={isMobile 
-          ? "flex-1 px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent text-md"
-          : "px-3 py-1.5 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent text-md w-72"
-        }
-      />
-      <button 
-        type="submit" 
-        className={`px-4 ${isMobile ? 'py-2' : 'py-1.5'} bg-gray-600 text-white hover:bg-gray-700 transition-colors text-md font-medium`}
-      >
-        Найти
-      </button>
-    </form>
-  );
-};
+import SearchBar from '../UI/SearchBar';
 
 const Header: React.FC = () => {
   const { currentUser, logout } = useAuth();
@@ -167,7 +128,7 @@ const Header: React.FC = () => {
               {/* Desktop search and profile */}
               <div className="flex items-center gap-4">
                 <Suspense fallback={<div className="w-72 h-8 bg-gray-200 animate-pulse rounded"></div>}>
-                  <SearchComponent />
+                  <SearchBar />
                 </Suspense>
 
                 {/* Desktop Profile Dropdown */}
@@ -175,7 +136,7 @@ const Header: React.FC = () => {
                   <div className="relative" ref={dropdownRef}>
                     <button
                       onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
-                      className="w-10 h-10 bg-gray-600 text-white rounded-full flex items-center justify-center font-semibold text-sm hover:bg-gray-700 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+                      className="w-8 h-8 bg-gray-600 text-white rounded-full flex items-center justify-center font-semibold text-sm hover:bg-gray-700 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
                     >
                       {userPhotoURL ? (
                         <img src={userPhotoURL} alt="User Avatar" className="w-full h-full rounded-full object-cover" />
@@ -249,12 +210,7 @@ const Header: React.FC = () => {
                     >
                       Вход
                     </Link>
-                    <Link
-                      href="/register"
-                      className="px-4 py-1.5 bg-blue-600 text-white hover:bg-blue-700 transition-colors text-sm font-medium "
-                    >
-                      Регистрация
-                    </Link>
+                    
                   </div>
                 )}
               </div>
@@ -289,7 +245,7 @@ const Header: React.FC = () => {
         {/* Mobile search - always visible */}
         <div className="bg-gray-50 px-4 py-3 shadow-sm shadow-gray-200/50">
           <Suspense fallback={<div className="h-8 bg-gray-200 animate-pulse rounded"></div>}>
-            <SearchComponent isMobile={true} />
+            <SearchBar isMobile={true} />
           </Suspense>
         </div>
 

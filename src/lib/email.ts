@@ -493,9 +493,13 @@ export const sendEmail = async (
   try {
     // SMTP credentials are optional for local SMTP servers
     if (!SMTP_HOST) {
-      console.error('SMTP_HOST not configured')
+      console.error('[EMAIL] SMTP_HOST not configured')
       return false
     }
+
+    console.log(`[EMAIL] Sending email to: ${to}`)
+    console.log(`[EMAIL] SMTP Config: ${SMTP_HOST}:${SMTP_PORT}`)
+    console.log(`[EMAIL] From: ${FROM_EMAIL}`)
 
     const transporter = createTransporter()
     const html = getEmailTemplate(type, data)
@@ -507,11 +511,16 @@ export const sendEmail = async (
       html
     }
 
+    console.log('[EMAIL] Attempting to send...')
     const result = await transporter.sendMail(mailOptions)
-    console.log('Email sent successfully:', result.messageId)
+    console.log('[EMAIL] ✅ Email sent successfully! MessageID:', result.messageId)
     return true
   } catch (error) {
-    console.error('Error sending email:', error)
+    console.error('[EMAIL] ❌ Error sending email:', error)
+    if (error instanceof Error) {
+      console.error('[EMAIL] Error message:', error.message)
+      console.error('[EMAIL] Error stack:', error.stack)
+    }
     return false
   }
 }

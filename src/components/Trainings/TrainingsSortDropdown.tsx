@@ -28,11 +28,11 @@ const TrainingsSortDropdown: React.FC<TrainingsSortDropdownProps> = ({ currentSo
     <div className="relative">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center px-3 py-1 bg-gray-700 hover:bg-gray-500 rounded text-md transition-colors"
+        className="flex items-center px-3 py-1.5 bg-gray-600 border-2 border-gray-400/60 hover:bg-gray-500 rounded-lg text-sm transition-colors shadow-md font-medium"
       >
         <span>{currentOption?.label}</span>
         <svg 
-          className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} 
+          className={`ml-2 h-4 w-4 transform transition-transform ${isOpen ? 'rotate-180' : ''}`}
           fill="none" 
           stroke="currentColor" 
           viewBox="0 0 24 24"
@@ -50,24 +50,19 @@ const TrainingsSortDropdown: React.FC<TrainingsSortDropdownProps> = ({ currentSo
           />
           
           {/* Dropdown Menu */}
-          <div className="absolute right-0 mt-2 w-48 bg-white rounded-md border border-gray-200 z-20">
+          <div className="absolute right-0 mt-1 w-40 bg-white rounded-md shadow-lg border border-1 border-gray-200 z-20">
             <div className="py-1">
               {sortOptions.map((option) => (
                 <button
                   key={option.value}
                   onClick={() => handleSelect(option.value)}
-                  className={`w-full text-left px-4 py-2 text-md transition-colors ${
+                  className={`block w-full px-4 py-2 text-sm text-left hover:bg-gray-100 transition-colors ${
                     currentSort === option.value
-                      ? 'bg-gray-50 text-gray-700 font-medium'
-                      : 'text-gray-700 hover:bg-gray-50'
+                      ? 'bg-blue-50 text-blue-600 font-medium'
+                      : 'text-gray-700'
                   }`}
                 >
                   {option.label}
-                  {currentSort === option.value && (
-                    <svg className="w-4 h-4 inline ml-2" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                    </svg>
-                  )}
                 </button>
               ))}
             </div>

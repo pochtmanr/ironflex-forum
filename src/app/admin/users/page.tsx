@@ -144,16 +144,16 @@ export default function AdminUsers() {
 
   if (loading) {
     return (
-      <div className="max-w-6xl mx-auto px-4 py-8">
+      <div className="max-w-6xl mx-auto px-4 py-8 min-h-screen">
         <div className="text-center py-8">
-          <div className="text-gray-500">Loading users...</div>
+          <div className="text-gray-500">Загрузка пользователей...</div>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8">
+    <div className="max-w-6xl mx-auto px-4 py-8 min-h-screen">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-gray-900"> Управление пользователями </h1>
         <div className="text-sm text-gray-500">

@@ -96,7 +96,7 @@ const Trainings: React.FC = () => {
           onSortChange={setSortBy} 
         />
         
-        <div className="bg-white">
+        <div className="bg-white max-w-7xl mx-auto">
           <TrainingsList trainings={items} loading={loading} />
         </div>
       </div>

@@ -1,0 +1,51 @@
+name: Deploy to VPS
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+    
+    - name: Deploy to VPS
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ secrets.VPS_HOST }}
+        username: ${{ secrets.VPS_USER }}
+        password: ${{ secrets.VPS_PASSWORD }}
+        script: |
+          cd /root/iron-blog
+          
+          echo "📥 Pulling latest changes..."
+          git pull origin main
+          
+          echo "🔨 Rebuilding containers..."
+          docker-compose down
+          docker-compose build --no-cache
+          docker-compose up -d
+          
+          echo "🧹 Cleaning up old images..."
+          docker image prune -f
+          
+          echo "⏳ Waiting for services to start..."
+          sleep 10
+          
+          echo "🏥 Health check..."
+          docker ps
+          
+          echo "✅ Deployment completed successfully!"
+    
+    - name: Notify on success
+      if: success()
+      run: echo "🎉 Deployment successful!"
+    
+    - name: Notify on failure
+      if: failure()
+      run: echo "❌ Deployment failed!"
+

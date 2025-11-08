@@ -10,14 +10,9 @@ interface ArticlesHeaderProps {
 
 const ArticlesHeader: React.FC<ArticlesHeaderProps> = ({ sortBy, onSortChange }) => {
   return (
-    <div className="bg-white">
-      <div className="bg-gradient-to-r from-gray-700 to-gray-600 text-white px-3 sm:px-4 py-3 sm:py-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3">
-        <div className="min-w-0 flex-1">
-          <h1 className="text-xl sm:text-xl font-bold mb-1">Статьи</h1>
-          <p className="text-sm text-gray-200">
-            Изучайте новые темы и развивайтесь вместе с нашими материалами
-          </p>
-        </div>
+    <div className="bg-white max-w-7xl mx-auto px-2 sm:px-2">
+      <div className="bg-gray-600 text-white px-3 rounded-t-sm sm:px-4 py-3 sm:py-2 flex items-center justify-between">
+        <h1 className="text-xl font-bold">Статьи</h1>
         
         {/* Sort Dropdown */}
         <div className="flex-shrink-0">

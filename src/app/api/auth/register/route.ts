@@ -33,9 +33,31 @@ export async function POST(request: NextRequest) {
       counter++
     }
 
-    if (password.length < 6) {
+    // Validate password strength
+    if (password.length < 8) {
       return NextResponse.json(
-        { error: 'Password must be at least 6 characters' },
+        { error: 'Пароль должен содержать не менее 8 символов' },
+        { status: 400 }
+      )
+    }
+
+    if (!/[A-Z]/.test(password)) {
+      return NextResponse.json(
+        { error: 'Пароль должен содержать хотя бы одну заглавную букву (A-Z)' },
+        { status: 400 }
+      )
+    }
+
+    if (!/[a-z]/.test(password)) {
+      return NextResponse.json(
+        { error: 'Пароль должен содержать хотя бы одну строчную букву (a-z)' },
+        { status: 400 }
+      )
+    }
+
+    if (!/[0-9]/.test(password)) {
+      return NextResponse.json(
+        { error: 'Пароль должен содержать хотя бы одну цифру (0-9)' },
         { status: 400 }
       )
     }
@@ -60,16 +82,24 @@ export async function POST(request: NextRequest) {
     const passwordHash = await hashPassword(password)
     console.log('Password hashed successfully')
     
+    // Check if this is the first user in the database
+    const userCount = await User.countDocuments()
+    const isFirstUser = userCount === 0
+    
+    if (isFirstUser) {
+      console.log('This is the first user - will be granted admin privileges')
+    }
+    
     const user = await User.create({
       email,
       username,
       passwordHash,
       displayName: displayName || username,
       isActive: true,
-      isAdmin: false,
-      isVerified: false // User needs to verify email
+      isAdmin: isFirstUser, // First user becomes admin automatically
+      isVerified: isFirstUser // First user is auto-verified
     })
-    console.log('User created successfully:', user._id)
+    console.log('User created successfully:', user._id, isFirstUser ? '(ADMIN)' : '')
 
     // Generate tokens
     console.log('Generating tokens...')
@@ -107,7 +137,9 @@ export async function POST(request: NextRequest) {
       }
 
       const response = {
-        message: 'User created successfully. Please check your email to verify your account.',
+        message: isFirstUser 
+          ? 'Добро пожаловать! Вы первый пользователь и получили права администратора.' 
+          : 'User created successfully. Please check your email to verify your account.',
         user: {
           id: user._id,
           email: user.email,
@@ -119,7 +151,8 @@ export async function POST(request: NextRequest) {
         },
         accessToken,
         refreshToken,
-        emailSent: emailSent
+        emailSent: emailSent,
+        isFirstUser: isFirstUser
       }
       
       console.log('Returning successful response')

@@ -24,7 +24,7 @@ interface TrainingCardProps {
 const TrainingCard: React.FC<TrainingCardProps> = ({ training }) => {
   return (
     <Link 
-      href={`/trainings/${training.slug || training.id}`}
+      href={`/training/${training.slug || training.id}`}
       className="block border border-gray-200 rounded-lg overflow-hidden hover:shadow-md active:bg-blue-50 transition-all bg-white"
     >
       <div className="flex">  

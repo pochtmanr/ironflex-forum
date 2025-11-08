@@ -1,11 +1,182 @@
 'use client'
 
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { useAuth } from '@/contexts/AuthContext'
 
 export default function AdminPage() {
+  const router = useRouter()
+  const { currentUser } = useAuth()
+  const [loading, setLoading] = useState(true)
+  const [stats, setStats] = useState({
+    users: 0,
+    topics: 0,
+    posts: 0,
+    articles: 0,
+    trainings: 0
+  })
+
+  useEffect(() => {
+    const checkAdmin = async () => {
+      // Wait for auth to initialize
+      if (currentUser === undefined) {
+        console.log('Admin page: currentUser is undefined, waiting for auth to load...')
+        return // Still loading auth
+      }
+
+      if (!currentUser) {
+        console.log('Admin page: No user logged in, redirecting to login')
+        router.push('/login')
+        return
+      }
+
+      console.log('Admin page: currentUser:', currentUser)
+      console.log('Admin page: currentUser.isAdmin:', currentUser.isAdmin)
+
+      // Check if user is admin in currentUser object first
+      if (!currentUser.isAdmin) {
+        console.log('Admin page: User is not an admin, redirecting to home')
+        alert('У вас нет прав администратора')
+        router.push('/')
+        setLoading(false)
+        return
+      }
+
+      console.log('Admin page: User is admin, fetching stats')
+
+      // Fetch admin data
+      try {
+        let token = localStorage.getItem('accessToken')
+        if (!token) {
+          console.log('Admin page: No token found, redirecting to login')
+          router.push('/login')
+          setLoading(false)
+          return
+        }
+
+        // Fetch stats
+        let statsResponse = await fetch('/api/admin/stats', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        })
+
+        console.log('Admin page: Stats response status:', statsResponse.status)
+
+        // If 401, try to refresh the token
+        if (statsResponse.status === 401) {
+          console.log('Admin page: Token expired, attempting to refresh...')
+          const refreshToken = localStorage.getItem('refreshToken')
+          
+          if (refreshToken) {
+            try {
+              const refreshResponse = await fetch('/api/auth/refresh', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ refreshToken })
+              })
+
+              if (refreshResponse.ok) {
+                const refreshData = await refreshResponse.json()
+                console.log('Admin page: Token refreshed successfully')
+                
+                // Update localStorage
+                localStorage.setItem('accessToken', refreshData.accessToken)
+                localStorage.setItem('refreshToken', refreshData.refreshToken)
+                localStorage.setItem('user', JSON.stringify(refreshData.user))
+                
+                // Retry the stats request with new token
+                statsResponse = await fetch('/api/admin/stats', {
+                  headers: {
+                    'Authorization': `Bearer ${refreshData.accessToken}`
+                  }
+                })
+                
+                console.log('Admin page: Retry stats response status:', statsResponse.status)
+              } else {
+                console.log('Admin page: Token refresh failed, redirecting to login')
+                localStorage.removeItem('accessToken')
+                localStorage.removeItem('refreshToken')
+                localStorage.removeItem('user')
+                router.push('/login')
+                setLoading(false)
+                return
+              }
+            } catch (refreshError) {
+              console.error('Admin page: Token refresh error:', refreshError)
+              router.push('/login')
+              setLoading(false)
+              return
+            }
+          } else {
+            console.log('Admin page: No refresh token, redirecting to login')
+            router.push('/login')
+            setLoading(false)
+            return
+          }
+        }
+
+        if (statsResponse.ok) {
+          const data = await statsResponse.json()
+          console.log('Admin page: Stats data:', data)
+          setStats(data)
+        } else {
+          console.error('Admin page: Failed to fetch stats:', statsResponse.status)
+        }
+      } catch (error) {
+        console.error('Admin check error:', error)
+        alert('Ошибка проверки прав администратора')
+        router.push('/')
+        return
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    checkAdmin()
+  }, [currentUser, router])
+
+  if (loading) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 py-8 min-h-screen">
+        <div className="text-center">
+          <div className="text-gray-500">Проверка прав доступа...</div>
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold text-gray-900 mb-8">Панель управления</h1>
+    <div className="max-w-7xl mx-auto px-4 py-8 min-h-screen">
+      <h1 className="text-3xl font-bold text-gray-900 mb-2">Панель управления</h1>
+      <p className="text-gray-600 mb-8">Добро пожаловать, {currentUser?.displayName || currentUser?.username}!</p>
+      
+      {/* Stats Overview */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
+        <div className="bg-blue-50 rounded-lg p-4">
+          <div className="text-2xl font-bold text-blue-600">{stats.users}</div>
+          <div className="text-sm text-gray-600">Пользователей</div>
+        </div>
+        <div className="bg-green-50 rounded-lg p-4">
+          <div className="text-2xl font-bold text-green-600">{stats.topics}</div>
+          <div className="text-sm text-gray-600">Тем</div>
+        </div>
+        <div className="bg-orange-50 rounded-lg p-4">
+          <div className="text-2xl font-bold text-orange-600">{stats.posts}</div>
+          <div className="text-sm text-gray-600">Комментариев</div>
+        </div>
+        <div className="bg-teal-50 rounded-lg p-4">
+          <div className="text-2xl font-bold text-teal-600">{stats.articles}</div>
+          <div className="text-sm text-gray-600">Статей</div>
+        </div>
+        <div className="bg-pink-50 rounded-lg p-4">
+          <div className="text-2xl font-bold text-pink-600">{stats.trainings}</div>
+          <div className="text-sm text-gray-600">Тренингов</div>
+        </div>
+      </div>
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-2 gap-6">
         {/* Category Management */}

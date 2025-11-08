@@ -163,28 +163,32 @@ export default function AdminArticles() {
 
   if (loading) {
     return (
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        <div className="text-center">Loading articles...</div>
+      <div className="max-w-7xl mx-auto px-4 py-8 min-h-screen">
+        <div className="text-center">Загрузка статей...</div>
       </div>
     )
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8">
+    <div className="max-w-7xl mx-auto px-4 py-8 min-h-screen">
       <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Manage Articles</h1>
+        <h1 className="text-3xl font-bold text-gray-900">Управление статьями</h1>
         <div className="flex gap-4">
           <Link href="/admin" className="px-4 py-2 text-gray-600 hover:text-gray-900">
-            ← Back to Admin
+            ← Назад в админку
           </Link>
           <button
             onClick={() => {
-              resetForm()
-              setShowCreateForm(!showCreateForm)
+              if (showCreateForm) {
+                setShowCreateForm(false);
+                resetForm();
+              } else {
+                setShowCreateForm(true);
+              }
             }}
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
           >
-            {showCreateForm ? 'Cancel' : '+ New Article'}
+            {showCreateForm ? 'Отменить' : '+ Новая статья'}
           </button>
         </div>
       </div>
@@ -193,12 +197,12 @@ export default function AdminArticles() {
       {showCreateForm && (
         <div className="bg-white rounded-lg shadow-md p-6 mb-8">
           <h2 className="text-xl font-bold mb-4">
-            {editingArticle ? 'Edit Article' : 'Create New Article'}
+            {editingArticle ? 'Редактировать статью' : 'Создать новую статью'}
           </h2>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Title *
+                Заголовок *
               </label>
               <input
                 type="text"
@@ -225,7 +229,7 @@ export default function AdminArticles() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Subheader
+                Подзаголовок
               </label>
               <input
                 type="text"
@@ -237,7 +241,7 @@ export default function AdminArticles() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Cover Image URL
+                Изображение обложки
               </label>
               <input
                 type="text"
@@ -250,25 +254,25 @@ export default function AdminArticles() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Tags (comma-separated)
+                Теги (через запятую)
               </label>
               <input
                 type="text"
                 value={tags}
                 onChange={(e) => setTags(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="javascript, tutorial, beginner"
+                placeholder="javascript, tutorial, beginner (через запятую)"
               />
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Content *
+                Контент *
               </label>
               <RichTextEditor
                 value={content}
                 onChange={setContent}
-                placeholder="Write your article content here..."
+                placeholder="Напишите вашу статью здесь..."
                 rows={15}
                 onImageUpload={handleImageUpload}
               />
@@ -278,19 +282,19 @@ export default function AdminArticles() {
               <button
                 type="submit"
                 disabled={submitLoading}
-                className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+                className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
-                {submitLoading ? 'Saving...' : (editingArticle ? 'Update Article' : 'Create Article')}
+                {submitLoading ? 'Сохранение...' : (editingArticle ? 'Обновить статью' : 'Создать статью')}
               </button>
               <button
                 type="button"
                 onClick={() => {
-                  resetForm()
-                  setShowCreateForm(false)
+                  setShowCreateForm(false);
+                  resetForm();
                 }}
-                className="px-6 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
+                className="px-6 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors"
               >
-                Cancel
+                Отменить
               </button>
             </div>
           </form>
@@ -304,19 +308,19 @@ export default function AdminArticles() {
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Title
+                  Заголовок
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Slug
+                  Slug (URL)  
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Tags
+                  Теги
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Stats
+                  Статистика
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
+                  Действия
                 </th>
               </tr>
             </thead>
@@ -324,7 +328,7 @@ export default function AdminArticles() {
               {articles.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="px-6 py-4 text-center text-gray-500">
-                    No articles found. Create your first article!
+                    Статьи не найдены. Создайте вашу первую статью!
                   </td>
                 </tr>
               ) : (
@@ -349,13 +353,13 @@ export default function AdminArticles() {
                         onClick={() => handleEdit(article)}
                         className="text-indigo-600 hover:text-indigo-900"
                       >
-                        Edit
+                        Редактировать
                       </button>
                       <button
                         onClick={() => handleDelete(article.id)}
                         className="text-red-600 hover:text-red-900"
                       >
-                        Delete
+                        Удалить
                       </button>
                     </td>
                   </tr>

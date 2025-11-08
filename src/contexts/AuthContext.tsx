@@ -61,6 +61,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       try {
         const userData = JSON.parse(savedUser);
         console.log('AuthContext: Restoring user from localStorage', userData);
+        console.log('AuthContext: User isAdmin status:', userData.isAdmin);
         console.log('AuthContext: Setting currentUser to:', userData);
         setCurrentUser(userData);
         setToken(savedToken); // Make sure token is set when user is restored
@@ -96,7 +97,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       if (response.ok) {
         const userData = await response.json();
-        console.log('AuthContext: Token valid, user data received');
+        console.log('AuthContext: Token valid, user data received:', userData.user);
+        console.log('AuthContext: User isAdmin from API:', userData.user.isAdmin);
         setCurrentUser(userData.user);
         setToken(token); // Ensure token is set when user is fetched
       } else if (response.status === 401) {

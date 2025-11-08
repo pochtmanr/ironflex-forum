@@ -52,7 +52,7 @@ ResetTokenSchema.index({ token: 1, used: 1 })
 ResetTokenSchema.set('toJSON', {
   virtuals: true,
   transform: function(_doc: any, ret: any) {
-    ret.id = ret._id
+    ret.id = ret._id || ''
     if (ret._id) delete ret._id
     if (ret.__v) delete ret.__v
     return ret
