@@ -228,6 +228,11 @@ This project is private and proprietary.
 - **GitHub:** https://github.com/pochtmanr/ironflex-forum
 - **Admin Panel:** http://45.10.43.204/admin
 
+## ⚠️ Important: Single Repository
+
+This project uses **only** `https://github.com/pochtmanr/ironflex-forum`  
+Do not push to any other repositories.
+
 ## 📞 Support
 
 For issues and questions:
