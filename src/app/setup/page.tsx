@@ -4,7 +4,7 @@ export default function SetupPage() {
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto">
           <h1 className="text-3xl font-bold text-gray-900 mb-8">
-            IronFlex Forum - MongoDB Migration Guide
+            tarnovsky.ru Forum - MongoDB Migration Guide
           </h1>
 
           <div className="space-y-8">
@@ -31,7 +31,7 @@ mongod`}
 # 2. Create a new cluster
 # 3. Get connection string
 # 4. Use in .env.local:
-MONGODB_URI="mongodb+srv://username:password@cluster.mongodb.net/ironflex_forum"`}
+MONGODB_URI="mongodb+srv://username:password@cluster.mongodb.net/tarnovsky.ru_forum"`}
                   </pre>
                 </div>
               </div>
@@ -43,7 +43,7 @@ MONGODB_URI="mongodb+srv://username:password@cluster.mongodb.net/ironflex_forum"
 {`cp env.example .env.local
 
 # Edit .env.local with your MongoDB connection:
-MONGODB_URI="mongodb://localhost:27017/ironflex_forum"
+MONGODB_URI="mongodb://localhost:27017/tarnovsky.ru_forum"
 JWT_SECRET="your_jwt_secret_key_here"
 JWT_REFRESH_SECRET="your_jwt_refresh_secret_key_here"`}
               </pre>
@@ -99,9 +99,9 @@ node migrate-from-firestore.js`}
                   <h3 className="font-semibold text-blue-700 mb-2">Import to MongoDB:</h3>
                   <pre className="bg-white p-3 rounded text-sm overflow-x-auto">
 {`# Use mongoimport or MongoDB Compass
-mongoimport --db ironflex_forum --collection users --file users.json
-mongoimport --db ironflex_forum --collection topics --file topics.json
-mongoimport --db ironflex_forum --collection posts --file posts.json`}
+mongoimport --db tarnovsky.ru_forum --collection users --file users.json
+mongoimport --db tarnovsky.ru_forum --collection topics --file topics.json
+mongoimport --db tarnovsky.ru_forum --collection posts --file posts.json`}
                   </pre>
                 </div>
               </div>

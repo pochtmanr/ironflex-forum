@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Политика конфиденциальности - IronFlex Forum",
-  description: "Политика конфиденциальности IronFlex Forum",
+  title: "Политика конфиденциальности - tarnovsky.ru Forum",
+  description: "Политика конфиденциальности tarnovsky.ru Forum",
 };
 
 export default function PrivacyPolicy() {
@@ -52,7 +52,7 @@ export default function PrivacyPolicy() {
           <h2 className="text-2xl font-semibold text-gray-800 mb-4">5. Контактная информация</h2>
           <p className="text-gray-700 leading-relaxed mb-4">
             Если у вас есть вопросы по данной политике конфиденциальности, 
-            свяжитесь с нами по email: <a href="mailto:info@ironflex.kz" className="text-blue-600 hover:text-blue-700">info@ironflex.kz</a>
+            свяжитесь с нами по email: <a href="mailto:info@tarnovsky.ru.kz" className="text-blue-600 hover:text-blue-700">info@tarnovsky.ru.kz</a>
           </p>
         </section>
 

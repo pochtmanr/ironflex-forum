@@ -113,7 +113,7 @@ function VerifyEmailContent() {
                     </h3>
                     <div className="mt-2 text-sm text-green-700">
                       <ul className="list-disc list-inside space-y-1">
-                        <li>You can now access all features of Iron Blog</li>
+                        <li>You can now access all features of tarnovsky.ru</li>
                         <li>Your account is fully activated</li>
                         <li>You can participate in discussions and create topics</li>
                       </ul>

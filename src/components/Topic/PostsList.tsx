@@ -24,6 +24,7 @@ interface PostsListProps {
   formatDate: (dateString: string) => string;
   currentUser: any;
   isTopicAuthor: boolean;
+  onImageClick?: (src: string) => void;
 }
 
 export const PostsList: React.FC<PostsListProps> = ({
@@ -34,7 +35,8 @@ export const PostsList: React.FC<PostsListProps> = ({
   onDeletePost,
   formatDate,
   currentUser,
-  isTopicAuthor
+  isTopicAuthor,
+  onImageClick
 }) => {
   const sortedPosts = useMemo(() => {
     const sorted = [...posts];
@@ -58,6 +60,7 @@ export const PostsList: React.FC<PostsListProps> = ({
           formatDate={formatDate}
           currentUser={currentUser}
           canDelete={post.is_author || isTopicAuthor}
+          onImageClick={onImageClick}
         />
       ))}
     </div>

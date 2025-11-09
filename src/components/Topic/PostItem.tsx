@@ -30,6 +30,7 @@ interface PostItemProps {
   formatDate: (dateString: string) => string;
   currentUser: any;
   canDelete: boolean;
+  onImageClick?: (src: string) => void;
 }
 
 export const PostItem: React.FC<PostItemProps> = ({
@@ -40,7 +41,8 @@ export const PostItem: React.FC<PostItemProps> = ({
   onDelete,
   formatDate,
   currentUser,
-  canDelete
+  canDelete,
+  onImageClick
 }) => {
   return (
     <div className="bg-white ml-2 border-2 border-gray-200/50 mb-4 rounded-sm">
@@ -109,8 +111,9 @@ export const PostItem: React.FC<PostItemProps> = ({
                   <img
                     src={props.src as string}
                     alt={props.alt || ''}
-                    className="max-w-full h-auto rounded"
+                    className="max-w-full h-auto rounded cursor-pointer hover:opacity-90 transition-opacity"
                     style={{ objectFit: 'contain', maxHeight: '400px' }}
+                    onClick={() => onImageClick?.(props.src as string)}
                   />
                 ),
               }}
@@ -125,7 +128,7 @@ export const PostItem: React.FC<PostItemProps> = ({
               <h4 className="text-sm font-medium text-gray-900 mb-2">Прикрепленные файлы:</h4>
               <div className="space-y-3">
                 {post.media_links.map((link, linkIndex) => (
-                  <MediaAttachment key={linkIndex} link={link} index={linkIndex} />
+                  <MediaAttachment key={linkIndex} link={link} index={linkIndex} onImageClick={onImageClick} />
                 ))}
               </div>
             </div>

@@ -1,86 +1,67 @@
 #!/bin/bash
 
-# Deploy to production server
-# Usage: ./deploy-to-server.sh
+# Deployment script for VPS
+# This script will connect to your server and deploy the optimized version
 
-SERVER="root@45.10.43.204"
-REMOTE_DIR="/root/iron-blog"
+SERVER_IP="95.163.180.91"  # Your server IP (adjust if different)
+SERVER_USER="root"
+PROJECT_PATH="/root/iron-blog"  # Adjust if your project is elsewhere
 
-echo "🚀 Deploying to production server..."
+echo "🚀 Deploying to VPS..."
+echo "================================"
 echo ""
 
-# 1. Create tarball of source code
-echo "📦 Creating deployment package..."
-cd /Users/romanpochtman/Developer/forumnextjs/iron-blog
+# Check if we can connect
+echo "📡 Testing connection to $SERVER_IP..."
+if ! ping -c 1 $SERVER_IP &> /dev/null; then
+    echo "❌ Cannot reach server. Check your internet connection."
+    exit 1
+fi
 
-# Exclude node_modules and other unnecessary files
-tar -czf /tmp/iron-blog-deploy.tar.gz \
-  --exclude='node_modules' \
-  --exclude='.next' \
-  --exclude='src.zip' \
-  --exclude='iron-blog.tar.gz' \
-  --exclude='iron-blog.zip' \
-  --exclude='.git' \
-  --exclude='fileserver/venv' \
-  --exclude='fileserver/uploads' \
-  .
-
-echo "✅ Package created"
+echo "✅ Server is reachable"
 echo ""
 
-# 2. Upload to server
-echo "⬆️  Uploading to server..."
-scp /tmp/iron-blog-deploy.tar.gz $SERVER:/tmp/
-echo "✅ Upload complete"
-echo ""
+# Copy files to server
+echo "📦 Copying updated files to server..."
+scp docker-compose.yml Dockerfile src/lib/mongodb.ts $SERVER_USER@$SERVER_IP:$PROJECT_PATH/
 
-# 3. Deploy on server
-echo "🔧 Deploying on server..."
-ssh $SERVER << 'ENDSSH'
+# SSH and deploy
+echo "🔧 Connecting to server and deploying..."
+ssh $SERVER_USER@$SERVER_IP << 'ENDSSH'
 cd /root/iron-blog
 
-# Backup current version
-echo "📋 Creating backup..."
-tar -czf /root/iron-blog-backup-$(date +%Y%m%d-%H%M%S).tar.gz \
-  --exclude='node_modules' \
-  --exclude='.next' \
-  --exclude='fileserver/venv' \
-  --exclude='fileserver/uploads' \
-  .
+echo "📊 Current memory usage:"
+free -h
+echo ""
 
-# Extract new version (preserve fileserver/uploads)
-echo "📂 Extracting new version..."
-tar -xzf /tmp/iron-blog-deploy.tar.gz
-
-# Rebuild and restart
-echo "🔨 Rebuilding containers..."
+echo "🛑 Stopping containers..."
 docker-compose down
-docker-compose build --no-cache nextjs-app
+
+echo "🧹 Cleaning up Docker..."
+docker system prune -f
+
+echo "🔨 Rebuilding with memory limits..."
+docker-compose build --no-cache
+
+echo "🚀 Starting services..."
 docker-compose up -d
 
-# Wait for services to start
 echo "⏳ Waiting for services to start..."
-sleep 10
+sleep 15
 
-# Check status
 echo "📊 Container status:"
 docker-compose ps
 
-# Show logs
 echo ""
-echo "📝 Recent logs:"
-docker logs nextjs-app --tail 20
+echo "💾 Memory usage:"
+docker stats --no-stream
 
 echo ""
 echo "✅ Deployment complete!"
-echo "🌐 App should be available at: http://45.10.43.204:3000"
 ENDSSH
 
 echo ""
-echo "✅ All done!"
+echo "🎉 Done! Your site should be running with memory optimizations."
 echo ""
-
-# Cleanup
-rm -f /tmp/iron-blog-deploy.tar.gz
-
+echo "To monitor: ssh $SERVER_USER@$SERVER_IP 'docker stats'"
 

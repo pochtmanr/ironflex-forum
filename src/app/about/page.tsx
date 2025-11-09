@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "О нас - IronFlex Forum",
-  description: "Информация о IronFlex Forum - форуме для любителей бодибилдинга и фитнеса",
+  title: "О нас - tarnovsky.ru Forum",
+  description: "Информация о tarnovsky.ru Forum - форуме для любителей бодибилдинга и фитнеса",
 };
 
 export default function About() {
@@ -16,11 +16,11 @@ export default function About() {
           <div className="flex items-center mb-6">
             <img 
               src="/images/4_logo12.svg" 
-              alt="IronFlex" 
+              alt="tarnovsky.ru" 
               className="h-16 w-auto mr-4"
             />
             <div>
-              <h2 className="text-2xl font-semibold text-gray-800">IronFlex Forum</h2>
+              <h2 className="text-2xl font-semibold text-gray-800">tarnovsky.ru Forum</h2>
               <p className="text-gray-600">Сообщество для любителей фитнеса и здорового образа жизни</p>
             </div>
           </div>
@@ -29,7 +29,7 @@ export default function About() {
         <section className="mb-8">
           <h2 className="text-2xl font-semibold text-gray-800 mb-4">Наша миссия</h2>
           <p className="text-gray-700 leading-relaxed mb-4">
-            IronFlex Forum создан для объединения людей, увлеченных бодибилдингом, фитнесом и здоровым образом жизни. 
+            tarnovsky.ru Forum создан для объединения людей, увлеченных бодибилдингом, фитнесом и здоровым образом жизни. 
             Мы стремимся создать дружелюбное сообщество, где каждый может найти поддержку, поделиться опытом 
             и получить ответы на свои вопросы.
           </p>
@@ -105,10 +105,10 @@ export default function About() {
           </p>
           <div className="bg-gray-50 p-6 rounded-lg">
             <p className="text-gray-700 mb-2">
-              <strong>Email:</strong> <a href="mailto:info@ironflex.kz" className="text-blue-600 hover:text-blue-700">info@ironflex.kz</a>
+              <strong>Email:</strong> <a href="mailto:info@tarnovsky.ru.kz" className="text-blue-600 hover:text-blue-700">info@tarnovsky.ru.kz</a>
             </p>
             <p className="text-gray-700">
-              <strong>Сайт:</strong> <a href="https://www.ironflex.kz" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-700">www.ironflex.kz</a>
+              <strong>Сайт:</strong> <a href="https://www.tarnovsky.ru.kz" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-700">www.tarnovsky.ru.kz</a>
             </p>
           </div>
         </section>

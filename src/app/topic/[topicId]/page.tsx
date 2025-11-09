@@ -6,8 +6,8 @@ import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { forumAPI } from '@/services/api';
 import { LoginPrompt } from '@/components/UI/LoginPrompt';
-import { PaginationButton } from '@/components/UI';
-import { TopicHeader, PostsList, ReplyForm } from '@/components/Topic';
+import { PaginationButton, ImageLightbox } from '@/components/UI';
+import { TopicHeader, PostsList, ReplyForm, EditTopicModal } from '@/components/Topic';
 interface Post {
   id: number | string;
   content: string;
@@ -64,6 +64,12 @@ const TopicViewPage: React.FC = () => {
   // Vote tracking
   const [topicVote, setTopicVote] = useState<'like' | 'dislike' | null>(null);
   const [postVotes, setPostVotes] = useState<Record<string, 'like' | 'dislike' | null>>({});
+  
+  // Image lightbox
+  const [lightboxImage, setLightboxImage] = useState<string | null>(null);
+  
+  // Edit modal
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   useEffect(() => {
     if (topicId) {
@@ -284,6 +290,35 @@ const TopicViewPage: React.FC = () => {
     }
   };
 
+  const handleEditTopic = () => {
+    if (!currentUser || !topic?.is_author) {
+      return;
+    }
+    setIsEditModalOpen(true);
+  };
+
+  const handleSaveEdit = async (title: string, content: string) => {
+    if (!currentUser || !topic?.is_author) {
+      throw new Error('Недостаточно прав для редактирования');
+    }
+
+    try {
+      await forumAPI.updateTopic(topicId, { title, content });
+      // Update local topic state - preserve is_author flag
+      setTopic({
+        ...topic,
+        title,
+        content,
+        is_author: true // Explicitly preserve author status
+      });
+      setIsEditModalOpen(false);
+    } catch (error: unknown) {
+      console.error('Topic update error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Ошибка обновления темы';
+      throw new Error(errorMessage);
+    }
+  };
+
   const handleDeleteTopic = async () => {
     if (!currentUser || !topic?.is_author) {
       return;
@@ -466,8 +501,10 @@ const TopicViewPage: React.FC = () => {
         topicVote={topicVote}
         onLikeTopic={handleLikeTopic}
         onDeleteTopic={handleDeleteTopic}
+        onEditTopic={handleEditTopic}
         formatDate={formatDate}
         currentUser={currentUser}
+        onImageClick={setLightboxImage}
       />
 
       {/* Error Display */}
@@ -506,6 +543,7 @@ const TopicViewPage: React.FC = () => {
         formatDate={formatDate}
         currentUser={currentUser}
         isTopicAuthor={topic.is_author}
+        onImageClick={setLightboxImage}
       />
 
       {/* Reply Form */}
@@ -549,6 +587,27 @@ const TopicViewPage: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Image Lightbox */}
+      {lightboxImage && (
+        <ImageLightbox
+          src={lightboxImage}
+          alt="Full screen image"
+          onClose={() => setLightboxImage(null)}
+        />
+      )}
+
+      {/* Edit Topic Modal */}
+      {topic && (
+        <EditTopicModal
+          isOpen={isEditModalOpen}
+          onClose={() => setIsEditModalOpen(false)}
+          onSave={handleSaveEdit}
+          onImageUpload={handleEditorImageUpload}
+          initialTitle={topic.title}
+          initialContent={topic.content}
+        />
       )}
     </div>
   );

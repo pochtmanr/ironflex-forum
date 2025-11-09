@@ -15,14 +15,14 @@ const Footer: React.FC = () => {
           <div className="md:col-span-2">
             <div className="flex items-center mb-4">
               <a 
-                href="https://www.ironflex.kz" 
+                href="https://www.tarnovsky.ru.kz" 
                 target="_blank" 
                 rel="noopener noreferrer"
                 className="flex items-center space-x-3 hover:opacity-80 transition-opacity"
               >
                 <img 
                   src="/images/4_logo12.svg" 
-                  alt="Ironflex" 
+                  alt="tarnovsky.ru" 
                   className="h-12 w-auto"
                 />
                 
@@ -39,7 +39,7 @@ const Footer: React.FC = () => {
           <div className="md:col-span-1">
             <h4 className="text-lg font-semibold mb-4">Информация</h4>
             <div className="flex flex-wrap gap-x-3 gap-y-1">
-              <a href="mailto:info@ironflex.kz" className="text-gray-400 hover:text-white transition-colors text-sm">
+              <a href="mailto:info@tarnovsky.ru.kz" className="text-gray-400 hover:text-white transition-colors text-sm">
                 Контакты
               </a>
               <span className="text-gray-400 text-sm">•</span>

@@ -4,9 +4,10 @@ import Image from 'next/image';
 interface MediaAttachmentProps {
   link: string;
   index: number;
+  onImageClick?: (src: string) => void;
 }
 
-export const MediaAttachment: React.FC<MediaAttachmentProps> = ({ link, index }) => {
+export const MediaAttachment: React.FC<MediaAttachmentProps> = ({ link, index, onImageClick }) => {
   const filename = link.split('/').pop() || '';
   const isImage = /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(filename);
   const isVideo = /\.(mp4|webm|ogg|avi|mov)$/i.test(filename);
@@ -17,18 +18,23 @@ export const MediaAttachment: React.FC<MediaAttachmentProps> = ({ link, index })
     <div key={index} className="bg-gray-50 p-3 rounded-lg">
       {isImage ? (
         <div className="space-y-2">
-          <Image
-            src={link}
-            alt={filename}
-            width={800}
-            height={600}
-            className="max-w-full h-auto rounded border"
-            style={{ objectFit: 'contain', maxHeight: '400px', width: 'auto' }}
-            onError={(e) => {
-              e.currentTarget.style.display = 'none';
-              e.currentTarget.nextElementSibling?.classList.remove('hidden');
-            }}
-          />
+          <div
+            className="cursor-pointer hover:opacity-90 transition-opacity"
+            onClick={() => onImageClick?.(link)}
+          >
+            <Image
+              src={link}
+              alt={filename}
+              width={800}
+              height={600}
+              className="max-w-full h-auto rounded border"
+              style={{ objectFit: 'contain', maxHeight: '400px', width: 'auto' }}
+              onError={(e) => {
+                e.currentTarget.style.display = 'none';
+                e.currentTarget.nextElementSibling?.classList.remove('hidden');
+              }}
+            />
+          </div>
           <div className="hidden">
             <a
               href={link}

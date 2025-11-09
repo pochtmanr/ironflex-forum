@@ -35,7 +35,7 @@ async function connectDB() {
             serverSelectionTimeoutMS: 10000,
             connectTimeoutMS: 10000,
             socketTimeoutMS: 45000,
-            maxPoolSize: 10,
+            maxPoolSize: 5, // Reduced from 10 to save memory
             minPoolSize: 1,
             maxIdleTimeMS: 30000,
             retryWrites: true,

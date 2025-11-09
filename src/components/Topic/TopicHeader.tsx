@@ -35,8 +35,10 @@ interface TopicHeaderProps {
   topicVote: 'like' | 'dislike' | null;
   onLikeTopic: (likeType: 'like' | 'dislike') => void;
   onDeleteTopic: () => void;
+  onEditTopic?: () => void;
   formatDate: (dateString: string) => string;
   currentUser: any;
+  onImageClick?: (src: string) => void;
 }
 
 export const TopicHeader: React.FC<TopicHeaderProps> = ({
@@ -45,8 +47,10 @@ export const TopicHeader: React.FC<TopicHeaderProps> = ({
   topicVote,
   onLikeTopic,
   onDeleteTopic,
+  onEditTopic,
   formatDate,
-  currentUser
+  currentUser,
+  onImageClick
 }) => {
   return (
     <div className="bg-white border-2 border-gray-200/50 mb-4 rounded-sm">
@@ -105,12 +109,36 @@ export const TopicHeader: React.FC<TopicHeaderProps> = ({
             </div>
           </div>
           
-          {/* Delete button if author */}
+          {/* Edit and Delete buttons if author */}
           {topic.is_author && (
-            <DeleteButton
-              onClick={onDeleteTopic}
-              title="Удалить тему"
-            />
+            <div className="flex items-center gap-2">
+              {onEditTopic && (
+                <button
+                  onClick={onEditTopic}
+                  className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
+                  title="Редактировать тему"
+                  aria-label="Редактировать тему"
+                >
+                  <svg
+                    className="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                    />
+                  </svg>
+                </button>
+              )}
+              <DeleteButton
+                onClick={onDeleteTopic}
+                title="Удалить тему"
+              />
+            </div>
           )}
         </div>
       </div>
@@ -128,8 +156,9 @@ export const TopicHeader: React.FC<TopicHeaderProps> = ({
                   <img
                     src={props.src as string}
                     alt={props.alt || ''}
-                    className="max-w-full h-auto rounded"
+                    className="max-w-full h-auto rounded cursor-pointer hover:opacity-90 transition-opacity"
                     style={{ objectFit: 'contain', maxHeight: '400px' }}
+                    onClick={() => onImageClick?.(props.src as string)}
                   />
                 ),
               }}
@@ -144,7 +173,7 @@ export const TopicHeader: React.FC<TopicHeaderProps> = ({
               <h4 className="text-sm font-medium text-gray-900 mb-2">Прикрепленные файлы:</h4>
               <div className="space-y-3">
                 {topic.media_links.map((link, linkIndex) => (
-                  <MediaAttachment key={linkIndex} link={link} index={linkIndex} />
+                  <MediaAttachment key={linkIndex} link={link} index={linkIndex} onImageClick={onImageClick} />
                 ))}
               </div>
             </div>

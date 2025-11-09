@@ -20,7 +20,7 @@ COPY . .
 # Vercel-like build optimizations
 ENV NEXT_TELEMETRY_DISABLED 1
 ENV NODE_ENV=production
-ENV NODE_OPTIONS="--max-old-space-size=2048"
+ENV NODE_OPTIONS="--max-old-space-size=512"
 ENV CI=true
 ENV SKIP_ENV_VALIDATION=true
 
@@ -34,6 +34,8 @@ WORKDIR /app
 ENV NODE_ENV production
 # Uncomment the following line in case you want to disable telemetry during runtime.
 ENV NEXT_TELEMETRY_DISABLED 1
+# Limit memory usage in production to prevent OOM on 4GB server
+ENV NODE_OPTIONS="--max-old-space-size=1024"
 
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs

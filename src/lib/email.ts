@@ -206,7 +206,7 @@ const getEmailTemplate = (type: string, data: Record<string, unknown>) => {
         <head>
           <meta charset="utf-8">
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <title>Сброс пароля - Iron Blog</title>
+          <title>Сброс пароля - tarnovsky.ru</title>
           ${baseStyle}
         </head>
         <body>
@@ -220,7 +220,7 @@ const getEmailTemplate = (type: string, data: Record<string, unknown>) => {
               <div class="email-content">
                 <h2>Здравствуйте, ${data.username}!</h2>
                 
-                <p>Мы получили запрос на сброс пароля для вашего аккаунта на <strong>Iron Blog</strong>.</p>
+                <p>Мы получили запрос на сброс пароля для вашего аккаунта на <strong>tarnovsky.ru</strong>.</p>
                 
                 <p>Чтобы создать новый пароль, нажмите на кнопку ниже:</p>
                 

@@ -144,6 +144,13 @@ export const forumAPI = {
     });
   },
 
+  updateTopic: async (topicId: string, data: { title: string; content: string }) => {
+    return apiRequest(`/admin/topics/${topicId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data)
+    }, false); // Use auth token
+  },
+
   createPost: async (topicId: string, content: string, mediaLinks?: string[]) => {
     // Get user data from localStorage (like React app)
     const savedUser = localStorage.getItem('user');

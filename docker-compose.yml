@@ -10,13 +10,15 @@ services:
       - MONGO_INITDB_DATABASE=ironblog
       - MONGO_INITDB_DATABASE_USER=ironblog_user
       - MONGO_INITDB_DATABASE_PASSWORD=IronBlogPass456!
-    command: --bind_ip_all --auth
+    command: --bind_ip_all --auth --wiredTigerCacheSizeGB 0.5
     volumes:
       - mongodb_data:/data/db
       - ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
     restart: unless-stopped
     networks:
       - my_custom_network
+    mem_limit: 1g
+    memswap_limit: 1g
 
   fileserver:
     container_name: fileserver
@@ -39,6 +41,8 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+    mem_limit: 512m
+    memswap_limit: 512m
 
   nextjs-app:
     build:
@@ -59,6 +63,8 @@ services:
     restart: unless-stopped
     networks:
       - my_custom_network
+    mem_limit: 1536m
+    memswap_limit: 1536m
 
   nginx:
     image: nginx:alpine
@@ -76,6 +82,8 @@ services:
     restart: unless-stopped
     networks:
       - my_custom_network
+    mem_limit: 256m
+    memswap_limit: 256m
 
   certbot:
     image: certbot/certbot

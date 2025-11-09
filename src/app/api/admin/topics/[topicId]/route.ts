@@ -40,6 +40,14 @@ export async function DELETE(
       );
     }
 
+    // Verify ownership - only the author can delete
+    if (topic.userId !== userPayload.id) {
+      return NextResponse.json(
+        { error: 'You can only delete your own topics' },
+        { status: 403 }
+      );
+    }
+
     // Delete all posts in this topic
     await Post.deleteMany({ topicId: topicId });
 
@@ -100,6 +108,14 @@ export async function PATCH(
       return NextResponse.json(
         { error: 'Topic not found' },
         { status: 404 }
+      );
+    }
+
+    // Verify ownership - only the author can edit
+    if (topic.userId !== userPayload.id) {
+      return NextResponse.json(
+        { error: 'You can only edit your own topics' },
+        { status: 403 }
       );
     }
 

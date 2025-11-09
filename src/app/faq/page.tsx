@@ -49,7 +49,7 @@ export default function FAQ() {
     },
     {
       question: "Как связаться с администрацией?",
-      answer: "Вы можете написать на email info@ironflex.kz или использовать форму обратной связи. Мы отвечаем в течение 24-48 часов."
+      answer: "Вы можете написать на email info@tarnovsky.ru.kz или использовать форму обратной связи. Мы отвечаем в течение 24-48 часов."
     },
     {
       question: "Можно ли использовать форум с мобильного устройства?",
@@ -96,7 +96,7 @@ export default function FAQ() {
         </p>
         <div className="flex flex-col sm:flex-row gap-4">
           <a
-            href="mailto:info@ironflex.kz"
+            href="mailto:info@tarnovsky.ru.kz"
             className="px-6 py-3 bg-blue-600 text-white hover:bg-blue-700 transition-colors font-medium text-center"
           >
             Написать нам

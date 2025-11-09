@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Условия использования - IronFlex Forum",
-  description: "Условия использования IronFlex Forum",
+  title: "Условия использования - tarnovsky.ru Forum",
+  description: "Условия использования tarnovsky.ru Forum",
 };
 
 export default function TermsOfService() {
@@ -191,7 +191,7 @@ export default function TermsOfService() {
           </p>
           <ul className="list-none pl-0 text-gray-700 mb-4 space-y-2">
             <li>
-              Email: <a href="mailto:info@ironflex.kz" className="text-blue-600 hover:text-blue-700 font-medium">info@ironflex.kz</a>
+              Email: <a href="mailto:info@tarnovsky.ru.kz" className="text-blue-600 hover:text-blue-700 font-medium">info@tarnovsky.ru.kz</a>
             </li>
             <li>
               Веб-сайт: <a href="https://forum.theholylabs.com" className="text-blue-600 hover:text-blue-700 font-medium">forum.theholylabs.com</a>

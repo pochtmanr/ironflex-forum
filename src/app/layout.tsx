@@ -17,7 +17,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "IronFlex Forum",
+  title: "tarnovsky.ru Forum",
   description: "Next.js + MongoDB Forum Platform",
 };
 

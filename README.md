@@ -1,4 +1,4 @@
-# 🏋️ Iron Blog - Modern Forum Platform
+# 🏋️ tarnovsky.ru - Modern Forum Platform
 
 A comprehensive Next.js 15 forum platform with MongoDB, featuring articles, trainings, and community discussions.
 

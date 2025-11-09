@@ -262,6 +262,86 @@ function ToolbarPlugin({ onImageUpload }: { onImageUpload?: (file: File) => Prom
   );
 }
 
+// Plugin to update editor content when value prop changes
+function UpdatePlugin({ value }: { value: string }) {
+  const [editor] = useLexicalComposerContext();
+
+  useEffect(() => {
+    editor.update(() => {
+      const root = $getRoot();
+      root.clear();
+
+      if (value) {
+        // Parse markdown and create nodes
+        const lines = value.split('\n');
+        
+        lines.forEach((line) => {
+          const paragraph = $createParagraphNode();
+          
+          // Check for image markdown
+          const imageMatch = line.match(/!\[([^\]]*)\]\(([^)]+)\)/);
+          if (imageMatch) {
+            const imageUrl = imageMatch[2];
+            const imgElement = document.createElement('img');
+            imgElement.src = imageUrl;
+            imgElement.style.maxWidth = '100%';
+            imgElement.style.maxHeight = '400px';
+            imgElement.style.height = 'auto';
+            
+            const textNode = $createTextNode('');
+            paragraph.append(textNode);
+            root.append(paragraph);
+            
+            // Insert image after paragraph
+            const imgParagraph = $createParagraphNode();
+            root.append(imgParagraph);
+            return;
+          }
+          
+          // Parse inline formatting
+          let remainingText = line;
+          const textNode = $createTextNode(remainingText);
+          
+          // Apply formatting based on markdown
+          if (remainingText.includes('***')) {
+            const cleanText = remainingText.replace(/\*\*\*/g, '');
+            const node = $createTextNode(cleanText);
+            node.setFormat('bold');
+            node.setFormat('italic');
+            paragraph.append(node);
+          } else if (remainingText.includes('**')) {
+            const cleanText = remainingText.replace(/\*\*/g, '');
+            const node = $createTextNode(cleanText);
+            node.setFormat('bold');
+            paragraph.append(node);
+          } else if (remainingText.includes('*')) {
+            const cleanText = remainingText.replace(/\*/g, '');
+            const node = $createTextNode(cleanText);
+            node.setFormat('italic');
+            paragraph.append(node);
+          } else if (remainingText.includes('~~')) {
+            const cleanText = remainingText.replace(/~~/g, '');
+            const node = $createTextNode(cleanText);
+            node.setFormat('strikethrough');
+            paragraph.append(node);
+          } else if (remainingText.includes('__')) {
+            const cleanText = remainingText.replace(/__/g, '');
+            const node = $createTextNode(cleanText);
+            node.setFormat('underline');
+            paragraph.append(node);
+          } else {
+            paragraph.append(textNode);
+          }
+          
+          root.append(paragraph);
+        });
+      }
+    });
+  }, [editor, value]);
+
+  return null;
+}
+
 export const RichTextEditor: React.FC<RichTextEditorProps> = ({
   value,
   onChange,
@@ -355,6 +435,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
           />
           <OnChangePlugin onChange={handleChange} />
           <HistoryPlugin />
+          <UpdatePlugin value={value} />
         </div>
       </LexicalComposer>
 
