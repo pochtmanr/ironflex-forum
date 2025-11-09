@@ -1,11 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { exec } from 'child_process'
 import { promisify } from 'util'
+import { verifyAccessToken } from '@/lib/auth'
 
 const execAsync = promisify(exec)
 
 export async function POST(request: NextRequest) {
   try {
+    // Verify admin authentication
+    const authHeader = request.headers.get('authorization')
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      )
+    }
+
+    const token = authHeader.substring(7)
+    const userPayload = verifyAccessToken(token)
+    
+    if (!userPayload || userPayload.role !== 'admin') {
+      return NextResponse.json(
+        { error: 'Admin access required' },
+        { status: 403 }
+      )
+    }
+
     // Check if we're in production (on VPS)
     const isProduction = process.env.NODE_ENV === 'production'
     
@@ -16,14 +36,22 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    console.log('Starting deployment...')
+
     // Execute deployment script
-    const { stdout, stderr } = await execAsync('cd /root/iron-blog && ./deploy.sh', {
-      timeout: 300000 // 5 minutes timeout
+    const { stdout, stderr } = await execAsync('cd /root/iron-blog && bash deploy.sh', {
+      timeout: 300000, // 5 minutes timeout
+      maxBuffer: 1024 * 1024 * 10 // 10MB buffer
     })
+
+    console.log('Deployment output:', stdout)
+    if (stderr) {
+      console.log('Deployment stderr:', stderr)
+    }
 
     return NextResponse.json({
       success: true,
-      message: 'Deployment initiated successfully',
+      message: 'Deployment completed successfully',
       output: stdout,
       errors: stderr || null
     })
@@ -33,6 +61,7 @@ export async function POST(request: NextRequest) {
     
     return NextResponse.json(
       { 
+        success: false,
         error: 'Deployment failed',
         details: error instanceof Error ? error.message : 'Unknown error'
       },

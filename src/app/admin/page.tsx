@@ -322,8 +322,18 @@ function DeploymentPanel() {
     setDeployStatus('Начинается развертывание...')
 
     try {
+      const token = localStorage.getItem('accessToken')
+      if (!token) {
+        setDeployStatus('❌ Ошибка: Не найден токен авторизации')
+        setDeploying(false)
+        return
+      }
+
       const response = await fetch('/api/admin/deploy', {
-        method: 'POST'
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
       })
 
       const data = await response.json()
@@ -334,7 +344,7 @@ function DeploymentPanel() {
           window.location.reload()
         }, 3000)
       } else {
-        setDeployStatus(`❌ Ошибка: ${data.error}`)
+        setDeployStatus(`❌ Ошибка: ${data.error || data.details || 'Unknown error'}`)
       }
     } catch (error) {
       setDeployStatus(`❌ Ошибка: ${error instanceof Error ? error.message : 'Unknown error'}`)
