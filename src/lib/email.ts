@@ -1,6 +1,10 @@
 import crypto from 'crypto'
 import nodemailer from 'nodemailer'
 
+console.log('[EMAIL MODULE] ✅ Email module loaded')
+console.log('[EMAIL MODULE] Nodemailer type:', typeof nodemailer)
+console.log('[EMAIL MODULE] createTransporter type:', typeof nodemailer?.createTransporter)
+
 // Email configuration
 const SMTP_HOST = process.env.SMTP_HOST || '95.163.180.91'
 const SMTP_PORT = parseInt(process.env.SMTP_PORT || '25')
