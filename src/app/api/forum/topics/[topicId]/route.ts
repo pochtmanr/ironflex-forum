@@ -16,6 +16,7 @@ export async function GET(
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '20');
     const skip = (page - 1) * limit;
+    const incrementView = searchParams.get('incrementView') !== 'false';
 
     // Get current user if authenticated
     let currentUserId: string | null = null;
@@ -85,8 +86,10 @@ export async function GET(
       );
     }
 
-    // Increment view count
-    await Topic.findByIdAndUpdate(topicId, { $inc: { views: 1 } });
+    // Increment view count only on page 1 and when incrementView is true
+    if (page === 1 && incrementView) {
+      await Topic.findByIdAndUpdate(topicId, { $inc: { views: 1 } });
+    }
 
     // Determine user's vote on this topic
     let userVote: 'like' | 'dislike' | null = null;
@@ -119,7 +122,7 @@ export async function GET(
       is_pinned: topic.isPinned || false,
       is_locked: topic.isLocked || false,
       media_links: topic.mediaLinks || [],
-      is_author: false // Will be set based on auth if needed
+      is_author: currentUserId ? String(topic.userId) === String(currentUserId) : false
     };
 
     const formattedPosts = posts.map((post: any) => {
@@ -155,7 +158,7 @@ export async function GET(
         dislikes: post.dislikes || 0,
         user_vote: postUserVote, // Add user's current vote
         media_links: post.mediaLinks || [],
-        is_author: false // Will be set based on auth if needed
+        is_author: currentUserId ? String(post.userId) === String(currentUserId) : false
       };
     });
 

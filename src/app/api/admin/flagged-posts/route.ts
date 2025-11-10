@@ -1,16 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyToken } from '@/lib/auth';
-import dbConnect from '@/lib/mongodb';
+import connectDB from '@/lib/mongodb';
 import User from '@/models/User';
-import Topic from '@/models/Topic';
-import Post from '@/models/Post';
-import Article from '@/models/Article';
-import Training from '@/models/Training';
 import FlaggedPost from '@/models/FlaggedPost';
 
 export async function GET(request: NextRequest) {
   try {
-    await dbConnect();
+    await connectDB();
 
     // Verify authentication
     const authHeader = request.headers.get('authorization');
@@ -41,27 +37,28 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Fetch stats
-    const [usersCount, topicsCount, postsCount, articlesCount, trainingsCount, flaggedPostsCount] = await Promise.all([
-      User.countDocuments(),
-      Topic.countDocuments(),
-      Post.countDocuments(),
-      Article.countDocuments(),
-      Training.countDocuments(),
-      FlaggedPost.countDocuments({ status: 'pending' })
-    ]);
+    // Get filter from query params
+    const { searchParams } = new URL(request.url);
+    const status = searchParams.get('status');
+
+    // Build query
+    const query: any = {};
+    if (status === 'pending') {
+      query.status = 'pending';
+    }
+
+    // Fetch flagged posts
+    const flaggedPosts = await FlaggedPost.find(query)
+      .sort({ createdAt: -1 })
+      .limit(100)
+      .lean();
 
     return NextResponse.json({
-      users: usersCount,
-      topics: topicsCount,
-      posts: postsCount,
-      articles: articlesCount,
-      trainings: trainingsCount,
-      flaggedPosts: flaggedPostsCount
+      flaggedPosts
     });
 
   } catch (error) {
-    console.error('Admin stats error:', error);
+    console.error('Flagged posts fetch error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

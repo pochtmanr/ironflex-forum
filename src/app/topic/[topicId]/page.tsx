@@ -1,13 +1,14 @@
 'use client'
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { forumAPI } from '@/services/api';
 import { LoginPrompt } from '@/components/UI/LoginPrompt';
 import { PaginationButton, ImageLightbox } from '@/components/UI';
-import { TopicHeader, PostsList, ReplyForm, EditTopicModal } from '@/components/Topic';
+import { TopicHeader, PostsList, ReplyForm, EditTopicModal, EditPostModal } from '@/components/Topic';
+import { FlagModal } from '@/components/UI/FlagModal';
 interface Post {
   id: number | string;
   content: string;
@@ -68,8 +69,20 @@ const TopicViewPage: React.FC = () => {
   // Image lightbox
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
   
-  // Edit modal
+  // Edit modals
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isEditPostModalOpen, setIsEditPostModalOpen] = useState(false);
+  const [editingPostId, setEditingPostId] = useState<string | null>(null);
+  const [editingPostContent, setEditingPostContent] = useState('');
+  
+  // Flag modal
+  const [isFlagModalOpen, setIsFlagModalOpen] = useState(false);
+  const [flaggingPostId, setFlaggingPostId] = useState<string | null>(null);
+  const [flaggingPostAuthor, setFlaggingPostAuthor] = useState<string>('');
+
+  // Track if we've already counted a view for this topic in this session
+  // Use ref to persist across React Strict Mode double renders
+  const viewCountedRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (topicId) {
@@ -93,7 +106,13 @@ const TopicViewPage: React.FC = () => {
       setLoading(true);
       setError('');
       
-      const response = await forumAPI.getTopic(topicId, page) as { 
+      // Check if we've already counted a view for this topic
+      const shouldIncrementView = viewCountedRef.current !== topicId;
+      if (shouldIncrementView) {
+        viewCountedRef.current = topicId;
+      }
+      
+      const response = await forumAPI.getTopic(topicId, page, shouldIncrementView) as { 
         topic: Topic & { user_vote?: 'like' | 'dislike' | null }; 
         posts: (Post & { user_vote?: 'like' | 'dislike' | null })[]; 
         pagination: { pages: number } 
@@ -294,6 +313,13 @@ const TopicViewPage: React.FC = () => {
     if (!currentUser || !topic?.is_author) {
       return;
     }
+    
+    // Check if still within edit window
+    if (!canEditTopic(topic.created_at)) {
+      setError('Время для редактирования темы истекло. Темы можно редактировать только в течение 2 часов после публикации.');
+      return;
+    }
+    
     setIsEditModalOpen(true);
   };
 
@@ -324,6 +350,12 @@ const TopicViewPage: React.FC = () => {
       return;
     }
 
+    // Check if still within edit window
+    if (!canEditTopic(topic.created_at)) {
+      setError('Время для удаления темы истекло. Темы можно удалять только в течение 2 часов после публикации.');
+      return;
+    }
+
     const confirmed = window.confirm('Вы уверены, что хотите удалить эту тему? Это действие нельзя отменить.');
     if (!confirmed) {
       return;
@@ -340,8 +372,134 @@ const TopicViewPage: React.FC = () => {
     }
   };
 
+  const handleEditPost = (postId: string) => {
+    if (!currentUser) {
+      return;
+    }
+
+    // Find the post to edit
+    const post = posts.find(p => p.id.toString() === postId);
+    if (!post) {
+      setError('Комментарий не найден');
+      return;
+    }
+
+    // Check if user is the post author
+    const isPostAuthor = String(post.user_id) === String(currentUser.id);
+    if (!isPostAuthor) {
+      setError('Вы можете редактировать только свои комментарии');
+      return;
+    }
+
+    // Check if still within edit window
+    if (!canEditTopic(post.created_at)) {
+      setError('Время для редактирования комментария истекло. Комментарии можно редактировать только в течение 2 часов после публикации.');
+      return;
+    }
+
+    setEditingPostId(postId);
+    setEditingPostContent(post.content);
+    setIsEditPostModalOpen(true);
+  };
+
+  const handleSavePostEdit = async (content: string) => {
+    if (!currentUser || !editingPostId) {
+      throw new Error('Недостаточно прав для редактирования');
+    }
+
+    try {
+      await forumAPI.updatePost(editingPostId, { content });
+      // Update local post state
+      setPosts(prevPosts =>
+        prevPosts.map(p =>
+          p.id.toString() === editingPostId
+            ? { ...p, content }
+            : p
+        )
+      );
+      setIsEditPostModalOpen(false);
+      setEditingPostId(null);
+      setEditingPostContent('');
+    } catch (error: unknown) {
+      console.error('Post update error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Ошибка обновления комментария';
+      throw new Error(errorMessage);
+    }
+  };
+
+  const handleFlagPost = (postId: string) => {
+    if (!currentUser) {
+      return;
+    }
+
+    // Find the post
+    const post = posts.find(p => p.id.toString() === postId);
+    if (!post) {
+      setError('Комментарий не найден');
+      return;
+    }
+
+    // Check if user is the topic author
+    if (!topic || !topic.is_author) {
+      setError('Только автор темы может жаловаться на комментарии');
+      return;
+    }
+
+    // Open flag modal
+    setFlaggingPostId(postId);
+    setFlaggingPostAuthor(post.user_name);
+    setIsFlagModalOpen(true);
+  };
+
+  const handleSubmitFlag = async (reason: string) => {
+    if (!flaggingPostId || !topic) {
+      return;
+    }
+
+    try {
+      await forumAPI.flagPost(flaggingPostId, {
+        reason: reason,
+        topicId: topicId,
+        topicTitle: topic.title
+      });
+      
+      // Show success message
+      setError('');
+      alert('Жалоба отправлена. Администратор рассмотрит её в ближайшее время.');
+      
+      // Reset state
+      setFlaggingPostId(null);
+      setFlaggingPostAuthor('');
+    } catch (error: unknown) {
+      console.error('Post flag error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Ошибка отправки жалобы';
+      setError(errorMessage);
+    }
+  };
+
   const handleDeletePost = async (postId: string) => {
     if (!currentUser) {
+      return;
+    }
+
+    // Find the post
+    const post = posts.find(p => p.id.toString() === postId);
+    if (!post) {
+      setError('Комментарий не найден');
+      return;
+    }
+
+    // Check if user is the post author
+    const isPostAuthor = String(post.user_id) === String(currentUser.id);
+    
+    if (!isPostAuthor) {
+      setError('Вы можете удалять только свои комментарии');
+      return;
+    }
+    
+    // Check if still within edit window
+    if (!canEditTopic(post.created_at)) {
+      setError('Время для удаления комментария истекло. Комментарии можно удалять только в течение 2 часов после публикации.');
       return;
     }
 
@@ -439,6 +597,40 @@ const TopicViewPage: React.FC = () => {
     });
   };
 
+  // Check if topic can still be edited (within 2 hours of creation)
+  const canEditTopic = (createdAt: string) => {
+    if (!createdAt) return false;
+    
+    const createdDate = new Date(createdAt);
+    const now = new Date();
+    const twoHoursInMs = 2 * 60 * 60 * 1000; // 2 hours in milliseconds
+    const timeSinceCreation = now.getTime() - createdDate.getTime();
+    
+    return timeSinceCreation <= twoHoursInMs;
+  };
+
+  // Get remaining time for editing
+  const getRemainingEditTime = (createdAt: string) => {
+    if (!createdAt) return '';
+    
+    const createdDate = new Date(createdAt);
+    const now = new Date();
+    const twoHoursInMs = 2 * 60 * 60 * 1000;
+    const timeSinceCreation = now.getTime() - createdDate.getTime();
+    const remainingMs = twoHoursInMs - timeSinceCreation;
+    
+    if (remainingMs <= 0) return '';
+    
+    const remainingMinutes = Math.floor(remainingMs / (60 * 1000));
+    const hours = Math.floor(remainingMinutes / 60);
+    const minutes = remainingMinutes % 60;
+    
+    if (hours > 0) {
+      return `${hours} ч ${minutes} мин`;
+    }
+    return `${minutes} мин`;
+  };
+
   if (loading) {
     return (
       <div className="max-w-7xl mx-auto px-4 py-8 min-h-screen">
@@ -505,6 +697,8 @@ const TopicViewPage: React.FC = () => {
         formatDate={formatDate}
         currentUser={currentUser}
         onImageClick={setLightboxImage}
+        canEdit={canEditTopic(topic.created_at)}
+        remainingEditTime={getRemainingEditTime(topic.created_at)}
       />
 
       {/* Error Display */}
@@ -540,9 +734,13 @@ const TopicViewPage: React.FC = () => {
         postVotes={postVotes}
         onLikePost={handleLikePost}
         onDeletePost={handleDeletePost}
+        onEditPost={handleEditPost}
+        onFlagPost={handleFlagPost}
         formatDate={formatDate}
         currentUser={currentUser}
         isTopicAuthor={topic.is_author}
+        canEditPost={canEditTopic}
+        getRemainingEditTime={getRemainingEditTime}
         onImageClick={setLightboxImage}
       />
 
@@ -609,6 +807,32 @@ const TopicViewPage: React.FC = () => {
           initialContent={topic.content}
         />
       )}
+
+      {/* Edit Post Modal */}
+      <EditPostModal
+        key={editingPostId || 'new'}
+        isOpen={isEditPostModalOpen}
+        onClose={() => {
+          setIsEditPostModalOpen(false);
+          setEditingPostId(null);
+          setEditingPostContent('');
+        }}
+        onSave={handleSavePostEdit}
+        onImageUpload={handleEditorImageUpload}
+        initialContent={editingPostContent}
+      />
+
+      {/* Flag Post Modal */}
+      <FlagModal
+        isOpen={isFlagModalOpen}
+        onClose={() => {
+          setIsFlagModalOpen(false);
+          setFlaggingPostId(null);
+          setFlaggingPostAuthor('');
+        }}
+        onSubmit={handleSubmitFlag}
+        postAuthor={flaggingPostAuthor}
+      />
     </div>
   );
 };

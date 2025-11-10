@@ -4,4 +4,5 @@ export { PostsList } from './PostsList';
 export { ReplyForm } from './ReplyForm';
 export { MediaAttachment } from './MediaAttachment';
 export { EditTopicModal } from './EditTopicModal';
+export { EditPostModal } from './EditPostModal';
 

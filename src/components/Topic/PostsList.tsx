@@ -21,9 +21,13 @@ interface PostsListProps {
   postVotes: Record<string, 'like' | 'dislike' | null>;
   onLikePost: (postId: string, likeType: 'like' | 'dislike') => void;
   onDeletePost: (postId: string) => void;
+  onEditPost: (postId: string) => void;
+  onFlagPost: (postId: string) => void;
   formatDate: (dateString: string) => string;
   currentUser: any;
   isTopicAuthor: boolean;
+  canEditPost: (createdAt: string) => boolean;
+  getRemainingEditTime: (createdAt: string) => string;
   onImageClick?: (src: string) => void;
 }
 
@@ -33,9 +37,13 @@ export const PostsList: React.FC<PostsListProps> = ({
   postVotes,
   onLikePost,
   onDeletePost,
+  onEditPost,
+  onFlagPost,
   formatDate,
   currentUser,
   isTopicAuthor,
+  canEditPost,
+  getRemainingEditTime,
   onImageClick
 }) => {
   const sortedPosts = useMemo(() => {
@@ -49,20 +57,28 @@ export const PostsList: React.FC<PostsListProps> = ({
 
   return (
     <div className="space-y-4 mb-4 sm:mb-6">
-      {sortedPosts.map((post, index) => (
-        <PostItem
-          key={post.id}
-          post={post}
-          index={index}
-          userVote={postVotes[post.id.toString()] || null}
-          onLike={(type) => onLikePost(post.id.toString(), type)}
-          onDelete={() => onDeletePost(post.id.toString())}
-          formatDate={formatDate}
-          currentUser={currentUser}
-          canDelete={post.is_author || isTopicAuthor}
-          onImageClick={onImageClick}
-        />
-      ))}
+      {sortedPosts.map((post, index) => {
+        const isPostAuthor = currentUser && String(post.user_id) === String(currentUser.id);
+        return (
+          <PostItem
+            key={post.id}
+            post={post}
+            index={index}
+            userVote={postVotes[post.id.toString()] || null}
+            onLike={(type) => onLikePost(post.id.toString(), type)}
+            onDelete={() => onDeletePost(post.id.toString())}
+            onEdit={() => onEditPost(post.id.toString())}
+            onFlag={() => onFlagPost(post.id.toString())}
+            formatDate={formatDate}
+            currentUser={currentUser}
+            canDelete={isPostAuthor}
+            canEdit={canEditPost(post.created_at)}
+            remainingEditTime={getRemainingEditTime(post.created_at)}
+            isTopicAuthor={isTopicAuthor}
+            onImageClick={onImageClick}
+          />
+        );
+      })}
     </div>
   );
 };

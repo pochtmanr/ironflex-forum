@@ -14,7 +14,8 @@ export default function AdminPage() {
     topics: 0,
     posts: 0,
     articles: 0,
-    trainings: 0
+    trainings: 0,
+    flaggedPosts: 0
   })
 
   useEffect(() => {
@@ -236,6 +237,26 @@ export default function AdminPage() {
             </div>
             <h3 className="text-lg font-semibold text-gray-900 mb-2">Управление комментариями</h3>
             <p className="text-gray-600">Управление комментариями, редактирование контента и модерация дискуссий</p>
+          </div>
+        </Link>
+
+        {/* Flagged Posts */}
+        <Link href="/admin/flagged-posts" className="block">
+          <div className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow relative">
+            {stats.flaggedPosts > 0 && (
+              <div className="absolute top-4 right-4 bg-red-500 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center">
+                {stats.flaggedPosts}
+              </div>
+            )}
+            <div className="flex items-center mb-4">
+              <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
+                <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 2zm9-13.5V9" />
+                </svg>
+              </div>
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Жалобы на комментарии</h3>
+            <p className="text-gray-600">Просмотр и модерация жалоб на комментарии от авторов тем</p>
           </div>
         </Link>
 

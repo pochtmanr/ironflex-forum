@@ -152,6 +152,7 @@ export const EditTopicModal: React.FC<EditTopicModalProps> = ({
               Содержание
             </label>
             <RichTextEditor
+              key={initialContent}
               value={content}
               onChange={setContent}
               placeholder="Введите содержание темы..."
@@ -161,7 +162,7 @@ export const EditTopicModal: React.FC<EditTopicModalProps> = ({
               className="text-sm text-gray-900 border border-gray-300 rounded-md"
             />
             <div className="text-xs text-gray-500 mt-1">
-              Используйте кнопки на панели инструментов для форматирования текста
+              Время редактирования темы 2 часа после ее создания. После этого она будет заблокирована и не будет доступна для редактирования.
             </div>
           </div>
 

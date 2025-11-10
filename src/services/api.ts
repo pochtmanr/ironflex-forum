@@ -134,8 +134,8 @@ export const forumAPI = {
     }, true); // Skip auth header, we're sending userData directly
   },
 
-  getTopic: async (id: string, page = 1, limit = 20) => {
-    return apiRequest(`/forum/topics/${id}?page=${page}&limit=${limit}`);
+  getTopic: async (id: string, page = 1, incrementView = true, limit = 20) => {
+    return apiRequest(`/forum/topics/${id}?page=${page}&limit=${limit}&incrementView=${incrementView}`);
   },
 
   deleteTopic: async (topicId: string) => {
@@ -189,6 +189,20 @@ export const forumAPI = {
     return apiRequest(`/forum/posts/${postId}/like`, {
       method: 'POST',
       body: JSON.stringify({ likeType })
+    }, false); // Use auth token
+  },
+
+  updatePost: async (postId: string, data: { content: string }) => {
+    return apiRequest(`/admin/posts/${postId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data)
+    }, false); // Use auth token
+  },
+
+  flagPost: async (postId: string, data: { reason: string; topicId: string; topicTitle: string }) => {
+    return apiRequest(`/forum/posts/${postId}/flag`, {
+      method: 'POST',
+      body: JSON.stringify(data)
     }, false); // Use auth token
   },
 

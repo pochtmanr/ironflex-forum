@@ -1,244 +1,200 @@
-# 🏋️ tarnovsky.ru - Modern Forum Platform
+# Iron Blog - Forum Application
 
-A comprehensive Next.js 15 forum platform with MongoDB, featuring articles, trainings, and community discussions.
+A modern forum application built with Next.js, MongoDB, and TypeScript.
 
-## 🚀 Features
+## 🌟 Features
 
-- ✅ **Modern Stack:** Next.js 15 + MongoDB + TypeScript
-- ✅ **Authentication:** JWT-based auth with refresh tokens
-- ✅ **Admin Panel:** Full CRUD operations for categories, topics, posts, articles, trainings
-- ✅ **File Uploads:** Dedicated Python file server
-- ✅ **Docker Ready:** Complete containerization with docker-compose
-- ✅ **SSL/TLS:** Nginx reverse proxy with Let's Encrypt
-- ✅ **Real-time:** Direct database connection for instant updates
+- ✅ User authentication (register, login, email verification)
+- ✅ Forum categories and topics
+- ✅ Rich text editor with markdown support
+- ✅ Comment system with 2-hour edit/delete window
+- ✅ Like/dislike system for topics and posts
+- ✅ Flag/report system for inappropriate content
+- ✅ Admin dashboard for content management
+- ✅ Email notifications (verification, password reset, welcome)
+- ✅ Image uploads
+- ✅ Responsive design (mobile & desktop)
+- ✅ User profiles
+- ✅ Top topics widget
 
-## 📋 Requirements
+## 🚀 Quick Start (Development)
+
+### Prerequisites
 
 - Node.js 18+
-- MongoDB 7.0+
-- Docker & Docker Compose (for production)
-- Python 3.13+ (for file server)
+- MongoDB
+- SMTP server (for emails)
 
-## 🛠️ Local Development
-
-### Quick Start
+### Installation
 
 ```bash
 # Clone repository
-git clone https://github.com/pochtmanr/ironflex-forum.git
-cd ironflex-forum
+git clone https://github.com/YOUR_USERNAME/iron-blog.git
+cd iron-blog
 
 # Install dependencies
 npm install
 
-# Set up environment
-cp env.example .env.local
+# Copy environment template
+cp .env.template .env.local
+
 # Edit .env.local with your settings
+nano .env.local
 
-# Start MongoDB (if using local)
-./start-mongodb-local.sh
-
-# Start development server
+# Run development server
 npm run dev
 ```
 
-Visit http://localhost:3000
+Visit `http://localhost:3000`
 
-### Development with Server Database
+## 📦 Production Deployment
 
-Connect directly to production database for development:
+See [DEPLOYMENT.md](./DEPLOYMENT.md) for complete production deployment guide.
 
-```bash
-# .env.local
-MONGODB_URI=mongodb://admin:StrongPassword123!@45.10.43.204:27017/ironblog?authSource=admin
-FILESERVER_URL=http://45.10.43.204:3001
-NEXT_PUBLIC_FILESERVER_URL=http://45.10.43.204:3001
-```
-
-See `DIRECT_SERVER_CONNECTION.md` for details.
-
-## 🐳 Production Deployment
-
-### Using Docker Compose
+### Quick Deploy
 
 ```bash
-# Build and start all services
-docker-compose up -d
-
-# View logs
-docker-compose logs -f
-
-# Stop services
-docker-compose down
+# On your server
+git clone https://github.com/YOUR_USERNAME/iron-blog.git
+cd iron-blog
+cp .env.template .env.production
+# Edit .env.production with production values
+npm install
+npm run build
+./deploy.sh
 ```
 
-### Services
+## 🔧 Environment Variables
 
-| Service | Port | Description |
-|---------|------|-------------|
-| Next.js | 3000 | Main application |
-| MongoDB | 27017 | Database |
-| Nginx | 80, 443 | Reverse proxy |
-| File Server | 3001 | File uploads |
+See `.env.template` for all available configuration options.
 
-## 🔄 Deployment from GitHub
+### Required Variables
 
-### Automated (GitHub Actions)
-
-1. Push to `main` branch
-2. GitHub Actions automatically deploys to VPS
-3. Containers rebuild and restart
-
-### Manual Deployment
-
-```bash
-# On VPS server
-cd /root/iron-blog
-./deploy-from-github.sh
+```env
+MONGODB_URI=mongodb://localhost:27017/iron-blog
+JWT_SECRET=your-secret-key
+JWT_REFRESH_SECRET=your-refresh-secret-key
+NEXT_PUBLIC_SITE_URL=https://tarnovsky.ru
+FROM_EMAIL=admin@tarnovsky.ru
 ```
 
-### Check Deployment Status
+## 📧 Email Configuration
 
-```bash
-./check-deployment.sh
+The application uses SMTP for sending emails:
+
+- Email verification
+- Password reset
+- Welcome emails
+
+Configure in `.env.local` or `.env.production`:
+
+```env
+SMTP_HOST=95.163.180.91
+SMTP_PORT=25
+FROM_EMAIL=admin@tarnovsky.ru
 ```
+
+## 🛠️ Tech Stack
+
+- **Framework**: Next.js 14 (App Router)
+- **Language**: TypeScript
+- **Database**: MongoDB with Mongoose
+- **Authentication**: JWT (access & refresh tokens)
+- **Email**: Nodemailer
+- **Rich Text**: Lexical Editor
+- **Styling**: Tailwind CSS
+- **Icons**: Lucide React
 
 ## 📁 Project Structure
 
 ```
 iron-blog/
 ├── src/
-│   ├── app/                    # Next.js app directory
-│   │   ├── admin/             # Admin panel
-│   │   ├── api/               # API routes
-│   │   ├── auth/              # Authentication pages
-│   │   └── ...
-│   ├── components/            # React components
-│   │   ├── Auth/             # Login, Register
-│   │   ├── Forum/            # Forum components
-│   │   ├── Layout/           # Header, Footer
-│   │   └── UI/               # Reusable UI components
-│   ├── contexts/             # React contexts
-│   ├── lib/                  # Utilities
-│   ├── models/               # MongoDB models
-│   └── services/             # API services
-├── fileserver/               # Python file upload server
-├── public/                   # Static assets
-├── docker-compose.yml        # Docker orchestration
-├── Dockerfile               # Next.js container
-└── nginx.conf               # Nginx configuration
+│   ├── app/              # Next.js app router pages
+│   │   ├── api/          # API routes
+│   │   ├── admin/        # Admin dashboard
+│   │   ├── auth/         # Authentication pages
+│   │   └── topic/        # Topic pages
+│   ├── components/       # React components
+│   │   ├── Auth/         # Auth components
+│   │   ├── Forum/        # Forum components
+│   │   ├── Topic/        # Topic components
+│   │   └── UI/           # UI components
+│   ├── contexts/         # React contexts
+│   ├── lib/              # Utilities
+│   ├── models/           # MongoDB models
+│   └── services/         # API services
+├── public/               # Static files
+├── .env.template         # Environment template
+├── deploy.sh             # Deployment script
+└── DEPLOYMENT.md         # Deployment guide
 ```
 
-## 🔐 Security
+## 🔐 Security Features
 
-- JWT authentication with refresh tokens
+- JWT-based authentication
 - Password hashing with bcrypt
-- MongoDB authentication
-- Nginx SSL/TLS termination
-- Environment variable protection
-- Docker network isolation
+- Email verification
+- CSRF protection
+- Rate limiting (recommended to add)
+- Input validation
+- XSS protection
 
-## 👥 User Roles
-
-- **Admin:** Full access to admin panel
-- **User:** Can create topics, posts, comments
-- **Guest:** Read-only access
-
-## 📊 Admin Panel
+## 📊 Admin Dashboard
 
 Access at `/admin` (requires admin privileges)
 
-- **Categories:** Create and manage forum categories
-- **Topics:** Moderate discussions
-- **Posts:** Manage comments
-- **Users:** User management
-- **Articles:** Content management
-- **Trainings:** Course management
-
-## 🔧 Configuration
-
-### Environment Variables
-
-```env
-# MongoDB
-MONGODB_URI=mongodb://admin:password@localhost:27017/ironblog?authSource=admin
-
-# JWT
-JWT_SECRET=your-secret-key
-JWT_REFRESH_SECRET=your-refresh-secret
-
-# File Server
-FILESERVER_URL=http://localhost:3001
-NEXT_PUBLIC_FILESERVER_URL=http://localhost:3001
-
-# Base URL
-NEXT_PUBLIC_BASE_URL=http://localhost:3000
-```
-
-## 📖 Documentation
-
-- `SECURE_DEPLOYMENT_GUIDE.md` - Deployment best practices
-- `DIRECT_SERVER_CONNECTION.md` - Connect to production DB
-- `AUTHENTICATION_GUIDE.md` - Auth setup and troubleshooting
-- `SERVER_STATUS.md` - Current server status
-- `LOCAL_DEVELOPMENT.md` - Local setup guide
-
-## 🚨 Troubleshooting
-
-### Connection Issues
-
-```bash
-# Check server status
-./fetch-server-data.sh
-
-# View logs
-docker logs iron-blog-nextjs-app-1 --tail 50
-docker logs mongodb --tail 50
-```
-
-### Database Issues
-
-```bash
-# Connect to MongoDB
-mongosh "mongodb://admin:StrongPassword123!@45.10.43.204:27017/ironblog?authSource=admin"
-
-# Check collections
-db.getCollectionNames()
-```
+Features:
+- User management
+- Topic management
+- Post management
+- Flagged content review
+- Statistics overview
 
 ## 🤝 Contributing
 
 1. Fork the repository
-2. Create feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit changes (`git commit -m 'Add amazing feature'`)
-4. Push to branch (`git push origin feature/amazing-feature`)
-5. Open Pull Request
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
 
 ## 📝 License
 
-This project is private and proprietary.
+This project is licensed under the MIT License.
 
-## 👨‍💻 Authors
+## 🐛 Troubleshooting
 
-- **Roman Pochtman** - [@pochtmanr](https://github.com/pochtmanr)
+### Application won't start
+```bash
+# Check logs
+pm2 logs iron-blog
+```
 
-## 🔗 Links
+### Email not sending
+```bash
+# Test SMTP connection
+telnet 95.163.180.91 25
+```
 
-- **Production:** http://45.10.43.204
-- **GitHub:** https://github.com/pochtmanr/ironflex-forum
-- **Admin Panel:** http://45.10.43.204/admin
-
-## ⚠️ Important: Single Repository
-
-This project uses **only** `https://github.com/pochtmanr/ironflex-forum`  
-Do not push to any other repositories.
+### Database connection issues
+```bash
+# Check MongoDB
+sudo systemctl status mongod
+```
 
 ## 📞 Support
 
 For issues and questions:
-- Create an issue on GitHub
-- Contact: pochtmanrca@gmail.com
+- Open an issue on GitHub
+- Contact: admin@tarnovsky.ru
+
+## 🙏 Acknowledgments
+
+- Next.js team for the amazing framework
+- MongoDB for the database
+- All contributors
 
 ---
 
-**Built with ❤️ using Next.js 15 and MongoDB**
+Made with ❤️ for Клинический Протокол Тарновского

@@ -48,6 +48,19 @@ export async function DELETE(
       );
     }
 
+    // Check if topic is within 2-hour edit window
+    const createdAt = new Date(topic.createdAt);
+    const now = new Date();
+    const twoHoursInMs = 2 * 60 * 60 * 1000; // 2 hours in milliseconds
+    const timeSinceCreation = now.getTime() - createdAt.getTime();
+
+    if (timeSinceCreation > twoHoursInMs) {
+      return NextResponse.json(
+        { error: 'Topics can only be deleted within 2 hours of creation' },
+        { status: 403 }
+      );
+    }
+
     // Delete all posts in this topic
     await Post.deleteMany({ topicId: topicId });
 
@@ -115,6 +128,19 @@ export async function PATCH(
     if (topic.userId !== userPayload.id) {
       return NextResponse.json(
         { error: 'You can only edit your own topics' },
+        { status: 403 }
+      );
+    }
+
+    // Check if topic is within 2-hour edit window
+    const createdAt = new Date(topic.createdAt);
+    const now = new Date();
+    const twoHoursInMs = 2 * 60 * 60 * 1000; // 2 hours in milliseconds
+    const timeSinceCreation = now.getTime() - createdAt.getTime();
+
+    if (timeSinceCreation > twoHoursInMs) {
+      return NextResponse.json(
+        { error: 'Topics can only be edited within 2 hours of creation' },
         { status: 403 }
       );
     }

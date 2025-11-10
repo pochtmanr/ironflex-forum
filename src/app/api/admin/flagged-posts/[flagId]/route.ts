@@ -1,16 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyToken } from '@/lib/auth';
-import dbConnect from '@/lib/mongodb';
+import connectDB from '@/lib/mongodb';
 import User from '@/models/User';
-import Topic from '@/models/Topic';
-import Post from '@/models/Post';
-import Article from '@/models/Article';
-import Training from '@/models/Training';
 import FlaggedPost from '@/models/FlaggedPost';
 
-export async function GET(request: NextRequest) {
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ flagId: string }> }
+) {
   try {
-    await dbConnect();
+    const { flagId } = await params;
+    const { status } = await request.json();
+
+    await connectDB();
 
     // Verify authentication
     const authHeader = request.headers.get('authorization');
@@ -41,27 +43,39 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Fetch stats
-    const [usersCount, topicsCount, postsCount, articlesCount, trainingsCount, flaggedPostsCount] = await Promise.all([
-      User.countDocuments(),
-      Topic.countDocuments(),
-      Post.countDocuments(),
-      Article.countDocuments(),
-      Training.countDocuments(),
-      FlaggedPost.countDocuments({ status: 'pending' })
-    ]);
+    // Validate status
+    if (!['reviewed', 'dismissed'].includes(status)) {
+      return NextResponse.json(
+        { error: 'Invalid status' },
+        { status: 400 }
+      );
+    }
+
+    // Update flagged post
+    const flaggedPost = await FlaggedPost.findByIdAndUpdate(
+      flagId,
+      {
+        status,
+        reviewedAt: new Date(),
+        reviewedBy: userData.userId
+      },
+      { new: true }
+    );
+
+    if (!flaggedPost) {
+      return NextResponse.json(
+        { error: 'Flagged post not found' },
+        { status: 404 }
+      );
+    }
 
     return NextResponse.json({
-      users: usersCount,
-      topics: topicsCount,
-      posts: postsCount,
-      articles: articlesCount,
-      trainings: trainingsCount,
-      flaggedPosts: flaggedPostsCount
+      message: 'Flagged post updated successfully',
+      flaggedPost
     });
 
   } catch (error) {
-    console.error('Admin stats error:', error);
+    console.error('Flagged post update error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

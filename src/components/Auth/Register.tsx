@@ -32,16 +32,20 @@ const Register: React.FC = () => {
   };
 
   const validatePassword = (password: string): { isValid: boolean; message: string } => {
-    if (password.length < 6) {
-      return { isValid: false, message: 'Пароль должен содержать не менее 6 символов' };
+    if (password.length < 8) {
+      return { isValid: false, message: 'Пароль должен содержать не менее 8 символов' };
     }
 
-    if (!/[a-zA-Z]/.test(password)) {
-      return { isValid: false, message: 'Пароль должен содержать хотя бы одну букву' };
+    if (!/[A-Z]/.test(password)) {
+      return { isValid: false, message: 'Пароль должен содержать хотя бы одну заглавную букву (A-Z)' };
+    }
+
+    if (!/[a-z]/.test(password)) {
+      return { isValid: false, message: 'Пароль должен содержать хотя бы одну строчную букву (a-z)' };
     }
 
     if (!/[0-9]/.test(password)) {
-      return { isValid: false, message: 'Пароль должен содержать хотя бы одну цифру' };
+      return { isValid: false, message: 'Пароль должен содержать хотя бы одну цифру (0-9)' };
     }
 
     return { isValid: true, message: '' };
@@ -177,12 +181,12 @@ const Register: React.FC = () => {
                 value={formData.password}
                 onChange={handleChange}
                 placeholder="••••••••"
-                minLength={6}
+                minLength={8}
                 className="block w-full h-10 rounded-md border-0 px-3 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
               />
             </div>
             <p className="mt-1 text-xs text-gray-500">
-              Минимум 6 символов, включая хотя бы одну букву и одну цифру
+              Минимум 8 символов, включая заглавные и строчные буквы, и цифры
             </p>
           </div>
           <div>
@@ -199,7 +203,7 @@ const Register: React.FC = () => {
                 value={formData.confirmPassword}
                 onChange={handleChange}
                 placeholder="••••••••"
-                minLength={6}
+                minLength={8}
                 className="block w-full h-10 rounded-md border-0 px-3 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
               />
             </div>

@@ -1,69 +1,78 @@
 #!/bin/bash
 
-# Deployment script for iron-blog
-# This script pulls the latest code from GitHub and rebuilds the containers
+# Iron Blog Deployment Script
+# Usage: ./deploy.sh
 
 set -e  # Exit on error
 
-echo "=========================================="
-echo "Starting deployment..."
-echo "=========================================="
-echo ""
+echo "🚀 Starting Iron Blog Deployment..."
+echo "=================================="
 
-# Navigate to project directory
-cd /root/iron-blog || exit 1
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
 
-echo "📊 Current status:"
-docker-compose ps
-echo ""
+# Check if we're in the right directory
+if [ ! -f "package.json" ]; then
+    echo -e "${RED}❌ Error: package.json not found. Are you in the project root?${NC}"
+    exit 1
+fi
 
-echo "🔄 Pulling latest code from GitHub..."
-git fetch origin main
-git reset --hard origin/main
-echo "✅ Code updated"
-echo ""
+# Pull latest code
+echo -e "${YELLOW}📥 Pulling latest code from git...${NC}"
+git pull origin main || {
+    echo -e "${RED}❌ Git pull failed${NC}"
+    exit 1
+}
 
-echo "🛑 Stopping containers..."
-docker-compose down
-echo "✅ Containers stopped"
-echo ""
+# Check if .env.production exists
+if [ ! -f ".env.production" ]; then
+    echo -e "${RED}❌ Error: .env.production not found!${NC}"
+    echo -e "${YELLOW}Please create .env.production from .env.template${NC}"
+    exit 1
+fi
 
-echo "🔨 Rebuilding Next.js application..."
-docker-compose build nextjs-app
-echo "✅ Build complete"
-echo ""
+# Install dependencies
+echo -e "${YELLOW}📦 Installing dependencies...${NC}"
+npm install || {
+    echo -e "${RED}❌ npm install failed${NC}"
+    exit 1
+}
 
-echo "🚀 Starting all services..."
-docker-compose up -d
-echo "✅ Services started"
-echo ""
+# Build application
+echo -e "${YELLOW}🔨 Building application...${NC}"
+npm run build || {
+    echo -e "${RED}❌ Build failed${NC}"
+    exit 1
+}
 
-echo "⏳ Waiting for services to be ready..."
-sleep 15
-echo ""
+# Check if PM2 is installed
+if ! command -v pm2 &> /dev/null; then
+    echo -e "${RED}❌ PM2 is not installed. Install it with: npm install -g pm2${NC}"
+    exit 1
+fi
 
-echo "📊 Final status:"
-docker-compose ps
-echo ""
+# Restart or start application
+if pm2 list | grep -q "iron-blog"; then
+    echo -e "${YELLOW}♻️  Restarting application...${NC}"
+    pm2 restart iron-blog
+else
+    echo -e "${YELLOW}🚀 Starting application for the first time...${NC}"
+    pm2 start npm --name "iron-blog" -- start
+    pm2 save
+fi
 
-echo "💾 Memory usage:"
-free -h
 echo ""
+echo -e "${GREEN}✅ Deployment complete!${NC}"
+echo "=================================="
+echo ""
+echo -e "${YELLOW}📊 Application Status:${NC}"
+pm2 status iron-blog
 
-echo "=========================================="
-echo "✅ Deployment completed successfully!"
-echo "=========================================="
 echo ""
-echo "🌐 Your site should be accessible at:"
-echo "  - http://tarnovsky.ru"
-echo "  - https://tarnovsky.ru"
-echo "  - http://forum.theholylabs.com"
-echo "  - https://forum.theholylabs.com"
+echo -e "${YELLOW}📝 View logs with:${NC} pm2 logs iron-blog"
+echo -e "${YELLOW}📊 Monitor with:${NC} pm2 monit"
+echo -e "${YELLOW}🔄 Restart with:${NC} pm2 restart iron-blog"
 echo ""
-
-# Show last commit
-echo "📝 Deployed commit:"
-git log -1 --pretty=format:"%h - %s (%cr by %an)" 
-echo ""
-echo ""
-

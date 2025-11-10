@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { useAuth } from '@/contexts/AuthContext'
 
 interface User {
@@ -19,6 +21,7 @@ interface User {
 }
 
 export default function AdminUsers() {
+  const router = useRouter()
   const { currentUser } = useAuth()
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
@@ -26,8 +29,27 @@ export default function AdminUsers() {
   const [roleLoading, setRoleLoading] = useState<string | null>(null)
 
   useEffect(() => {
-    fetchUsers()
-  }, [])
+    const checkAdminAndLoad = async () => {
+      if (currentUser === undefined) {
+        return
+      }
+
+      if (!currentUser) {
+        router.push('/login')
+        return
+      }
+
+      if (!currentUser.isAdmin) {
+        alert('У вас нет прав администратора')
+        router.push('/')
+        return
+      }
+
+      await fetchUsers()
+    }
+
+    checkAdminAndLoad()
+  }, [currentUser, router])
 
   const fetchUsers = async () => {
     try {

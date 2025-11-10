@@ -240,8 +240,8 @@ const CreateTopicContent: React.FC = () => {
               onImageUpload={handleEditorImageUpload}
               className="text-sm text-gray-900/70 border-2 border-gray-200/50 rounded-md"
             />
-            <div className="text-xs text-gray-500/70 mt-2">
-              Используйте кнопки на панели инструментов для форматирования текста (жирный, курсив, подчеркнутый). 
+            <div className="text-sm text-gray-500/70 mt-2">
+              Обратите внимание что удаление и изменение темы возможно только в течение 2 часов после ее создания.
             </div>
           </div>
 

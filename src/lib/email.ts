@@ -6,8 +6,8 @@ const SMTP_HOST = process.env.SMTP_HOST || '95.163.180.91'
 const SMTP_PORT = parseInt(process.env.SMTP_PORT || '25')
 const SMTP_USER = process.env.SMTP_USER || ''
 const SMTP_PASS = process.env.SMTP_PASS || ''
-const FROM_EMAIL = process.env.FROM_EMAIL || 'noreply@ironblog.local'
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
+const FROM_EMAIL = process.env.FROM_EMAIL || 'admin@tarnovsky.ru'
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://tarnovsky.ru'
 const BRAND_NAME = process.env.BRAND_NAME || 'Клинический Протокол Тарновского'
 
 // Create transporter

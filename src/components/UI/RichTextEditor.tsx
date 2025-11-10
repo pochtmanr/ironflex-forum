@@ -265,8 +265,16 @@ function ToolbarPlugin({ onImageUpload }: { onImageUpload?: (file: File) => Prom
 // Plugin to update editor content when value prop changes
 function UpdatePlugin({ value }: { value: string }) {
   const [editor] = useLexicalComposerContext();
+  const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
+    // Only run on initial mount
+    if (isInitialized) {
+      return;
+    }
+
+    setIsInitialized(true);
+
     editor.update(() => {
       const root = $getRoot();
       root.clear();
@@ -337,7 +345,7 @@ function UpdatePlugin({ value }: { value: string }) {
         });
       }
     });
-  }, [editor, value]);
+  }, [editor, value, isInitialized]);
 
   return null;
 }
@@ -424,6 +432,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
               <ContentEditable 
                 className="min-h-[150px] p-3 focus:outline-none text-gray-900"
                 style={{ caretColor: 'black' }}
+                spellCheck={false}
               />
             }
             placeholder={

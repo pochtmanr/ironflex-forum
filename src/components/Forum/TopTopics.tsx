@@ -85,7 +85,8 @@ const TopTopics: React.FC<TopTopicsProps> = ({
   const TopicMobile = ({ topic, index }: { topic: TopTopic; index: number }) => (
     <Link 
       href={`/topic/${topic.id}`}
-      key={topic.id} 
+      key={topic.id}
+      prefetch={false}
       className={`block border-b border-1 border-gray-100 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'} p-4 active:bg-blue-50 transition-colors`}
     >
       <div className="flex items-start gap-3 mb-2">
@@ -147,7 +148,7 @@ const TopTopics: React.FC<TopTopicsProps> = ({
             </div>
           )}
           <div className="min-w-0">
-            <Link href={`/topic/${topic.id}`} className="text-blue-500 text-md font-semibold hover:text-blue-700 block mb-1">
+            <Link href={`/topic/${topic.id}`} prefetch={false} className="text-blue-500 text-md font-semibold hover:text-blue-700 block mb-1">
               {topic.title}
             </Link>
             <span className="text-gray-600 text-xs">
