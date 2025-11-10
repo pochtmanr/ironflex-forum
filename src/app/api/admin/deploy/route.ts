@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
     const token = authHeader.substring(7)
     const userPayload = verifyAccessToken(token)
     
-    if (!userPayload || userPayload.role !== 'admin') {
+    if (!userPayload || !userPayload.isAdmin) {
       return NextResponse.json(
         { error: 'Admin access required' },
         { status: 403 }
