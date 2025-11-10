@@ -1,44 +1,16 @@
 import crypto from 'crypto'
-import * as nodemailer from 'nodemailer'
+import { Resend } from 'resend'
 
-console.log('[EMAIL MODULE] ✅ Email module loaded')
-console.log('[EMAIL MODULE] createTransport type:', typeof nodemailer?.createTransport)
+console.log('[EMAIL MODULE] ✅ Email module loaded with Resend')
 
 // Email configuration
-const SMTP_HOST = process.env.SMTP_HOST || '95.163.180.91'
-const SMTP_PORT = parseInt(process.env.SMTP_PORT || '25')
-const SMTP_USER = process.env.SMTP_USER || ''
-const SMTP_PASS = process.env.SMTP_PASS || ''
+const RESEND_API_KEY = process.env.RESEND_API_KEY || ''
 const FROM_EMAIL = process.env.FROM_EMAIL || 'admin@tarnovsky.ru'
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://tarnovsky.ru'
 const BRAND_NAME = process.env.BRAND_NAME || 'Клинический Протокол Тарновского'
 
-// Create transporter
-const createTransporter = () => {
-  const config: Record<string, unknown> = {
-    host: SMTP_HOST, 
-    port: SMTP_PORT,
-    secure: SMTP_PORT === 465, // true for 465, false for other ports
-    connectionTimeout: 10000, // 10 seconds
-    greetingTimeout: 10000, // 10 seconds
-    socketTimeout: 15000, // 15 seconds
-    tls: {
-      rejectUnauthorized: false // For development/self-signed certs
-    },
-    debug: true, // Enable debug output
-    logger: true // Log to console
-  }
-
-  // Add authentication if credentials are provided
-  if (SMTP_USER && SMTP_PASS) {
-    config.auth = { 
-      user: SMTP_USER,
-      pass: SMTP_PASS,
-    }
-  }
-
-  return nodemailer.createTransport(config)
-}
+// Create Resend client
+const resend = new Resend(RESEND_API_KEY)
 
 // Generate secure token
 export const generateSecureToken = (): string => {
@@ -491,7 +463,7 @@ const getEmailTemplate = (type: string, data: Record<string, unknown>) => {
   }
 }
 
-// Send email function
+// Send email function using Resend
 export const sendEmail = async (
   to: string,
   subject: string,
@@ -499,47 +471,35 @@ export const sendEmail = async (
   data: Record<string, unknown>
 ): Promise<boolean> => {
   try {
-    // SMTP credentials are optional for local SMTP servers
-    if (!SMTP_HOST) {
-      console.error('[EMAIL] ❌ SMTP_HOST not configured')
+    if (!RESEND_API_KEY) {
+      console.error('[EMAIL] ❌ RESEND_API_KEY not configured')
       return false
     }
 
     console.log('[EMAIL] =====================================')
-    console.log(`[EMAIL] 📧 Preparing to send email`)
+    console.log(`[EMAIL] 📧 Preparing to send email with Resend`)
     console.log(`[EMAIL] To: ${to}`)
     console.log(`[EMAIL] Subject: ${subject}`)
     console.log(`[EMAIL] Type: ${type}`)
-    console.log(`[EMAIL] SMTP Config: ${SMTP_HOST}:${SMTP_PORT}`)
     console.log(`[EMAIL] From: ${FROM_EMAIL}`)
-    console.log(`[EMAIL] Auth: ${SMTP_USER ? 'Yes' : 'No (anonymous)'}`)
-
-    const transporter = createTransporter()
-    
-    // Verify SMTP connection
-    console.log('[EMAIL] 🔍 Verifying SMTP connection...')
-    try {
-      await transporter.verify()
-      console.log('[EMAIL] ✅ SMTP connection verified')
-    } catch (verifyError) {
-      console.error('[EMAIL] ❌ SMTP verification failed:', verifyError)
-      throw new Error(`SMTP verification failed: ${verifyError instanceof Error ? verifyError.message : 'Unknown error'}`)
-    }
 
     const html = getEmailTemplate(type, data)
 
-    const mailOptions = {
-      from: `"${BRAND_NAME}" <${FROM_EMAIL}>`,
-      to,
+    console.log('[EMAIL] 📤 Sending email via Resend...')
+    const result = await resend.emails.send({
+      from: `${BRAND_NAME} <onboarding@resend.dev>`, // Resend requires verified domain or use onboarding@resend.dev for testing
+      to: [to],
       subject,
       html
+    })
+
+    if (result.error) {
+      console.error('[EMAIL] ❌ Resend error:', result.error)
+      return false
     }
 
-    console.log('[EMAIL] 📤 Sending email...')
-    const result = await transporter.sendMail(mailOptions)
     console.log('[EMAIL] ✅ Email sent successfully!')
-    console.log('[EMAIL] MessageID:', result.messageId)
-    console.log('[EMAIL] Response:', result.response)
+    console.log('[EMAIL] Email ID:', result.data?.id)
     console.log('[EMAIL] =====================================')
     return true
   } catch (error) {
