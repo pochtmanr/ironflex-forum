@@ -1,7 +1,5 @@
 import crypto from 'crypto'
-
-// Dynamic import for nodemailer to avoid Next.js/Turbopack issues
-const nodemailer = require('nodemailer')
+import nodemailer from 'nodemailer'
 
 // Email configuration
 const SMTP_HOST = process.env.SMTP_HOST || '95.163.180.91'
