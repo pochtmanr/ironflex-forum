@@ -125,11 +125,21 @@ export async function POST(request: NextRequest) {
       })
 
       // Send verification email
-      const emailSent = await sendEmailVerificationEmail(
-        user.email,
-        user.username,
-        verificationToken
-      )
+      console.log('[REGISTER] About to send verification email...')
+      console.log('[REGISTER] sendEmailVerificationEmail type:', typeof sendEmailVerificationEmail)
+      
+      let emailSent = false
+      try {
+        emailSent = await sendEmailVerificationEmail(
+          user.email,
+          user.username,
+          verificationToken
+        )
+        console.log('[REGISTER] Email sent result:', emailSent)
+      } catch (emailError) {
+        console.error('[REGISTER] Email sending error:', emailError)
+        console.error('[REGISTER] Error details:', emailError instanceof Error ? emailError.message : String(emailError))
+      }
 
       if (!emailSent) {
         console.error('Failed to send verification email, but user was created')
