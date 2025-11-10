@@ -2,9 +2,7 @@ import crypto from 'crypto'
 import * as nodemailer from 'nodemailer'
 
 console.log('[EMAIL MODULE] ✅ Email module loaded')
-console.log('[EMAIL MODULE] Nodemailer type:', typeof nodemailer)
-console.log('[EMAIL MODULE] createTransporter type:', typeof nodemailer?.createTransporter)
-console.log('[EMAIL MODULE] Nodemailer keys:', Object.keys(nodemailer))
+console.log('[EMAIL MODULE] createTransport type:', typeof nodemailer?.createTransport)
 
 // Email configuration
 const SMTP_HOST = process.env.SMTP_HOST || '95.163.180.91'
@@ -39,7 +37,7 @@ const createTransporter = () => {
     }
   }
 
-  return nodemailer.createTransporter(config)
+  return nodemailer.createTransport(config)
 }
 
 // Generate secure token
