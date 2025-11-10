@@ -16,9 +16,14 @@ const createTransporter = () => {
     host: SMTP_HOST, 
     port: SMTP_PORT,
     secure: SMTP_PORT === 465, // true for 465, false for other ports
+    connectionTimeout: 10000, // 10 seconds
+    greetingTimeout: 10000, // 10 seconds
+    socketTimeout: 15000, // 15 seconds
     tls: {
-      rejectUnauthorized: false // For development
-    }
+      rejectUnauthorized: false // For development/self-signed certs
+    },
+    debug: true, // Enable debug output
+    logger: true // Log to console
   }
 
   // Add authentication if credentials are provided
@@ -29,7 +34,7 @@ const createTransporter = () => {
     }
   }
 
-  return nodemailer.createTransport(config)
+  return nodemailer.createTransporter(config)
 }
 
 // Generate secure token
@@ -493,15 +498,31 @@ export const sendEmail = async (
   try {
     // SMTP credentials are optional for local SMTP servers
     if (!SMTP_HOST) {
-      console.error('[EMAIL] SMTP_HOST not configured')
+      console.error('[EMAIL] ❌ SMTP_HOST not configured')
       return false
     }
 
-    console.log(`[EMAIL] Sending email to: ${to}`)
+    console.log('[EMAIL] =====================================')
+    console.log(`[EMAIL] 📧 Preparing to send email`)
+    console.log(`[EMAIL] To: ${to}`)
+    console.log(`[EMAIL] Subject: ${subject}`)
+    console.log(`[EMAIL] Type: ${type}`)
     console.log(`[EMAIL] SMTP Config: ${SMTP_HOST}:${SMTP_PORT}`)
     console.log(`[EMAIL] From: ${FROM_EMAIL}`)
+    console.log(`[EMAIL] Auth: ${SMTP_USER ? 'Yes' : 'No (anonymous)'}`)
 
     const transporter = createTransporter()
+    
+    // Verify SMTP connection
+    console.log('[EMAIL] 🔍 Verifying SMTP connection...')
+    try {
+      await transporter.verify()
+      console.log('[EMAIL] ✅ SMTP connection verified')
+    } catch (verifyError) {
+      console.error('[EMAIL] ❌ SMTP verification failed:', verifyError)
+      throw new Error(`SMTP verification failed: ${verifyError instanceof Error ? verifyError.message : 'Unknown error'}`)
+    }
+
     const html = getEmailTemplate(type, data)
 
     const mailOptions = {
@@ -511,16 +532,23 @@ export const sendEmail = async (
       html
     }
 
-    console.log('[EMAIL] Attempting to send...')
+    console.log('[EMAIL] 📤 Sending email...')
     const result = await transporter.sendMail(mailOptions)
-    console.log('[EMAIL] ✅ Email sent successfully! MessageID:', result.messageId)
+    console.log('[EMAIL] ✅ Email sent successfully!')
+    console.log('[EMAIL] MessageID:', result.messageId)
+    console.log('[EMAIL] Response:', result.response)
+    console.log('[EMAIL] =====================================')
     return true
   } catch (error) {
-    console.error('[EMAIL] ❌ Error sending email:', error)
+    console.error('[EMAIL] =====================================')
+    console.error('[EMAIL] ❌ FAILED to send email')
+    console.error('[EMAIL] Error:', error)
     if (error instanceof Error) {
+      console.error('[EMAIL] Error name:', error.name)
       console.error('[EMAIL] Error message:', error.message)
       console.error('[EMAIL] Error stack:', error.stack)
     }
+    console.error('[EMAIL] =====================================')
     return false
   }
 }
