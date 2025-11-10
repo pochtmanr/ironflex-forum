@@ -4,7 +4,8 @@ const nextConfig: NextConfig = {
   output: 'standalone',
   // Vercel-like optimizations for fast builds
   compiler: {
-    removeConsole: process.env.NODE_ENV === 'production',
+    // Keep console logs for debugging email issues
+    // removeConsole: process.env.NODE_ENV === 'production',
   },
   // Skip type checking during build for speed
   typescript: {
