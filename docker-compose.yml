@@ -58,8 +58,8 @@ services:
       - FILESERVER_URL=http://fileserver:3001
       - FILESERVER_FALLBACK=http://localhost:3001
       - SMTP_HOST=smtp.timeweb.ru
-      - SMTP_PORT=2525
-      - SMTP_SECURE=false
+      - SMTP_PORT=465
+      - SMTP_SECURE=true
       - SMTP_USER=support@tarnovsky.ru
       - SMTP_PASS=VWJetta2014Asd))!
       - SMTP_FROM=support@tarnovsky.ru
