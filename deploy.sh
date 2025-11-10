@@ -10,9 +10,20 @@ npm install
 echo "🔨 Building application..."
 npm run build
 
-# Restart PM2 process
-echo "🔄 Restarting PM2..."
-pm2 restart iron-blog || pm2 start npm --name "iron-blog" -- start
+# Stop and delete existing PM2 process
+echo "🛑 Stopping existing process..."
+pm2 stop iron-blog 2>/dev/null || true
+pm2 delete iron-blog 2>/dev/null || true
+
+# Wait a moment for port to be released
+sleep 2
+
+# Start fresh PM2 process
+echo "▶️ Starting new process..."
+pm2 start npm --name "iron-blog" -- start
+
+# Save PM2 configuration
+pm2 save
 
 echo "✅ Deployment complete!"
 
