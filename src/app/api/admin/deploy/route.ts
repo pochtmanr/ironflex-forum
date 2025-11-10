@@ -73,32 +73,15 @@ export async function POST(request: NextRequest) {
 // Get deployment status
 export async function GET() {
   try {
-    // Check if we're running in Docker (no git/docker commands available)
-    const isDocker = process.env.HOSTNAME?.includes('docker') || !process.env.HOME?.includes('root')
-    
-    if (isDocker) {
-      // Running in Docker container - return basic info
-      return NextResponse.json({
-        success: true,
-        environment: 'docker',
-        nodeEnv: process.env.NODE_ENV,
-        timestamp: new Date().toISOString(),
-        message: 'Running in Docker container. Deploy via docker-compose on host.'
-      })
-    }
-    
-    // Running on host - can execute git/docker commands
-    const { stdout: gitInfo } = await execAsync('cd /root/iron-blog && git log -1 --pretty=format:"%h - %s (%cr)" 2>/dev/null || echo "unknown"')
-    
-    // Get container status
-    const { stdout: containerStatus } = await execAsync('docker ps --format "{{.Names}}: {{.Status}}"')
-    
+    // Always assume we're in Docker for production
+    // The deploy endpoint is not meant to be used from within the container
     return NextResponse.json({
       success: true,
-      environment: 'host',
-      lastCommit: gitInfo.trim(),
-      containers: containerStatus.trim().split('\n'),
-      timestamp: new Date().toISOString()
+      environment: 'docker',
+      nodeEnv: process.env.NODE_ENV,
+      hostname: process.env.HOSTNAME,
+      timestamp: new Date().toISOString(),
+      message: 'Running in Docker container. To deploy, SSH to server and run: cd /root/iron-blog && git pull && docker-compose up -d --build'
     })
 
   } catch (error) {
