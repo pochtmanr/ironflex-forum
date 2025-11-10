@@ -57,6 +57,12 @@ services:
       - MONGODB_URI=mongodb://admin:StrongPassword123!@mongodb:27017/ironblog?authSource=admin
       - FILESERVER_URL=http://fileserver:3001
       - FILESERVER_FALLBACK=http://localhost:3001
+      - SMTP_HOST=mail.timeweb.com
+      - SMTP_PORT=587
+      - SMTP_SECURE=false
+      - SMTP_USER=support@tarnovsky.ru
+      - SMTP_PASS=VWJetta2014Asd))!
+      - SMTP_FROM=support@tarnovsky.ru
     depends_on:
       - mongodb
       - fileserver
