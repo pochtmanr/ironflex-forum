@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/mongodb'
 import User from '@/models/User'
+import ResetToken from '@/models/ResetToken'
 import { hashPassword, generateTokens } from '@/lib/auth'
+import { generateSecureToken, sendEmailVerificationEmail } from '@/lib/email'
 
 export async function POST(request: NextRequest) {
   try {
@@ -110,10 +112,46 @@ export async function POST(request: NextRequest) {
       })
       console.log('Tokens generated successfully')
 
+      // Send verification email (only if not first user, first user is auto-verified)
+      let emailSent = false
+      if (!isFirstUser) {
+        // Generate email verification token
+        const verificationToken = generateSecureToken()
+        const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours
+
+        // Save verification token
+        await ResetToken.create({
+          userId: user._id.toString(),
+          token: verificationToken,
+          type: 'email_verification',
+          expiresAt
+        })
+
+        // Send verification email
+        console.log('[REGISTER] About to send verification email...')
+        try {
+          emailSent = await sendEmailVerificationEmail(
+            user.email,
+            user.username,
+            verificationToken
+          )
+          console.log('[REGISTER] Email sent result:', emailSent)
+        } catch (emailError) {
+          console.error('[REGISTER] Email sending error:', emailError)
+          // Don't fail registration if email fails
+        }
+
+        if (!emailSent) {
+          console.error('Failed to send verification email, but user was created')
+        }
+      }
+
       const response = {
         message: isFirstUser 
           ? 'Добро пожаловать! Вы первый пользователь и получили права администратора.' 
-          : 'User created successfully.',
+          : emailSent 
+            ? 'User created successfully. Please check your email to verify your account.'
+            : 'User created successfully. Email verification will be sent shortly.',
         user: {
           id: user._id,
           email: user.email,
@@ -125,6 +163,7 @@ export async function POST(request: NextRequest) {
         },
         accessToken,
         refreshToken,
+        emailSent: emailSent || isFirstUser,
         isFirstUser: isFirstUser
       }
       
