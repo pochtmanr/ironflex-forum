@@ -100,7 +100,7 @@ export async function POST(request: NextRequest) {
     // Send confirmation email to new address
     const emailSent = await sendEmailChangeConfirmation(
       newEmail,
-      user.username,
+      user.username || user.displayName || 'Пользователь',
       user.email,
       changeToken
     )

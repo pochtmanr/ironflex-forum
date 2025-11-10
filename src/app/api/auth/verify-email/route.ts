@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
     // Send verification email
     const emailSent = await sendEmailVerificationEmail(
       user.email,
-      user.username,
+      user.username || user.displayName || 'Пользователь',
       verificationToken
     )
 

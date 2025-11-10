@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
     // Send reset email
     const emailSent = await sendPasswordResetEmail(
       user.email,
-      user.username,
+      user.username || user.displayName || 'Пользователь',
       token
     )
 
