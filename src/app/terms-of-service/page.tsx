@@ -191,10 +191,10 @@ export default function TermsOfService() {
           </p>
           <ul className="list-none pl-0 text-gray-700 mb-4 space-y-2">
             <li>
-              Email: <a href="mailto:info@tarnovsky.ru.kz" className="text-blue-600 hover:text-blue-700 font-medium">info@tarnovsky.ru.kz</a>
+              Email: <a href="mailto:admin@tarnovsky.ru" className="text-blue-600 hover:text-blue-700 font-medium">admin@tarnovsky.ru</a>
             </li>
             <li>
-              Веб-сайт: <a href="https://forum.theholylabs.com" className="text-blue-600 hover:text-blue-700 font-medium">forum.theholylabs.com</a>
+              Веб-сайт: <a href="https://tarnovsky.ru" className="text-blue-600 hover:text-blue-700 font-medium">tarnovsky.ru</a>
             </li>
           </ul>
           <p className="text-gray-700 leading-relaxed mb-4">

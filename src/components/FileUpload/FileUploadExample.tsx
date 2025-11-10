@@ -48,7 +48,7 @@ const FileUploadExample: React.FC = () => {
     <div className="file-upload-example">
       <div className="example-header">
         <h2>File Upload System</h2>
-        <p>Integration with bucket.theholylabs.com file server</p>
+        <p>Система загрузки файлов</p>
       </div>
 
       <div className="example-controls">

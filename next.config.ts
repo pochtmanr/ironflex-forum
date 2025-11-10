@@ -29,7 +29,7 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: 'https',
-        hostname: 'forum.theholylabs.com',
+        hostname: 'tarnovsky.ru',
         pathname: '/uploads/**',
       },
       {

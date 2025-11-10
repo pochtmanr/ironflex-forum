@@ -71,7 +71,7 @@ export const MediaAttachment: React.FC<MediaAttachmentProps> = ({ link, index, o
             {filename}
           </a>
           <span className="text-xs text-gray-500 ml-2">
-            {link.includes('bucket.theholylabs.com') ? 'Файл' : 'Ссылка'}
+            Файл
           </span>
         </div>
       )}
