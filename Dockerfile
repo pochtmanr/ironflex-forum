@@ -51,8 +51,9 @@ RUN chown nextjs:nodejs .next
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
-# Copy nodemailer and its dependencies (not included in standalone trace)
-COPY --from=deps --chown=nextjs:nodejs /app/node_modules/nodemailer ./node_modules/nodemailer
+# Copy full node_modules for packages not included in standalone trace (nodemailer, etc)
+# Standalone mode doesn't include all dependencies, especially native/complex ones
+COPY --from=deps --chown=nextjs:nodejs /app/node_modules ./node_modules
 
 USER nextjs
 
