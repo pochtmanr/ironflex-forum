@@ -220,20 +220,7 @@ const getEmailTemplate = (type: string, data: Record<string, unknown>) => {
                   <div class="subtitle">Восстановление доступа к аккаунту</div>
                 </div>
                 
-                <div class="email-icons">
-                  <div class="email-icon-item">
-                    <span class="icon">⏰</span>
-                    <span class="label">1 час</span>
-                  </div>
-                  <div class="email-icon-item">
-                    <span class="icon">🔒</span>
-                    <span class="label">Безопасно</span>
-                  </div>
-                  <div class="email-icon-item">
-                    <span class="icon">✓</span>
-                    <span class="label">Просто</span>
-                  </div>
-                </div>
+             
                 
                 <div class="email-content">
                   <h2>Здравствуйте, ${data.username}!</h2>
@@ -292,20 +279,7 @@ const getEmailTemplate = (type: string, data: Record<string, unknown>) => {
                   <div class="subtitle">Добро пожаловать в ${FROM_NAME}!</div>
                 </div>
                 
-                <div class="email-icons">
-                  <div class="email-icon-item">
-                    <span class="icon">✉️</span>
-                    <span class="label">Подтвердите</span>
-                  </div>
-                  <div class="email-icon-item">
-                    <span class="icon">⏰</span>
-                    <span class="label">24 часа</span>
-                  </div>
-                  <div class="email-icon-item">
-                    <span class="icon">🎉</span>
-                    <span class="label">Готово!</span>
-                  </div>
-                </div>
+                
                 
                 <div class="email-content">
                   <h2>Здравствуйте, ${data.username}!</h2>
@@ -364,20 +338,7 @@ const getEmailTemplate = (type: string, data: Record<string, unknown>) => {
                   <div class="subtitle">Ваш аккаунт успешно активирован</div>
                 </div>
                 
-                <div class="email-icons">
-                  <div class="email-icon-item">
-                    <span class="icon">📝</span>
-                    <span class="label">Создавайте</span>
-                  </div>
-                  <div class="email-icon-item">
-                    <span class="icon">💬</span>
-                    <span class="label">Общайтесь</span>
-                  </div>
-                  <div class="email-icon-item">
-                    <span class="icon">🎓</span>
-                    <span class="label">Учитесь</span>
-                  </div>
-                </div>
+               
                 
                 <div class="email-content">
                   <h2>Здравствуйте, ${data.username}!</h2>
