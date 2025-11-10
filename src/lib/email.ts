@@ -4,9 +4,9 @@ import crypto from 'crypto'
 console.log('[EMAIL MODULE] ✅ Email module loaded with Nodemailer')
 
 // Email configuration for Timeweb
-const SMTP_HOST = process.env.SMTP_HOST || 'mail.timeweb.com'
-const SMTP_PORT = parseInt(process.env.SMTP_PORT || '465')
-const SMTP_SECURE = process.env.SMTP_SECURE !== 'false' // true for 465, false for other ports
+const SMTP_HOST = process.env.SMTP_HOST || 'smtp.timeweb.ru'
+const SMTP_PORT = parseInt(process.env.SMTP_PORT || '587')
+const SMTP_SECURE = process.env.SMTP_SECURE === 'true' // true for 465, false for 587
 const SMTP_USER = process.env.SMTP_USER || 'support@tarnovsky.ru'
 const SMTP_PASS = process.env.SMTP_PASS || ''
 const FROM_EMAIL = process.env.FROM_EMAIL || 'support@tarnovsky.ru'
@@ -26,15 +26,20 @@ const createTransporter = () => {
     transporter = nodemailer.createTransport({
       host: SMTP_HOST,
       port: SMTP_PORT,
-      secure: SMTP_SECURE, // true for 465, false for other ports
+      secure: SMTP_SECURE, // true for 465, false for 587
       auth: {
         user: SMTP_USER,
         pass: SMTP_PASS,
       },
       // Additional options for better compatibility
       tls: {
-        rejectUnauthorized: false // Accept self-signed certificates
-      }
+        rejectUnauthorized: false, // Accept self-signed certificates
+        ciphers: 'SSLv3'
+      },
+      // Connection timeout
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+      socketTimeout: 10000
     })
 
     console.log('[EMAIL] ✅ Transporter created successfully')
@@ -61,25 +66,25 @@ const getEmailTemplate = (type: string, data: Record<string, unknown>) => {
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
         line-height: 1.6;
         color: #333;
-        background-color: #f4f4f4;
+        background-color: #f5f5f5;
       }
       .email-wrapper { 
         width: 100%; 
         padding: 40px 20px;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background-color: #f5f5f5;
       }
       .email-container { 
         max-width: 600px; 
         margin: 0 auto; 
         background: white;
-        border-radius: 12px;
+        border-radius: 8px;
         overflow: hidden;
-        box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
       }
       .email-header { 
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: #2563eb;
         color: white;
-        padding: 40px 30px;
+        padding: 40px 30px 30px;
         text-align: center;
       }
       .email-header h1 { 
@@ -89,67 +94,88 @@ const getEmailTemplate = (type: string, data: Record<string, unknown>) => {
       }
       .email-header .subtitle { 
         font-size: 16px; 
-        opacity: 0.9;
+        opacity: 0.95;
+      }
+      .email-icons {
+        display: flex;
+        justify-content: center;
+        gap: 30px;
+        padding: 20px;
+        background: #f8fafc;
+        border-bottom: 1px solid #e2e8f0;
+      }
+      .email-icon-item {
+        text-align: center;
+      }
+      .email-icon-item .icon {
+        font-size: 32px;
+        display: block;
+        margin-bottom: 5px;
+      }
+      .email-icon-item .label {
+        font-size: 12px;
+        color: #64748b;
+        font-weight: 500;
       }
       .email-content { 
         padding: 40px 30px;
         background: white;
       }
       .email-content h2 {
-        color: #2c3e50;
+        color: #1e293b;
         font-size: 22px;
         margin-bottom: 16px;
       }
       .email-content p {
         margin-bottom: 16px;
-        color: #555;
+        color: #475569;
         line-height: 1.8;
       }
       .email-button { 
         display: inline-block; 
         padding: 14px 32px;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
+        background: #2563eb;
+        color: white !important;
         text-decoration: none;
-        border-radius: 8px;
+        border-radius: 6px;
         font-weight: 600;
         margin: 20px 0;
-        transition: transform 0.2s;
+        transition: background 0.2s;
       }
       .email-button:hover { 
-        transform: translateY(-2px);
-        box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        background: #1d4ed8;
       }
       .email-link-box {
-        background: #f8f9fa;
+        background: #f1f5f9;
         padding: 15px;
         border-radius: 6px;
-        border-left: 4px solid #667eea;
+        border-left: 4px solid #2563eb;
         word-break: break-all;
         font-size: 13px;
-        color: #666;
+        color: #64748b;
         margin: 15px 0;
       }
-      .email-warning { 
-        background: linear-gradient(135deg, #ffeaa7 0%, #fab1a0 100%);
+      .email-info-box { 
+        background: #eff6ff;
         padding: 20px;
-        border-radius: 8px;
+        border-radius: 6px;
         margin: 20px 0;
+        border-left: 4px solid #2563eb;
       }
-      .email-warning h3 {
-        color: #2d3436;
+      .email-info-box h3 {
+        color: #1e40af;
         font-size: 16px;
         margin-bottom: 10px;
       }
-      .email-warning ul {
+      .email-info-box ul {
         margin-left: 20px;
       }
-      .email-warning li {
+      .email-info-box li {
         margin-bottom: 8px;
-        color: #2d3436;
+        color: #1e40af;
       }
       .email-footer { 
-        background: #2c3e50;
+        background: #1e293b;
         color: white;
         padding: 30px;
         text-align: center;
@@ -157,43 +183,20 @@ const getEmailTemplate = (type: string, data: Record<string, unknown>) => {
       .email-footer p {
         margin-bottom: 8px;
         opacity: 0.9;
+        font-size: 14px;
       }
       .email-footer .brand {
         color: white;
         font-weight: 600;
         font-size: 18px;
       }
-      .email-stats {
-        display: flex;
-        justify-content: space-around;
-        margin: 30px 0;
-        gap: 20px;
-      }
-      .stat-item {
-        text-align: center;
-        flex: 1;
-        padding: 20px;
-        background: #f8f9fa;
-        border-radius: 8px;
-      }
-      .stat-item .number {
-        font-size: 32px;
-        font-weight: 700;
-        color: #667eea;
-        display: block;
-        margin-bottom: 5px;
-      }
-      .stat-item .label {
-        font-size: 14px;
-        color: #666;
-      }
       @media only screen and (max-width: 600px) {
         .email-wrapper { padding: 20px 10px; }
-        .email-header { padding: 30px 20px; }
+        .email-header { padding: 30px 20px 20px; }
         .email-content { padding: 30px 20px; }
         .email-footer { padding: 20px; }
         .email-header h1 { font-size: 24px; }
-        .email-stats { flex-direction: column; gap: 15px; }
+        .email-icons { gap: 15px; }
       }
     </style>
   `
@@ -213,8 +216,23 @@ const getEmailTemplate = (type: string, data: Record<string, unknown>) => {
             <div class="email-wrapper">
               <div class="email-container">
                 <div class="email-header">
-                  <h1>🔐 Сброс пароля</h1>
+                  <h1>Сброс пароля</h1>
                   <div class="subtitle">Восстановление доступа к аккаунту</div>
+                </div>
+                
+                <div class="email-icons">
+                  <div class="email-icon-item">
+                    <span class="icon">⏰</span>
+                    <span class="label">1 час</span>
+                  </div>
+                  <div class="email-icon-item">
+                    <span class="icon">🔒</span>
+                    <span class="label">Безопасно</span>
+                  </div>
+                  <div class="email-icon-item">
+                    <span class="icon">✓</span>
+                    <span class="label">Просто</span>
+                  </div>
                 </div>
                 
                 <div class="email-content">
@@ -228,29 +246,18 @@ const getEmailTemplate = (type: string, data: Record<string, unknown>) => {
                     <a href="${data.resetUrl}" class="email-button">Сбросить пароль</a>
                   </div>
                   
-                  <p style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
+                  <p style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e2e8f0;">
                     <strong>Не работает кнопка?</strong> Скопируйте и вставьте эту ссылку в адресную строку браузера:
                   </p>
                   <div class="email-link-box">${data.resetUrl}</div>
                   
-                  <div class="email-warning">
+                  <div class="email-info-box">
                     <h3>⚠️ Важная информация:</h3>
                     <ul>
                       <li><strong>Срок действия:</strong> Ссылка действительна в течение 1 часа</li>
                       <li><strong>Безопасность:</strong> Никому не передавайте эту ссылку</li>
                       <li><strong>Не запрашивали?</strong> Просто проигнорируйте это письмо</li>
                     </ul>
-                  </div>
-                  
-                  <div class="email-stats">
-                    <div class="stat-item">
-                      <span class="number">⏰</span>
-                      <span class="label">1 час</span>
-                    </div>
-                    <div class="stat-item">
-                      <span class="number">🔒</span>
-                      <span class="label">Безопасно</span>
-                    </div>
                   </div>
                 </div>
                 
@@ -281,8 +288,23 @@ const getEmailTemplate = (type: string, data: Record<string, unknown>) => {
             <div class="email-wrapper">
               <div class="email-container">
                 <div class="email-header">
-                  <h1>✉️ Подтверждение email</h1>
+                  <h1>Подтверждение email</h1>
                   <div class="subtitle">Добро пожаловать в ${FROM_NAME}!</div>
+                </div>
+                
+                <div class="email-icons">
+                  <div class="email-icon-item">
+                    <span class="icon">✉️</span>
+                    <span class="label">Подтвердите</span>
+                  </div>
+                  <div class="email-icon-item">
+                    <span class="icon">⏰</span>
+                    <span class="label">24 часа</span>
+                  </div>
+                  <div class="email-icon-item">
+                    <span class="icon">🎉</span>
+                    <span class="label">Готово!</span>
+                  </div>
                 </div>
                 
                 <div class="email-content">
@@ -296,29 +318,18 @@ const getEmailTemplate = (type: string, data: Record<string, unknown>) => {
                     <a href="${data.verificationUrl}" class="email-button">Подтвердить email</a>
                   </div>
                   
-                  <p style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
+                  <p style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e2e8f0;">
                     <strong>Не работает кнопка?</strong> Скопируйте и вставьте эту ссылку в адресную строку браузера:
                   </p>
                   <div class="email-link-box">${data.verificationUrl}</div>
                   
-                  <div class="email-warning">
+                  <div class="email-info-box">
                     <h3>📋 Что дальше?</h3>
                     <ul>
                       <li><strong>Полный доступ:</strong> После подтверждения вы сможете создавать темы и комментарии</li>
                       <li><strong>Безопасность:</strong> Подтвержденный email защищает ваш аккаунт</li>
                       <li><strong>Уведомления:</strong> Получайте важные обновления на email</li>
                     </ul>
-                  </div>
-                  
-                  <div class="email-stats">
-                    <div class="stat-item">
-                      <span class="number">⏰</span>
-                      <span class="label">24 часа</span>
-                    </div>
-                    <div class="stat-item">
-                      <span class="number">🎉</span>
-                      <span class="label">Добро пожаловать!</span>
-                    </div>
                   </div>
                 </div>
                 
@@ -349,8 +360,23 @@ const getEmailTemplate = (type: string, data: Record<string, unknown>) => {
             <div class="email-wrapper">
               <div class="email-container">
                 <div class="email-header">
-                  <h1>🎉 Добро пожаловать!</h1>
+                  <h1>Добро пожаловать!</h1>
                   <div class="subtitle">Ваш аккаунт успешно активирован</div>
+                </div>
+                
+                <div class="email-icons">
+                  <div class="email-icon-item">
+                    <span class="icon">📝</span>
+                    <span class="label">Создавайте</span>
+                  </div>
+                  <div class="email-icon-item">
+                    <span class="icon">💬</span>
+                    <span class="label">Общайтесь</span>
+                  </div>
+                  <div class="email-icon-item">
+                    <span class="icon">🎓</span>
+                    <span class="label">Учитесь</span>
+                  </div>
                 </div>
                 
                 <div class="email-content">
@@ -358,32 +384,17 @@ const getEmailTemplate = (type: string, data: Record<string, unknown>) => {
                   
                   <p>Поздравляем! Ваш email успешно подтвержден, и теперь у вас есть полный доступ к <strong>${FROM_NAME}</strong>.</p>
                   
-                  <div class="email-stats">
-                    <div class="stat-item">
-                      <span class="number">📝</span>
-                      <span class="label">Создавайте темы</span>
-                    </div>
-                    <div class="stat-item">
-                      <span class="number">💬</span>
-                      <span class="label">Общайтесь</span>
-                    </div>
-                    <div class="stat-item">
-                      <span class="number">🎓</span>
-                      <span class="label">Учитесь</span>
-                    </div>
-                  </div>
-                  
                   <p>Начните с изучения наших разделов и присоединяйтесь к обсуждениям!</p>
                   
                   <div style="text-align: center;">
                     <a href="${data.loginUrl || SITE_URL}" class="email-button">Перейти на сайт</a>
                   </div>
                   
-                  <p style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
+                  <p style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e2e8f0;">
                     Если у вас есть вопросы, не стесняйтесь обращаться к нашему сообществу!
                   </p>
                   
-                  <div class="email-warning">
+                  <div class="email-info-box">
                     <h3>💡 Полезные советы:</h3>
                     <ul>
                       <li>Заполните свой профиль для лучшего взаимодействия</li>

@@ -871,8 +871,52 @@ const UserProfile: React.FC = () => {
               
               <div>
                 <h3 className="text-sm font-medium text-gray-700 mb-2">Email</h3>
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-600">{user?.email}</span>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-600">{user?.email}</span>
+                    {user?.isVerified ? (
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                        ✓ Подтвержден
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                        ⚠ Не подтвержден
+                      </span>
+                    )}
+                  </div>
+                  {!user?.isVerified && (
+                    <button
+                      onClick={async () => {
+                        setModalLoading(true);
+                        setModalError('');
+                        setModalMessage('');
+                        try {
+                          const token = localStorage.getItem('accessToken');
+                          const response = await fetch('/api/auth/verify-email', {
+                            method: 'POST',
+                            headers: {
+                              'Authorization': `Bearer ${token}`,
+                              'Content-Type': 'application/json',
+                            },
+                          });
+                          const data = await response.json();
+                          if (response.ok) {
+                            setModalMessage('✉️ Письмо для подтверждения отправлено на ваш email!');
+                          } else {
+                            setModalError(data.error || 'Не удалось отправить письмо');
+                          }
+                        } catch (error) {
+                          setModalError('Ошибка сети. Попробуйте снова.');
+                        } finally {
+                          setModalLoading(false);
+                        }
+                      }}
+                      disabled={modalLoading}
+                      className="text-sm text-blue-600 hover:text-blue-700 font-medium disabled:opacity-50"
+                    >
+                      {modalLoading ? 'Отправка...' : '📧 Отправить письмо для подтверждения'}
+                    </button>
+                  )}
                 </div>
               </div>
               <div>
@@ -1043,6 +1087,39 @@ const UserProfile: React.FC = () => {
                   Отмена
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Notification Modal */}
+      {(modalMessage || modalError) && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+            <div className="text-center">
+              {modalMessage && (
+                <>
+                  <div className="text-green-600 text-5xl mb-4">✓</div>
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">Успешно!</h3>
+                  <p className="text-gray-600">{modalMessage}</p>
+                </>
+              )}
+              {modalError && (
+                <>
+                  <div className="text-red-600 text-5xl mb-4">✗</div>
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">Ошибка</h3>
+                  <p className="text-gray-600">{modalError}</p>
+                </>
+              )}
+              <button
+                onClick={() => {
+                  setModalMessage('');
+                  setModalError('');
+                }}
+                className="mt-6 w-full bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
+              >
+                Закрыть
+              </button>
             </div>
           </div>
         </div>
