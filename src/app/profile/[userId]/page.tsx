@@ -68,9 +68,7 @@ const UserProfile: React.FC = () => {
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   
   // Modal states
-  const [showChangeEmailModal, setShowChangeEmailModal] = useState(false);
   const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
-  const [newEmail, setNewEmail] = useState('');
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -443,130 +441,6 @@ const UserProfile: React.FC = () => {
     }
   };
 
-  const handleVerifyEmail = async () => {
-    const tokenToUse = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
-    if (!tokenToUse) return;
-    
-    setModalLoading(true);
-    setModalError('');
-    setModalMessage('');
-
-    try {
-      let response = await fetch('/api/auth/verify-email', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${tokenToUse}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      let data = await response.json();
-
-      // If token expired, refresh and retry
-      if (response.status === 401) {
-        console.log('Token expired, refreshing for email verification...');
-        const newToken = await refreshAccessToken();
-        
-        if (newToken) {
-          console.log('Token refreshed, retrying email verification...');
-          response = await fetch('/api/auth/verify-email', {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${newToken}`,
-              'Content-Type': 'application/json',
-            },
-          });
-          
-          data = await response.json();
-        } else {
-          setModalError('Session expired. Please log in again.');
-          return;
-        }
-      }
-
-      if (response.ok) {
-        setModalMessage(data.message || 'Verification email sent successfully');
-        setTimeout(() => {
-          loadUserProfile();
-        }, 2000);
-      } else {
-        setModalError(data.error || 'Failed to send verification email');
-      }
-    } catch (error) {
-      setModalError('Network error. Please try again.');
-    } finally {
-      setModalLoading(false);
-    }
-  };
-
-  const handleChangeEmail = async () => {
-    let tokenToUse = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
-    if (!tokenToUse || !newEmail) return;
-    
-    // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(newEmail)) {
-      setModalError('Invalid email format');
-      return;
-    }
-    
-    setModalLoading(true);
-    setModalError('');
-    setModalMessage('');
-
-    try {
-      let response = await fetch('/api/auth/change-email', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${tokenToUse}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ newEmail }),
-      });
-
-      let data = await response.json();
-
-      // If token expired, refresh and retry
-      if (response.status === 401) {
-        console.log('Token expired, refreshing for email change...');
-        const newToken = await refreshAccessToken();
-        
-        if (newToken) {
-          console.log('Token refreshed, retrying email change...');
-          tokenToUse = newToken;
-          
-          response = await fetch('/api/auth/change-email', {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${newToken}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ newEmail }),
-          });
-          
-          data = await response.json();
-        } else {
-          setModalError('Session expired. Please log in again.');
-          return;
-        }
-      }
-
-      if (response.ok) {
-        setModalMessage(data.message || 'Confirmation email sent. Please check your inbox.');
-        setNewEmail('');
-        setTimeout(() => {
-          setShowChangeEmailModal(false);
-          setModalMessage('');
-        }, 3000);
-      } else {
-        setModalError(data.error || 'Failed to change email');
-      }
-    } catch (error) {
-      setModalError('Network error. Please try again.');
-    } finally {
-      setModalLoading(false);
-    }
-  };
 
   const handleChangePassword = async () => {
     let tokenToUse = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
@@ -645,51 +519,10 @@ const UserProfile: React.FC = () => {
     }
   };
 
-  const handleResetPassword = async () => {
-    if (!user?.email) {
-      setModalError('Email не найден');
-      return;
-    }
-    
-    setModalLoading(true);
-    setModalError('');
-    setModalMessage('');
-
-    try {
-      const response = await fetch('/api/auth/forgot-password', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email: user.email }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        setModalMessage(
-          `✉️ Письмо для сброса пароля отправлено на ${user.email}. Проверьте свой почтовый ящик!`
-        );
-        // Clear password fields
-        setCurrentPassword('');
-        setNewPassword('');
-        setConfirmPassword('');
-      } else {
-        setModalError(data.error || 'Не удалось отправить письмо для сброса пароля');
-      }
-    } catch (error) {
-      setModalError('Ошибка сети. Попробуйте снова.');
-    } finally {
-      setModalLoading(false);
-    }
-  };
-
   const closeModal = () => {
-    setShowChangeEmailModal(false);
     setShowChangePasswordModal(false);
     setModalError('');
     setModalMessage('');
-    setNewEmail('');
     setCurrentPassword('');
     setNewPassword('');
     setConfirmPassword('');
@@ -1040,12 +873,6 @@ const UserProfile: React.FC = () => {
                 <h3 className="text-sm font-medium text-gray-700 mb-2">Email</h3>
                 <div className="flex items-center justify-between">
                   <span className="text-gray-600">{user?.email}</span>
-                  <button 
-                    onClick={() => setShowChangeEmailModal(true)}
-                    className="text-sm text-blue-600 hover:text-blue-700 font-medium"
-                  >
-                    Изменить email
-                  </button>
                 </div>
               </div>
               <div>
@@ -1138,67 +965,6 @@ const UserProfile: React.FC = () => {
         </div>
       </div>
 
-      {/* Change Email Modal */}
-      {showChangeEmailModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">Изменить email</h3>
-            <div className="space-y-4">
-              {/* Current Email */}
-              <div className="bg-gray-50 p-3 rounded-md">
-                <label className="block text-xs font-medium text-gray-500 mb-1">
-                  Текущий email
-                </label>
-                <p className="text-sm text-gray-900 font-medium">{user?.email}</p>
-              </div>
-              
-              <div>
-                <label htmlFor="newEmail" className="block text-sm font-medium text-gray-700">
-                  Новый email адрес
-                </label>
-                <input
-                  type="email"
-                  id="newEmail"
-                  value={newEmail}
-                  onChange={(e) => setNewEmail(e.target.value)}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="new@example.com"
-                  disabled={modalLoading}
-                />
-              </div>
-              
-              {modalError && (
-                <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-md text-sm">
-                  {modalError}
-                </div>
-              )}
-              
-              {modalMessage && (
-                <div className="bg-green-50 border border-green-200 text-green-700 px-3 py-2 rounded-md text-sm">
-                  {modalMessage}
-                </div>
-              )}
-              
-              <div className="flex space-x-3">
-                <button
-                  onClick={handleChangeEmail}
-                  disabled={modalLoading || !newEmail}
-                  className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {modalLoading ? 'Отправка...' : 'Далее'}
-                </button>
-                <button
-                  onClick={closeModal}
-                  disabled={modalLoading}
-                  className="flex-1 bg-gray-300 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-400 disabled:opacity-50"
-                >
-                  Отмена
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Change Password Modal */}
       {showChangePasswordModal && (
@@ -1207,19 +973,9 @@ const UserProfile: React.FC = () => {
             <h3 className="text-lg font-medium text-gray-900 mb-4">Изменить пароль</h3>
             <div className="space-y-4">
               <div>
-                <div className="flex justify-between items-center mb-1">
-                  <label htmlFor="currentPassword" className="block text-sm font-medium text-gray-700">
-                    Текущий пароль
-                  </label>
-                  <button
-                    type="button"
-                    onClick={handleResetPassword}
-                    disabled={modalLoading}
-                    className="text-xs text-blue-600 hover:text-blue-700 font-medium disabled:opacity-50"
-                  >
-                    Сбросить пароль
-                  </button>
-                </div>
+                <label htmlFor="currentPassword" className="block text-sm font-medium text-gray-700 mb-1">
+                  Текущий пароль
+                </label>
                 <input
                   type="password"
                   id="currentPassword"
@@ -1286,14 +1042,6 @@ const UserProfile: React.FC = () => {
                 >
                   Отмена
                 </button>
-              </div>
-              
-              {/* Info about password reset */}
-              <div className="mt-3 pt-3 border-t border-gray-200">
-                <p className="text-xs text-gray-500">
-                  💡 <strong>Совет:</strong> При нажатии на &quot;Сбросить пароль&quot; мы отправим письмо на ваш email 
-                  <span className="font-medium text-gray-700"> {user?.email}</span> со ссылкой для сброса пароля.
-                </p>
               </div>
             </div>
           </div>

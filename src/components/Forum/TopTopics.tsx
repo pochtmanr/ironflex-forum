@@ -85,7 +85,7 @@ const TopTopics: React.FC<TopTopicsProps> = ({
   const TopicMobile = ({ topic, index }: { topic: TopTopic; index: number }) => (
     <Link 
       href={`/topic/${topic.id}`}
-      key={topic.id}
+      key={topic.id} 
       prefetch={false}
       className={`block border-b border-1 border-gray-100 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'} p-4 active:bg-blue-50 transition-colors`}
     >

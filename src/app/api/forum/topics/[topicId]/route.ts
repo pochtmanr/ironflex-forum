@@ -88,7 +88,7 @@ export async function GET(
 
     // Increment view count only on page 1 and when incrementView is true
     if (page === 1 && incrementView) {
-      await Topic.findByIdAndUpdate(topicId, { $inc: { views: 1 } });
+    await Topic.findByIdAndUpdate(topicId, { $inc: { views: 1 } });
     }
 
     // Determine user's vote on this topic

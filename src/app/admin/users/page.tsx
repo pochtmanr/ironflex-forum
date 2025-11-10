@@ -234,9 +234,9 @@ export default function AdminUsers() {
                           {user.email}
                         </div>
                         {user.username && (
-                          <div className="text-xs text-gray-400">
-                            @{user.username}
-                          </div>
+                        <div className="text-xs text-gray-400">
+                          @{user.username}
+                        </div>
                         )}
                       </div>
                     </div>

@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/mongodb'
 import User from '@/models/User'
-import ResetToken from '@/models/ResetToken'
 import { hashPassword, generateTokens } from '@/lib/auth'
-import { generateSecureToken, sendEmailVerificationEmail } from '@/lib/email'
 
 export async function POST(request: NextRequest) {
   try {
@@ -112,44 +110,10 @@ export async function POST(request: NextRequest) {
       })
       console.log('Tokens generated successfully')
 
-      // Generate email verification token
-      const verificationToken = generateSecureToken()
-      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours
-
-      // Save verification token
-      await ResetToken.create({
-        userId: user._id.toString(),
-        token: verificationToken,
-        type: 'email_verification',
-        expiresAt
-      })
-
-      // Send verification email
-      console.log('[REGISTER] About to send verification email...')
-      console.log('[REGISTER] sendEmailVerificationEmail type:', typeof sendEmailVerificationEmail)
-      
-      let emailSent = false
-      try {
-        emailSent = await sendEmailVerificationEmail(
-          user.email,
-          user.username,
-          verificationToken
-        )
-        console.log('[REGISTER] Email sent result:', emailSent)
-      } catch (emailError) {
-        console.error('[REGISTER] Email sending error:', emailError)
-        console.error('[REGISTER] Error details:', emailError instanceof Error ? emailError.message : String(emailError))
-      }
-
-      if (!emailSent) {
-        console.error('Failed to send verification email, but user was created')
-        // Don't fail registration if email fails, just log it
-      }
-
       const response = {
         message: isFirstUser 
           ? 'Добро пожаловать! Вы первый пользователь и получили права администратора.' 
-          : 'User created successfully. Please check your email to verify your account.',
+          : 'User created successfully.',
         user: {
           id: user._id,
           email: user.email,
@@ -161,7 +125,6 @@ export async function POST(request: NextRequest) {
         },
         accessToken,
         refreshToken,
-        emailSent: emailSent,
         isFirstUser: isFirstUser
       }
       

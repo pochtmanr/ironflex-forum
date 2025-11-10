@@ -60,23 +60,23 @@ export const PostsList: React.FC<PostsListProps> = ({
       {sortedPosts.map((post, index) => {
         const isPostAuthor = currentUser && String(post.user_id) === String(currentUser.id);
         return (
-          <PostItem
-            key={post.id}
-            post={post}
-            index={index}
-            userVote={postVotes[post.id.toString()] || null}
-            onLike={(type) => onLikePost(post.id.toString(), type)}
-            onDelete={() => onDeletePost(post.id.toString())}
+        <PostItem
+          key={post.id}
+          post={post}
+          index={index}
+          userVote={postVotes[post.id.toString()] || null}
+          onLike={(type) => onLikePost(post.id.toString(), type)}
+          onDelete={() => onDeletePost(post.id.toString())}
             onEdit={() => onEditPost(post.id.toString())}
             onFlag={() => onFlagPost(post.id.toString())}
-            formatDate={formatDate}
-            currentUser={currentUser}
+          formatDate={formatDate}
+          currentUser={currentUser}
             canDelete={isPostAuthor}
             canEdit={canEditPost(post.created_at)}
             remainingEditTime={getRemainingEditTime(post.created_at)}
             isTopicAuthor={isTopicAuthor}
-            onImageClick={onImageClick}
-          />
+          onImageClick={onImageClick}
+        />
         );
       })}
     </div>
