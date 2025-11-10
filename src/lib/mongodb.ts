@@ -16,7 +16,7 @@ if (!cached) {
 async function connectDB() {
   // Use environment variable for MongoDB URI
   // Falls back to localhost for development if not set
-  const MONGODB_URI = process.env.MONGODB_URI || "mongodb://admin:StrongPassword123!@localhost:27017/ironblog?authSource=admin"
+  const MONGODB_URI = process.env.MONGODB_URI || "mongodb://localhost:27017/tarnovsky-forum"
 
   if (!process.env.MONGODB_URI) {
     console.warn('⚠️  MONGODB_URI not set in environment variables, using localhost default')
