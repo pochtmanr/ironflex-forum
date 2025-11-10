@@ -24,14 +24,14 @@ export async function POST(request: NextRequest) {
     // Always return success to prevent email enumeration attacks
     if (!user) {
       return NextResponse.json({
-        message: 'If an account with that email exists, a password reset link has been sent.'
+        message: 'Если аккаунт с таким email существует, то ссылка для сброса пароля была отправлена.'
       })
     }
 
     // Check if user has a password (not OAuth-only)
     if (!user.passwordHash) {
       return NextResponse.json({
-        message: 'If an account with that email exists, a password reset link has been sent.'
+        message: 'Если аккаунт с таким email существует, то ссылка для сброса пароля была отправлена.'
       })
     }
 
@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({
-      message: 'If an account with that email exists, a password reset link has been sent.'
+      message: 'Если аккаунт с таким email существует, то ссылка для сброса пароля была отправлена.'
     })
 
   } catch (error) {

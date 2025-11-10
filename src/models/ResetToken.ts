@@ -28,8 +28,7 @@ const ResetTokenSchema = new Schema<IResetToken>({
   },
   expiresAt: {
     type: Date,
-    required: true,
-    index: true
+    required: true
   },
   used: {
     type: Boolean,
