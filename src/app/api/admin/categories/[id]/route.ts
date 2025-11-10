@@ -5,13 +5,13 @@ import Category from '@/models/Category'
 // Update category
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB()
     
     const { name, description, slug } = await request.json()
-    const { id } = params
+    const { id } = await params
 
     // Validate required fields
     if (!name || !description || !slug) {
@@ -74,12 +74,12 @@ export async function PUT(
 // Delete category
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB()
     
-    const { id } = params
+    const { id } = await params
 
     // Check if category exists
     const category = await Category.findById(id)
