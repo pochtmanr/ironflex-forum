@@ -62,7 +62,8 @@ services:
       - SMTP_SECURE=true
       - SMTP_USER=support@tarnovsky.ru
       - SMTP_PASS=VWJetta2014Asd))!
-      - SMTP_FROM=support@tarnovsky.ru
+      - FROM_EMAIL=support@tarnovsky.ru
+      - FROM_NAME=Клинический Протокол Тарновского
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
