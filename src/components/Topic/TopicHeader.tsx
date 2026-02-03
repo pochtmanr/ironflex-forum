@@ -3,9 +3,12 @@ import Link from 'next/link';
 import Image from 'next/image';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import rehypeRaw from 'rehype-raw';
 import { LikeButtonGroup } from '@/components/UI/LikeButton';
 import { DeleteButton } from '@/components/UI';
-import { MediaAttachment } from './MediaAttachment';
+import { VideoEmbed, isVideoUrl } from '@/components/UI/VideoEmbed';
+import { MediaGallery } from './MediaAttachment';
+import { groupConsecutiveImages } from '@/lib/markdownUtils';
 
 interface Topic {
   id: number | string;
@@ -175,40 +178,54 @@ export const TopicHeader: React.FC<TopicHeaderProps> = ({
 
     
 
-      {/* Topic Content */}
+      {/* Topic Title & Content */}
       <div className="p-4">
+        <h1 className="text-xl font-bold text-gray-900 mb-4">{topic.title}</h1>
         <div className="flex-1 min-w-0">
           {/* Topic Content */}
           <div className="prose max-w-none text-gray-900 text-base">
-            <ReactMarkdown 
+            <ReactMarkdown
               remarkPlugins={[remarkGfm]}
+              rehypePlugins={[rehypeRaw]}
               components={{
+                p: ({node, children, ...props}) => {
+                  // If a child is a block-level element (e.g. VideoEmbed div), render as div to avoid <p><div> hydration error
+                  const hasBlockChild = Array.isArray(children)
+                    ? children.some(child => typeof child === 'object' && child !== null && 'type' in child && (child as React.ReactElement).type === 'div')
+                    : typeof children === 'object' && children !== null && 'type' in children && (children as React.ReactElement).type === 'div';
+                  if (hasBlockChild) {
+                    return <div {...props}>{children}</div>;
+                  }
+                  return <p {...props}>{children}</p>;
+                },
+                a: ({node, href, children, ...props}) => {
+                  if (href && isVideoUrl(href)) {
+                    return <VideoEmbed url={href} />;
+                  }
+                  return (
+                    <a href={href} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 underline" {...props}>
+                      {children}
+                    </a>
+                  );
+                },
                 img: ({node, ...props}) => (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={props.src as string}
                     alt={props.alt || ''}
                     className="max-w-full h-auto rounded cursor-pointer hover:opacity-90 transition-opacity"
-                    style={{ objectFit: 'contain', maxHeight: '400px' }}
                     onClick={() => onImageClick?.(props.src as string)}
                   />
                 ),
               }}
             >
-              {topic.content}
+              {groupConsecutiveImages(topic.content)}
             </ReactMarkdown>
           </div>
           
           {/* Display topic media links if any */}
           {topic.media_links && topic.media_links.length > 0 && (
-            <div className="mt-4 pt-4 border-t border-gray-200">
-              <h4 className="text-sm font-medium text-gray-900 mb-2">Прикрепленные файлы:</h4>
-              <div className="space-y-3">
-                {topic.media_links.map((link, linkIndex) => (
-                  <MediaAttachment key={linkIndex} link={link} index={linkIndex} onImageClick={onImageClick} />
-                ))}
-              </div>
-            </div>
+            <MediaGallery links={topic.media_links} onImageClick={onImageClick} />
           )}
           
           {/* Topic Actions */}

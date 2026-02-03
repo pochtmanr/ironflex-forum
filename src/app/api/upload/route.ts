@@ -1,79 +1,61 @@
 import { NextRequest, NextResponse } from 'next/server'
-
-// Get fileserver URL from environment or use defaults
-const FILESERVER_URL = process.env.FILESERVER_URL || 'http://fileserver:3001'
-const FILESERVER_FALLBACK = process.env.FILESERVER_FALLBACK || 'http://localhost:3001'
+import { supabaseAdmin } from '@/lib/supabase'
 
 export async function POST(request: NextRequest) {
   try {
-    console.log('Upload API: Received request');
     const formData = await request.formData()
-    
-    // Check if file exists in form data
-    const file = formData.get('file');
-    if (!file) {
-      console.log('Upload API: No file in request');
+
+    const file = formData.get('file') as Blob | null
+    if (!file || typeof file === 'string') {
       return NextResponse.json(
         { error: 'No file provided' },
         { status: 400 }
-      );
-    }
-    
-    console.log('Upload API: File found, forwarding to fileserver');
-    
-    // Forward the request to the fileserver
-    console.log(`Upload API: Attempting to connect to fileserver at ${FILESERVER_URL}...`);
-    
-    // Try primary fileserver URL first, then fallback
-    let fileserverResponse;
-    try {
-      fileserverResponse = await fetch(`${FILESERVER_URL}/upload`, {
-        method: 'POST',
-        body: formData
-      });
-    } catch (primaryError: any) {
-      console.log(`Upload API: Primary connection failed, trying fallback at ${FILESERVER_FALLBACK}...`);
-      try {
-        fileserverResponse = await fetch(`${FILESERVER_FALLBACK}/upload`, {
-          method: 'POST',
-          body: formData
-        });
-      } catch (fallbackError: any) {
-        console.log('Upload API: Both connection attempts failed');
-        throw new Error(`Upload API: Connection failed: Primary: ${primaryError.message}, Fallback: ${fallbackError.message}`);
-      }
+      )
     }
 
-    console.log('Upload API: Fileserver response status:', fileserverResponse.status);
+    // Generate unique filename to avoid collisions
+    const timestamp = Date.now()
+    const randomStr = Math.random().toString(36).substring(2, 8)
+    const originalName = (file as unknown as { name?: string }).name || 'upload'
+    const extension = originalName.split('.').pop() || 'bin'
+    const fileName = `${timestamp}-${randomStr}.${extension}`
 
-    if (!fileserverResponse.ok) {
-      const error = await fileserverResponse.json().catch(() => ({ error: 'Upload failed' }))
-      console.log('Upload API: Fileserver error:', error);
-      return NextResponse.json(error, { status: fileserverResponse.status })
+    // Convert to Buffer for Node.js 18 compatibility
+    const arrayBuffer = await file.arrayBuffer()
+    const buffer = Buffer.from(arrayBuffer)
+
+    // Upload to Supabase Storage "Forum" bucket
+    const { data, error } = await supabaseAdmin.storage
+      .from('Forum')
+      .upload(fileName, buffer, {
+        contentType: file.type || 'application/octet-stream',
+        upsert: false
+      })
+
+    if (error) {
+      console.error('Supabase storage upload error:', error)
+      return NextResponse.json(
+        { error: 'Upload failed', details: error.message },
+        { status: 500 }
+      )
     }
 
-    const result = await fileserverResponse.json()
-    console.log('Upload API: Success, result:', result);
-    
-    // Update the file URL to be accessible from the frontend
-    // Remove internal Docker hostname or localhost references
-    let fileUrl = result.file_url;
-    if (fileUrl) {
-      fileUrl = fileUrl
-        .replace('http://fileserver:3001', '')
-        .replace('http://localhost:3001', '')
-        .replace('http://95.163.180.91:3001', '');
-    }
-    
-    const updatedResult = {
-      ...result,
+    // Get public URL for the uploaded file
+    const { data: urlData } = supabaseAdmin.storage
+      .from('Forum')
+      .getPublicUrl(data.path)
+
+    const fileUrl = urlData.publicUrl
+
+    return NextResponse.json({
+      success: true,
       file_url: fileUrl,
-      url: fileUrl  // Add 'url' field for consistency
-    }
-
-    return NextResponse.json(updatedResult)
+      url: fileUrl,
+      filename: fileName,
+      path: data.path
+    })
   } catch (error) {
-    console.error('Upload proxy error:', error)
+    console.error('Upload error:', error)
     return NextResponse.json(
       { error: 'Upload failed', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }

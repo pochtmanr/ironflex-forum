@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import connectDB from '@/lib/mongodb';
 import { verifyAccessToken } from '@/lib/auth';
-import Post from '@/models/Post';
+import { supabaseAdmin } from '@/lib/supabase';
 
 export async function PATCH(
   request: NextRequest,
@@ -10,7 +9,7 @@ export async function PATCH(
   try {
     const { postId } = await params;
     const { isActive } = await request.json();
-    
+
     // Verify authentication (no admin check - any user can access)
     const authHeader = request.headers.get('authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -36,11 +35,14 @@ export async function PATCH(
       );
     }
 
-    await connectDB();
-
     // Check if post exists
-    const post = await Post.findById(postId);
-    if (!post) {
+    const { data: post, error: fetchError } = await supabaseAdmin
+      .from('posts')
+      .select('id')
+      .eq('id', postId)
+      .single();
+
+    if (fetchError || !post) {
       return NextResponse.json(
         { error: 'Post not found' },
         { status: 404 }
@@ -48,7 +50,10 @@ export async function PATCH(
     }
 
     // Update post status
-    await Post.findByIdAndUpdate(postId, { isActive });
+    await supabaseAdmin
+      .from('posts')
+      .update({ is_active: isActive })
+      .eq('id', postId);
 
     return NextResponse.json({
       message: `Post ${isActive ? 'activated' : 'deactivated'} successfully`

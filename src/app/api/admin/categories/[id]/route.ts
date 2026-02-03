@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import connectDB from '@/lib/mongodb'
-import Category from '@/models/Category'
+import { supabaseAdmin } from '@/lib/supabase'
 
 // Update category
 export async function PUT(
@@ -8,8 +7,6 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await connectDB()
-    
     const { name, description, slug } = await request.json()
     const { id } = await params
 
@@ -22,11 +19,13 @@ export async function PUT(
     }
 
     // Check if another category with same slug exists (excluding current one)
-    const existingCategory = await Category.findOne({ 
-      slug, 
-      _id: { $ne: id } 
-    })
-    
+    const { data: existingCategory } = await supabaseAdmin
+      .from('categories')
+      .select('id')
+      .eq('slug', slug)
+      .neq('id', id)
+      .single()
+
     if (existingCategory) {
       return NextResponse.json(
         { error: 'Category with this slug already exists' },
@@ -35,17 +34,18 @@ export async function PUT(
     }
 
     // Update category
-    const category = await Category.findByIdAndUpdate(
-      id,
-      {
+    const { data: category, error } = await supabaseAdmin
+      .from('categories')
+      .update({
         name,
         description,
         slug
-      },
-      { new: true }
-    )
+      })
+      .eq('id', id)
+      .select()
+      .single()
 
-    if (!category) {
+    if (error || !category) {
       return NextResponse.json(
         { error: 'Category not found' },
         { status: 404 }
@@ -55,7 +55,7 @@ export async function PUT(
     return NextResponse.json({
       message: 'Category updated successfully',
       category: {
-        id: category._id.toString(),
+        id: category.id,
         name: category.name,
         description: category.description,
         slug: category.slug
@@ -77,22 +77,27 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await connectDB()
-    
     const { id } = await params
 
     // Check if category exists
-    const category = await Category.findById(id)
-    
-    if (!category) {
+    const { data: category, error: fetchError } = await supabaseAdmin
+      .from('categories')
+      .select('id')
+      .eq('id', id)
+      .single()
+
+    if (fetchError || !category) {
       return NextResponse.json(
         { error: 'Category not found' },
         { status: 404 }
       )
     }
 
-    // Soft delete - set isActive to false
-    await Category.findByIdAndUpdate(id, { isActive: false })
+    // Soft delete - set is_active to false
+    await supabaseAdmin
+      .from('categories')
+      .update({ is_active: false })
+      .eq('id', id)
 
     return NextResponse.json({
       message: 'Category deleted successfully'
@@ -106,4 +111,3 @@ export async function DELETE(
     )
   }
 }
-

@@ -1,14 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import connectDB from '@/lib/mongodb'
-import User from '@/models/User'
-import ResetToken from '@/models/ResetToken'
+import { supabaseAdmin } from '@/lib/supabase'
 import { hashPassword } from '@/lib/auth'
 
 // POST endpoint to reset password with token
 export async function POST(request: NextRequest) {
   try {
-    await connectDB()
-
     const { token, newPassword } = await request.json()
 
     // Validation
@@ -19,44 +15,25 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Validate password strength
-    if (newPassword.length < 8) {
+    // Validate password length
+    if (newPassword.length < 6) {
       return NextResponse.json(
-        { error: 'Пароль должен содержать не менее 8 символов' },
-        { status: 400 }
-      )
-    }
-
-    if (!/[A-Z]/.test(newPassword)) {
-      return NextResponse.json(
-        { error: 'Пароль должен содержать хотя бы одну заглавную букву (A-Z)' },
-        { status: 400 }
-      )
-    }
-
-    if (!/[a-z]/.test(newPassword)) {
-      return NextResponse.json(
-        { error: 'Пароль должен содержать хотя бы одну строчную букву (a-z)' },
-        { status: 400 }
-      )
-    }
-
-    if (!/[0-9]/.test(newPassword)) {
-      return NextResponse.json(
-        { error: 'Пароль должен содержать хотя бы одну цифру (0-9)' },
+        { error: 'Пароль должен содержать не менее 6ти символов' },
         { status: 400 }
       )
     }
 
     // Find reset token
-    const resetToken = await ResetToken.findOne({
-      token,
-      type: 'password_reset',
-      used: false,
-      expiresAt: { $gt: new Date() }
-    })
+    const { data: resetToken, error: tokenError } = await supabaseAdmin
+      .from('reset_tokens')
+      .select('*')
+      .eq('token', token)
+      .eq('type', 'password_reset')
+      .eq('used', false)
+      .gt('expires_at', new Date().toISOString())
+      .single()
 
-    if (!resetToken) {
+    if (tokenError || !resetToken) {
       return NextResponse.json(
         { error: 'Invalid or expired reset token' },
         { status: 400 }
@@ -64,8 +41,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Get user
-    const user = await User.findById(resetToken.userId)
-    if (!user) {
+    const { data: user, error: userError } = await supabaseAdmin
+      .from('users')
+      .select('id')
+      .eq('id', resetToken.user_id)
+      .single()
+
+    if (userError || !user) {
       return NextResponse.json(
         { error: 'User not found' },
         { status: 404 }
@@ -76,19 +58,24 @@ export async function POST(request: NextRequest) {
     const passwordHash = await hashPassword(newPassword)
 
     // Update user password
-    user.passwordHash = passwordHash
-    await user.save()
+    await supabaseAdmin
+      .from('users')
+      .update({ password_hash: passwordHash })
+      .eq('id', user.id)
 
     // Mark token as used
-    resetToken.used = true
-    await resetToken.save()
+    await supabaseAdmin
+      .from('reset_tokens')
+      .update({ used: true })
+      .eq('id', resetToken.id)
 
     // Delete all other reset tokens for this user
-    await ResetToken.deleteMany({
-      userId: user._id.toString(),
-      type: 'password_reset',
-      _id: { $ne: resetToken._id }
-    })
+    await supabaseAdmin
+      .from('reset_tokens')
+      .delete()
+      .eq('user_id', user.id)
+      .eq('type', 'password_reset')
+      .neq('id', resetToken.id)
 
     return NextResponse.json({
       message: 'Password has been reset successfully'
@@ -106,8 +93,6 @@ export async function POST(request: NextRequest) {
 // GET endpoint to verify reset token
 export async function GET(request: NextRequest) {
   try {
-    await connectDB()
-
     const { searchParams } = new URL(request.url)
     const token = searchParams.get('token')
 
@@ -119,14 +104,16 @@ export async function GET(request: NextRequest) {
     }
 
     // Find reset token
-    const resetToken = await ResetToken.findOne({
-      token,
-      type: 'password_reset',
-      used: false,
-      expiresAt: { $gt: new Date() }
-    })
+    const { data: resetToken, error: tokenError } = await supabaseAdmin
+      .from('reset_tokens')
+      .select('*')
+      .eq('token', token)
+      .eq('type', 'password_reset')
+      .eq('used', false)
+      .gt('expires_at', new Date().toISOString())
+      .single()
 
-    if (!resetToken) {
+    if (tokenError || !resetToken) {
       return NextResponse.json(
         { error: 'Invalid or expired reset token', valid: false },
         { status: 400 }
@@ -134,8 +121,13 @@ export async function GET(request: NextRequest) {
     }
 
     // Get user info (without sensitive data)
-    const user = await User.findById(resetToken.userId).select('email username')
-    if (!user) {
+    const { data: user, error: userError } = await supabaseAdmin
+      .from('users')
+      .select('email, username')
+      .eq('id', resetToken.user_id)
+      .single()
+
+    if (userError || !user) {
       return NextResponse.json(
         { error: 'User not found', valid: false },
         { status: 404 }
@@ -156,4 +148,3 @@ export async function GET(request: NextRequest) {
     )
   }
 }
-

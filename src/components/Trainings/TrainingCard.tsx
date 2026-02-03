@@ -21,7 +21,15 @@ interface TrainingCardProps {
   training: TrainingListItem;
 }
 
+const levelLabels: Record<string, { label: string; bg: string; text: string }> = {
+  beginner: { label: 'Начальный', bg: 'bg-green-50', text: 'text-green-600' },
+  intermediate: { label: 'Средний', bg: 'bg-yellow-50', text: 'text-yellow-600' },
+  advanced: { label: 'Продвинутый', bg: 'bg-red-50', text: 'text-red-600' },
+};
+
 const TrainingCard: React.FC<TrainingCardProps> = ({ training }) => {
+  const level = levelLabels[training.level] || null;
+
   return (
     <Link 
       href={`/training/${training.slug || training.id}`}
@@ -63,9 +71,9 @@ const TrainingCard: React.FC<TrainingCardProps> = ({ training }) => {
                 </svg>
                 {new Date(training.created_at).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}
               </span>
-              {training.level && (
-                <span className="px-2 py-0.5 bg-purple-50 text-purple-600 rounded text-xs font-medium">
-                  {training.level}
+              {level && (
+                <span className={`px-2 py-0.5 ${level.bg} ${level.text} rounded text-xs font-medium`}>
+                  {level.label}
                 </span>
               )}
               {training.durationMinutes && (

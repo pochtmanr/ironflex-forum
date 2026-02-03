@@ -32,20 +32,8 @@ const Register: React.FC = () => {
   };
 
   const validatePassword = (password: string): { isValid: boolean; message: string } => {
-    if (password.length < 8) {
-      return { isValid: false, message: 'Пароль должен содержать не менее 8 символов' };
-    }
-
-    if (!/[A-Z]/.test(password)) {
-      return { isValid: false, message: 'Пароль должен содержать хотя бы одну заглавную букву (A-Z)' };
-    }
-
-    if (!/[a-z]/.test(password)) {
-      return { isValid: false, message: 'Пароль должен содержать хотя бы одну строчную букву (a-z)' };
-    }
-
-    if (!/[0-9]/.test(password)) {
-      return { isValid: false, message: 'Пароль должен содержать хотя бы одну цифру (0-9)' };
+    if (password.length < 6) {
+      return { isValid: false, message: 'Пароль должен содержать не менее 6ти символов' };
     }
 
     return { isValid: true, message: '' };
@@ -181,12 +169,12 @@ const Register: React.FC = () => {
                 value={formData.password}
                 onChange={handleChange}
                 placeholder="••••••••"
-                minLength={8}
+                minLength={6}
                 className="block w-full h-10 rounded-md border-0 px-3 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
               />
             </div>
             <p className="mt-1 text-xs text-gray-500">
-              Минимум 8 символов, включая заглавные и строчные буквы, и цифры
+              Минимум 6 символов
             </p>
           </div>
           <div>
@@ -203,7 +191,7 @@ const Register: React.FC = () => {
                 value={formData.confirmPassword}
                 onChange={handleChange}
                 placeholder="••••••••"
-                minLength={8}
+                minLength={6}
                 className="block w-full h-10 rounded-md border-0 px-3 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
               />
             </div>
@@ -239,6 +227,29 @@ const Register: React.FC = () => {
             </button>
           </div>
         </form>
+
+        <div className="mt-6">
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-gray-300" />
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="bg-white px-2 text-gray-500">или</span>
+            </div>
+          </div>
+
+          <div className="mt-4">
+            <a
+              href="/api/auth/yandex"
+              className="flex w-full items-center justify-center gap-3 rounded-md bg-black px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-gray-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-900 transition-colors"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M13.32 24h-2.64v-9.6L6.4 2.4h3.12l2.72 7.68h.08L15.04 2.4h3.12l-4.84 12v9.6z" fill="currentColor"/>
+              </svg>
+              Войти через Яндекс
+            </a>
+          </div>
+        </div>
 
         <p className="mt-10 text-center text-sm text-gray-500">
           Уже есть аккаунт?{' '}

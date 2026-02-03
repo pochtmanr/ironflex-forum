@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import connectDB from '@/lib/mongodb';
 import { verifyAccessToken } from '@/lib/auth';
-import User from '@/models/User';
+import { supabaseAdmin } from '@/lib/supabase';
 
 export async function GET(request: NextRequest) {
   try {
@@ -23,29 +22,31 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    await connectDB();
+    // Get all users (excluding password hash and refresh token)
+    const { data: users, error } = await supabaseAdmin
+      .from('users')
+      .select('id, email, username, display_name, photo_url, is_admin, is_active, is_verified, created_at, last_login, google_id, github_id')
+      .order('created_at', { ascending: false });
 
-    // Get all users (excluding password hash)
-    const users = await User.find({}, {
-      passwordHash: 0,
-      refreshToken: 0
-    }).sort({ createdAt: -1 });
+    if (error) {
+      throw error;
+    }
 
     return NextResponse.json({
       message: 'Users retrieved successfully',
-      users: users.map(user => ({
-        id: user._id,
+      users: (users || []).map(user => ({
+        id: user.id,
         email: user.email,
         username: user.username,
-        displayName: user.displayName,
-        photoURL: user.photoURL,
-        isAdmin: user.isAdmin,
-        isActive: user.isActive,
-        isVerified: user.isVerified,
-        createdAt: user.createdAt,
-        lastLogin: user.lastLogin,
-        googleId: user.googleId,
-        githubId: user.githubId
+        displayName: user.display_name,
+        photoURL: user.photo_url,
+        isAdmin: user.is_admin,
+        isActive: user.is_active,
+        isVerified: user.is_verified,
+        createdAt: user.created_at,
+        lastLogin: user.last_login,
+        googleId: user.google_id,
+        githubId: user.github_id
       }))
     });
 

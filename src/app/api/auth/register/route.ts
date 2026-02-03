@@ -1,18 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import connectDB from '@/lib/mongodb'
-import User from '@/models/User'
-import ResetToken from '@/models/ResetToken'
+import { supabaseAdmin } from '@/lib/supabase'
 import { hashPassword, generateTokens } from '@/lib/auth'
 import { generateSecureToken, sendEmailVerificationEmail } from '@/lib/email'
 
 export async function POST(request: NextRequest) {
   try {
-    console.log('Registration API called')
-    await connectDB()
-    console.log('MongoDB connected for registration')
-    
     const { email, password, displayName } = await request.json()
-    console.log('Registration data received:', { email, displayName, passwordLength: password?.length })
 
     // Validation
     if (!email || !password) {
@@ -24,53 +17,37 @@ export async function POST(request: NextRequest) {
 
     // Generate username from email (take part before @)
     let username = email.split('@')[0]
-    
+
     // Make username unique if it already exists
     let counter = 1
     const originalUsername = username
-    while (await User.findOne({ username })) {
+    while (true) {
+      const { data: existing } = await supabaseAdmin
+        .from('users')
+        .select('id')
+        .eq('username', username)
+        .single()
+      if (!existing) break
       username = `${originalUsername}${counter}`
       counter++
     }
 
-    // Validate password strength
-    if (password.length < 8) {
+    // Validate password length
+    if (password.length < 6) {
       return NextResponse.json(
-        { error: 'Пароль должен содержать не менее 8 символов' },
-        { status: 400 }
-      )
-    }
-
-    if (!/[A-Z]/.test(password)) {
-      return NextResponse.json(
-        { error: 'Пароль должен содержать хотя бы одну заглавную букву (A-Z)' },
-        { status: 400 }
-      )
-    }
-
-    if (!/[a-z]/.test(password)) {
-      return NextResponse.json(
-        { error: 'Пароль должен содержать хотя бы одну строчную букву (a-z)' },
-        { status: 400 }
-      )
-    }
-
-    if (!/[0-9]/.test(password)) {
-      return NextResponse.json(
-        { error: 'Пароль должен содержать хотя бы одну цифру (0-9)' },
+        { error: 'Пароль должен содержать не менее 6ти символов' },
         { status: 400 }
       )
     }
 
     // Check if user already exists
-    console.log('Checking if user exists...')
-    const existingUser = await User.findOne({
-      email
-    })
-    console.log('User exists check result:', !!existingUser)
+    const { data: existingUser } = await supabaseAdmin
+      .from('users')
+      .select('id')
+      .eq('email', email.toLowerCase())
+      .single()
 
     if (existingUser) {
-      console.log('User already exists, returning 409')
       return NextResponse.json(
         { error: 'User with this email already exists' },
         { status: 409 }
@@ -78,117 +55,108 @@ export async function POST(request: NextRequest) {
     }
 
     // Create user
-    console.log('Creating new user...')
     const passwordHash = await hashPassword(password)
-    console.log('Password hashed successfully')
-    
+
     // Check if this is the first user in the database
-    const userCount = await User.countDocuments()
-    const isFirstUser = userCount === 0
-    
-    if (isFirstUser) {
-      console.log('This is the first user - will be granted admin privileges')
+    const { count } = await supabaseAdmin
+      .from('users')
+      .select('*', { count: 'exact', head: true })
+
+    const isFirstUser = (count ?? 0) === 0
+
+    const { data: user, error: insertError } = await supabaseAdmin
+      .from('users')
+      .insert({
+        email: email.toLowerCase(),
+        username,
+        password_hash: passwordHash,
+        display_name: displayName || username,
+        is_active: true,
+        is_admin: isFirstUser,
+        is_verified: isFirstUser
+      })
+      .select()
+      .single()
+
+    if (insertError || !user) {
+      console.error('User creation error:', insertError)
+      return NextResponse.json(
+        { error: 'Failed to create user' },
+        { status: 500 }
+      )
     }
-    
-    const user = await User.create({
-      email,
-      username,
-      passwordHash,
-      displayName: displayName || username,
-      isActive: true,
-      isAdmin: isFirstUser, // First user becomes admin automatically
-      isVerified: isFirstUser // First user is auto-verified
-    })
-    console.log('User created successfully:', user._id, isFirstUser ? '(ADMIN)' : '')
 
     // Generate tokens
-    console.log('Generating tokens...')
     try {
       const { accessToken, refreshToken } = generateTokens({
-        id: user._id.toString(),
+        id: user.id,
         email: user.email,
         username: user.username,
-        isAdmin: user.isAdmin
+        isAdmin: user.is_admin
       })
-      console.log('Tokens generated successfully')
 
-      // Send verification email (only if not first user, first user is auto-verified)
+      // Send verification email (only if not first user)
       let emailSent = false
       if (!isFirstUser) {
-        // Generate email verification token
         const verificationToken = generateSecureToken()
-        const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours
+        const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // 24 hours
 
-        // Save verification token
-        await ResetToken.create({
-          userId: user._id.toString(),
-          token: verificationToken,
-          type: 'email_verification',
-          expiresAt
-        })
+        await supabaseAdmin
+          .from('reset_tokens')
+          .insert({
+            user_id: user.id,
+            token: verificationToken,
+            type: 'email_verification',
+            expires_at: expiresAt
+          })
 
-        // Send verification email
-        console.log('[REGISTER] About to send verification email...')
         try {
           emailSent = await sendEmailVerificationEmail(
             user.email,
             user.username,
             verificationToken
           )
-          console.log('[REGISTER] Email sent result:', emailSent)
         } catch (emailError) {
           console.error('[REGISTER] Email sending error:', emailError)
-          // Don't fail registration if email fails
-        }
-
-        if (!emailSent) {
-          console.error('Failed to send verification email, but user was created')
         }
       }
 
       const response = {
-        message: isFirstUser 
-          ? 'Добро пожаловать! Вы первый пользователь и получили права администратора.' 
-          : emailSent 
+        message: isFirstUser
+          ? 'Добро пожаловать! Вы первый пользователь и получили права администратора.'
+          : emailSent
             ? 'User created successfully. Please check your email to verify your account.'
             : 'User created successfully. Email verification will be sent shortly.',
         user: {
-          id: user._id,
+          id: user.id,
           email: user.email,
           username: user.username,
-          displayName: user.displayName,
-          photoURL: user.photoURL,
-          isAdmin: user.isAdmin,
-          isVerified: user.isVerified
+          displayName: user.display_name,
+          photoURL: user.photo_url,
+          isAdmin: user.is_admin,
+          isVerified: user.is_verified
         },
         accessToken,
         refreshToken,
         emailSent: emailSent || isFirstUser,
         isFirstUser: isFirstUser
       }
-      
-      console.log('Returning successful response')
+
       return NextResponse.json(response)
     } catch (tokenError) {
       console.error('Token generation error:', tokenError)
       // Delete the user if token generation fails
-      await User.deleteOne({ _id: user._id })
-      console.log('User deleted due to token error')
+      await supabaseAdmin.from('users').delete().eq('id', user.id)
       throw tokenError
     }
 
   } catch (error) {
     console.error('Registration error:', error)
-    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace')
-    console.error('Error message:', error instanceof Error ? error.message : String(error))
-    
-    // Return more detailed error information in development
     const errorMessage = error instanceof Error ? error.message : String(error)
     return NextResponse.json(
-      { 
+      {
         error: 'Internal server error',
         details: process.env.NODE_ENV === 'development' ? errorMessage : undefined,
-        stack: process.env.NODE_ENV === 'development' && error instanceof Error ? error.stack : undefined
       },
       { status: 500 }
     )

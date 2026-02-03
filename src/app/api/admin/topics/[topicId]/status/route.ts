@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import connectDB from '@/lib/mongodb';
 import { verifyAccessToken } from '@/lib/auth';
-import Topic from '@/models/Topic';
+import { supabaseAdmin } from '@/lib/supabase';
+
+// Map camelCase status types to snake_case column names
+const statusFieldMap: Record<string, string> = {
+  isPinned: 'is_pinned',
+  isLocked: 'is_locked',
+  isActive: 'is_active'
+};
 
 export async function PATCH(
   request: NextRequest,
@@ -10,7 +16,7 @@ export async function PATCH(
   try {
     const { topicId } = await params;
     const { statusType, value } = await request.json();
-    
+
     // Verify authentication (no admin check - any user can access)
     const authHeader = request.headers.get('authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -45,11 +51,14 @@ export async function PATCH(
       );
     }
 
-    await connectDB();
-
     // Check if topic exists
-    const topic = await Topic.findById(topicId);
-    if (!topic) {
+    const { data: topic, error: fetchError } = await supabaseAdmin
+      .from('topics')
+      .select('id')
+      .eq('id', topicId)
+      .single();
+
+    if (fetchError || !topic) {
       return NextResponse.json(
         { error: 'Topic not found' },
         { status: 404 }
@@ -57,8 +66,11 @@ export async function PATCH(
     }
 
     // Update topic status
-    const updateData = { [statusType]: value };
-    await Topic.findByIdAndUpdate(topicId, updateData);
+    const dbField = statusFieldMap[statusType];
+    await supabaseAdmin
+      .from('topics')
+      .update({ [dbField]: value })
+      .eq('id', topicId);
 
     return NextResponse.json({
       message: `Topic ${statusType} updated successfully`

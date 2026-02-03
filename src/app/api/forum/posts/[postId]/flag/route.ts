@@ -1,10 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import connectDB from '@/lib/mongodb';
 import { verifyAccessToken } from '@/lib/auth';
-import Post from '@/models/Post';
-import Topic from '@/models/Topic';
-import User from '@/models/User';
-import FlaggedPost from '@/models/FlaggedPost';
+import { supabaseAdmin } from '@/lib/supabase';
 
 export async function POST(
   request: NextRequest,
@@ -39,11 +35,14 @@ export async function POST(
       );
     }
 
-    await connectDB();
-
     // Get current user information
-    const currentUser = await User.findById(userPayload.id).select('username displayName').lean() as { username: string; displayName: string } | null;
-    if (!currentUser) {
+    const { data: currentUser, error: userError } = await supabaseAdmin
+      .from('users')
+      .select('username, display_name')
+      .eq('id', userPayload.id)
+      .single();
+
+    if (userError || !currentUser) {
       return NextResponse.json(
         { error: 'User not found' },
         { status: 404 }
@@ -51,8 +50,13 @@ export async function POST(
     }
 
     // Check if post exists
-    const post = await Post.findById(postId).lean() as { _id: unknown; userId: string; content: string; topicId: string } | null;
-    if (!post) {
+    const { data: post, error: postError } = await supabaseAdmin
+      .from('posts')
+      .select('id, user_id, content, topic_id')
+      .eq('id', postId)
+      .single();
+
+    if (postError || !post) {
       return NextResponse.json(
         { error: 'Post not found' },
         { status: 404 }
@@ -60,8 +64,13 @@ export async function POST(
     }
 
     // Get post author information
-    const postAuthor = await User.findById(post.userId).select('username displayName').lean() as { username: string; displayName: string } | null;
-    if (!postAuthor) {
+    const { data: postAuthor, error: authorError } = await supabaseAdmin
+      .from('users')
+      .select('username, display_name')
+      .eq('id', post.user_id)
+      .single();
+
+    if (authorError || !postAuthor) {
       return NextResponse.json(
         { error: 'Post author not found' },
         { status: 404 }
@@ -69,15 +78,20 @@ export async function POST(
     }
 
     // Verify that the user is the topic author
-    const topic = await Topic.findById(topicId || post.topicId).lean() as { userId: string } | null;
-    if (!topic) {
+    const { data: topic, error: topicError } = await supabaseAdmin
+      .from('topics')
+      .select('user_id')
+      .eq('id', topicId || post.topic_id)
+      .single();
+
+    if (topicError || !topic) {
       return NextResponse.json(
         { error: 'Topic not found' },
         { status: 404 }
       );
     }
 
-    if (topic.userId !== userPayload.id) {
+    if (topic.user_id !== userPayload.id) {
       return NextResponse.json(
         { error: 'Only topic authors can flag posts' },
         { status: 403 }
@@ -85,11 +99,13 @@ export async function POST(
     }
 
     // Check if this post has already been flagged by this user
-    const existingFlag = await FlaggedPost.findOne({
-      postId: postId,
-      flaggedBy: userPayload.id,
-      status: 'pending'
-    });
+    const { data: existingFlag } = await supabaseAdmin
+      .from('flagged_posts')
+      .select('id')
+      .eq('post_id', postId)
+      .eq('flagged_by', userPayload.id)
+      .eq('status', 'pending')
+      .single();
 
     if (existingFlag) {
       return NextResponse.json(
@@ -99,20 +115,22 @@ export async function POST(
     }
 
     // Create flagged post record
-    const flaggedPost = new FlaggedPost({
-      postId: postId,
-      topicId: topicId || post.topicId,
-      topicTitle: topicTitle || 'Unknown',
-      postContent: post.content,
-      postAuthorId: post.userId,
-      postAuthorName: postAuthor.displayName || postAuthor.username,
-      flaggedBy: userPayload.id,
-      flaggedByName: currentUser.displayName || currentUser.username,
-      reason: reason.trim(),
-      status: 'pending'
-    });
+    const { error: flagError } = await supabaseAdmin
+      .from('flagged_posts')
+      .insert({
+        post_id: postId,
+        topic_id: topicId || post.topic_id,
+        topic_title: topicTitle || 'Unknown',
+        post_content: post.content,
+        post_author_id: post.user_id,
+        post_author_name: postAuthor.display_name || postAuthor.username,
+        flagged_by: userPayload.id,
+        flagged_by_name: currentUser.display_name || currentUser.username,
+        reason: reason.trim(),
+        status: 'pending'
+      });
 
-    await flaggedPost.save();
+    if (flagError) throw flagError;
 
     return NextResponse.json({
       message: 'Post flagged successfully'
@@ -126,4 +144,3 @@ export async function POST(
     );
   }
 }
-

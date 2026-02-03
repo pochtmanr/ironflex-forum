@@ -1,32 +1,46 @@
-import { NextRequest, NextResponse } from 'next/server'
-import connectDB from '@/lib/mongodb'
-import User from '@/models/User'
+import { NextResponse } from 'next/server'
+import { supabaseAdmin } from '@/lib/supabase'
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     console.log('Test DB endpoint called')
-    await connectDB()
-    console.log('MongoDB connected for test')
 
     // Test read
     console.log('Testing read operation...')
-    const userCount = await User.countDocuments()
+    const { count: userCount, error: countError } = await supabaseAdmin
+      .from('users')
+      .select('*', { count: 'exact', head: true })
+
+    if (countError) {
+      throw new Error(`Read test failed: ${countError.message}`)
+    }
     console.log('User count:', userCount)
 
     // Test write (create a test user)
     console.log('Testing write operation...')
-    const testUser = await User.create({
-      email: `test-${Date.now()}@test.com`,
-      username: `testuser${Date.now()}`,
-      passwordHash: 'test-hash',
-      displayName: 'Test User',
-      isActive: true,
-      isAdmin: false
-    })
-    console.log('Test user created:', testUser._id)
+    const { data: testUser, error: insertError } = await supabaseAdmin
+      .from('users')
+      .insert({
+        email: `test-${Date.now()}@test.com`,
+        username: `testuser${Date.now()}`,
+        password_hash: 'test-hash',
+        display_name: 'Test User',
+        is_active: true,
+        is_admin: false
+      })
+      .select('id')
+      .single()
+
+    if (insertError || !testUser) {
+      throw new Error(`Write test failed: ${insertError?.message}`)
+    }
+    console.log('Test user created:', testUser.id)
 
     // Clean up test user
-    await User.deleteOne({ _id: testUser._id })
+    await supabaseAdmin
+      .from('users')
+      .delete()
+      .eq('id', testUser.id)
     console.log('Test user deleted')
 
     return NextResponse.json({
@@ -38,7 +52,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('Test DB error:', error)
     return NextResponse.json(
-      { 
+      {
         error: 'Database test failed',
         details: error instanceof Error ? error.message : 'Unknown error'
       },

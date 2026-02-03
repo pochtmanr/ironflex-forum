@@ -1,6 +1,6 @@
 import jwt from 'jsonwebtoken'
 import bcrypt from 'bcryptjs'
-import User from '@/models/User'
+import { supabaseAdmin } from '@/lib/supabase'
 
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret'
 const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'fallback-refresh-secret'
@@ -27,7 +27,7 @@ export const generateTokens = (user: UserPayload) => {
   const accessToken = jwt.sign(user, JWT_SECRET, { expiresIn: JWT_EXPIRE as any })
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const refreshToken = jwt.sign({ id: user.id }, JWT_REFRESH_SECRET, { expiresIn: JWT_REFRESH_EXPIRE as any })
-  
+
   return { accessToken, refreshToken }
 }
 
@@ -51,7 +51,13 @@ export const getUserFromToken = async (token: string) => {
   const payload = verifyAccessToken(token)
   if (!payload) return null
 
-  const user = await User.findById(payload.id).select('-passwordHash')
+  const { data: user, error } = await supabaseAdmin
+    .from('users')
+    .select('id, email, username, display_name, photo_url, bio, city, country, is_active, is_admin, is_verified, google_id, github_id, vk_id, last_login, created_at, updated_at')
+    .eq('id', payload.id)
+    .single()
+
+  if (error || !user) return null
   return user
 }
 
@@ -61,20 +67,19 @@ export const verifyToken = async (token: string): Promise<{ userId: string; id: 
     const payload = jwt.verify(token, JWT_SECRET) as UserPayload
     if (!payload) return null
 
-    // Import connectDB here to avoid circular dependencies
-    const connectDB = (await import('@/lib/mongodb')).default
-    await connectDB()
+    const { data: user, error } = await supabaseAdmin
+      .from('users')
+      .select('id, email, username, is_admin')
+      .eq('id', payload.id)
+      .single()
 
-    // Get user from DB to check role
-    const user = await User.findById(payload.id).select('email username isAdmin').lean() as { _id: unknown; email: string; username?: string; isAdmin?: boolean } | null
-    if (!user) return null
+    if (error || !user) return null
 
-    const isAdmin = user.isAdmin || false
-    const userId = String(user._id)
+    const isAdmin = user.is_admin || false
 
     return {
-      userId: userId, // For backward compatibility
-      id: userId,
+      userId: user.id,
+      id: user.id,
       email: user.email,
       username: user.username || user.email.split('@')[0],
       role: isAdmin ? 'admin' : 'user',

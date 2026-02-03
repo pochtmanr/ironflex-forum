@@ -1,9 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import connectDB from '@/lib/mongodb';
-import { verifyAccessToken } from '@/lib/auth';
-import Topic from '@/models/Topic';
-import Post from '@/models/Post';
-import User from '@/models/User';
+import { supabaseAdmin } from '@/lib/supabase';
 
 export async function POST(
   request: NextRequest,
@@ -22,25 +18,37 @@ export async function POST(
       );
     }
 
-    await connectDB();
-
     // Get or create user based on userData (like topics)
     let user;
     if (userData && userData.email) {
-      user = await User.findOne({ email: userData.email }).select('-passwordHash');
-      if (!user) {
+      const { data: existingUser } = await supabaseAdmin
+        .from('users')
+        .select('id, email, username, display_name, photo_url')
+        .eq('email', userData.email)
+        .single();
+
+      if (existingUser) {
+        user = existingUser;
+      } else {
         const username = userData.email.split('@')[0] + '_' + Math.random().toString(36).substr(2, 5);
-        user = await User.create({
-          email: userData.email,
-          username,
-          displayName: userData.displayName || userData.name || userData.email.split('@')[0],
-          photoURL: userData.photoURL || userData.picture,
-          googleId: userData.id,
-          isVerified: true,
-          isAdmin: false,
-          isActive: true
-        });
-        console.log('Created new user for post:', user._id);
+        const { data: newUser, error: createError } = await supabaseAdmin
+          .from('users')
+          .insert({
+            email: userData.email,
+            username,
+            display_name: userData.displayName || userData.name || userData.email.split('@')[0],
+            photo_url: userData.photoURL || userData.picture,
+            google_id: userData.id,
+            is_verified: true,
+            is_admin: false,
+            is_active: true
+          })
+          .select('id, email, username, display_name, photo_url')
+          .single();
+
+        if (createError) throw createError;
+        user = newUser;
+        console.log('Created new user for post:', user.id);
       }
     } else {
       return NextResponse.json(
@@ -50,8 +58,13 @@ export async function POST(
     }
 
     // Verify topic exists
-    const topic = await Topic.findById(topicId);
-    if (!topic) {
+    const { data: topic, error: topicError } = await supabaseAdmin
+      .from('topics')
+      .select('id, is_locked')
+      .eq('id', topicId)
+      .single();
+
+    if (topicError || !topic) {
       return NextResponse.json(
         { error: 'Topic not found' },
         { status: 404 }
@@ -67,41 +80,46 @@ export async function POST(
     }
 
     // Create new post
-    const post = new Post({
-      topicId: topicId,
-      userId: user._id.toString(),
-      userName: user.displayName || user.username,
-      userEmail: user.email,
-      content: content.trim(),
-      mediaLinks: mediaLinks || []
-    });
+    const { data: createdPost, error: postError } = await supabaseAdmin
+      .from('posts')
+      .insert({
+        topic_id: topicId,
+        user_id: user.id,
+        user_name: user.display_name || user.username,
+        user_email: user.email,
+        content: content.trim(),
+        media_links: mediaLinks || []
+      })
+      .select()
+      .single();
 
-    await post.save();
+    if (postError) throw postError;
 
     // Update topic's last_post_at and increment reply_count
-    await Topic.findByIdAndUpdate(topicId, {
-      last_post_at: new Date(),
-      $inc: { reply_count: 1 }
-    });
+    const { data: currentTopic } = await supabaseAdmin
+      .from('topics')
+      .select('reply_count')
+      .eq('id', topicId)
+      .single();
 
-    // Get the created post
-    const createdPost = await Post.findById(post._id).lean() as { _id: unknown; content: string; userName: string; userEmail: string; userId: string; createdAt: Date; likes: number; dislikes: number; mediaLinks: string[] } | null;
-    if (!createdPost) {
-      return NextResponse.json(
-        { error: 'Post not found' },
-        { status: 404 }
-      );
-    }
+    await supabaseAdmin
+      .from('topics')
+      .update({
+        last_post_at: new Date().toISOString(),
+        reply_count: (currentTopic?.reply_count || 0) + 1
+      })
+      .eq('id', topicId);
+
     const formattedPost = {
-      id: String(createdPost._id),
+      id: createdPost.id,
       content: createdPost.content,
-      user_name: createdPost.userName || 'Unknown',
-      user_email: createdPost.userEmail || '',
-      user_id: String(createdPost.userId) || '',
-      created_at: createdPost.createdAt?.toISOString() || new Date().toISOString(),
+      user_name: createdPost.user_name || 'Unknown',
+      user_email: createdPost.user_email || '',
+      user_id: createdPost.user_id || '',
+      created_at: createdPost.created_at,
       likes: createdPost.likes || 0,
       dislikes: createdPost.dislikes || 0,
-      media_links: createdPost.mediaLinks || [],
+      media_links: createdPost.media_links || [],
       is_author: true
     };
 

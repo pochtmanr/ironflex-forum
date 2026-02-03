@@ -1,17 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyToken } from '@/lib/auth';
-import dbConnect from '@/lib/mongodb';
-import User from '@/models/User';
-import Topic from '@/models/Topic';
-import Post from '@/models/Post';
-import Article from '@/models/Article';
-import Training from '@/models/Training';
-import FlaggedPost from '@/models/FlaggedPost';
+import { supabaseAdmin } from '@/lib/supabase';
 
 export async function GET(request: NextRequest) {
   try {
-    await dbConnect();
-
     // Verify authentication
     const authHeader = request.headers.get('authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -23,7 +15,7 @@ export async function GET(request: NextRequest) {
 
     const token = authHeader.substring(7);
     const userData = await verifyToken(token);
-    
+
     if (!userData || !userData.userId) {
       return NextResponse.json(
         { error: 'Invalid token' },
@@ -32,9 +24,13 @@ export async function GET(request: NextRequest) {
     }
 
     // Check if user is admin
-    const user = await User.findById(userData.userId);
-    
-    if (!user || !user.isAdmin) {
+    const { data: user, error: userError } = await supabaseAdmin
+      .from('users')
+      .select('id, is_admin')
+      .eq('id', userData.userId)
+      .single();
+
+    if (userError || !user || !user.is_admin) {
       return NextResponse.json(
         { error: 'Forbidden: Admin access required' },
         { status: 403 }
@@ -42,22 +38,22 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch stats
-    const [usersCount, topicsCount, postsCount, articlesCount, trainingsCount, flaggedPostsCount] = await Promise.all([
-      User.countDocuments(),
-      Topic.countDocuments(),
-      Post.countDocuments(),
-      Article.countDocuments(),
-      Training.countDocuments(),
-      FlaggedPost.countDocuments({ status: 'pending' })
+    const [usersRes, topicsRes, postsRes, articlesRes, trainingsRes, flaggedPostsRes] = await Promise.all([
+      supabaseAdmin.from('users').select('*', { count: 'exact', head: true }),
+      supabaseAdmin.from('topics').select('*', { count: 'exact', head: true }),
+      supabaseAdmin.from('posts').select('*', { count: 'exact', head: true }),
+      supabaseAdmin.from('articles').select('*', { count: 'exact', head: true }),
+      supabaseAdmin.from('trainings').select('*', { count: 'exact', head: true }),
+      supabaseAdmin.from('flagged_posts').select('*', { count: 'exact', head: true }).eq('status', 'pending')
     ]);
 
     return NextResponse.json({
-      users: usersCount,
-      topics: topicsCount,
-      posts: postsCount,
-      articles: articlesCount,
-      trainings: trainingsCount,
-      flaggedPosts: flaggedPostsCount
+      users: usersRes.count ?? 0,
+      topics: topicsRes.count ?? 0,
+      posts: postsRes.count ?? 0,
+      articles: articlesRes.count ?? 0,
+      trainings: trainingsRes.count ?? 0,
+      flaggedPosts: flaggedPostsRes.count ?? 0
     });
 
   } catch (error) {
@@ -68,4 +64,3 @@ export async function GET(request: NextRequest) {
     );
   }
 }
-

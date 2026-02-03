@@ -87,10 +87,90 @@ const CategoryView: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="mx-auto px-4 py-8 min-h-screen max-w-7xl">
-        <div className="flex flex-col items-center justify-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-1 border-blue-600/20 mb-4"></div>
-          <div className="text-gray-600 text-base">Загрузка категории...</div>
+      <div className="mx-auto px-2 sm:px-4 min-h-screen max-w-7xl">
+        {/* Breadcrumb skeleton */}
+        <nav className="py-4">
+          <div className="flex items-center space-x-2">
+            <div className="h-4 w-12 bg-gray-200 rounded animate-pulse" />
+            <span className="text-gray-400">/</span>
+            <div className="h-4 w-32 bg-gray-200 rounded animate-pulse" />
+          </div>
+        </nav>
+
+        <div className="bg-white mb-4 sm:mb-6">
+          {/* Header skeleton */}
+          <div className="bg-gray-600 text-white px-3 rounded-t-sm sm:px-4 py-3 sm:py-2 flex items-center justify-between">
+            <div className="min-w-0 flex-1">
+              <div className="h-6 w-40 bg-gray-500 rounded animate-pulse mb-1" />
+              <div className="h-3 w-64 bg-gray-500 rounded animate-pulse mt-1" />
+            </div>
+          </div>
+
+          {/* Mobile skeleton rows */}
+          <div className="block sm:hidden">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className={`border-b border-gray-200 ${i % 2 === 0 ? 'bg-white' : 'bg-gray-50'} p-4`}>
+                <div className="flex items-start justify-between mb-2">
+                  <div className="h-4 w-48 bg-gray-200 rounded animate-pulse" />
+                  <div className="flex gap-2">
+                    <div className="h-3 w-8 bg-gray-200 rounded animate-pulse" />
+                    <div className="h-3 w-8 bg-gray-200 rounded animate-pulse" />
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="h-3 w-20 bg-blue-100 rounded animate-pulse" />
+                  <div className="h-3 w-16 bg-gray-100 rounded animate-pulse" />
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex gap-3">
+                    <div className="h-3 w-10 bg-gray-100 rounded animate-pulse" />
+                    <div className="h-3 w-10 bg-gray-100 rounded animate-pulse" />
+                  </div>
+                  <div className="h-3 w-16 bg-gray-100 rounded animate-pulse" />
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Desktop skeleton rows */}
+          <div className="hidden sm:block overflow-x-auto rounded-b-sm border-b border-l border-r border-gray-100">
+            <table className="w-full">
+              <thead>
+                <tr className="bg-gray-100 text-gray-600 text-md">
+                  <th className="px-4 py-3 text-left font-medium">Тема</th>
+                  <th className="px-4 py-3 text-center font-medium w-32">Ответов</th>
+                  <th className="px-4 py-3 text-center font-medium w-32">Просмотров</th>
+                  <th className="px-4 py-3 text-center font-medium w-24">Рейтинг</th>
+                  <th className="px-4 py-3 text-left font-medium w-40">Последний</th>
+                </tr>
+              </thead>
+              <tbody>
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <tr key={i} className={`border-b border-gray-200 ${i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
+                    <td className="px-4 py-4">
+                      <div className="h-4 w-64 bg-gray-200 rounded animate-pulse mb-2" />
+                      <div className="flex items-center gap-2">
+                        <div className="h-3 w-20 bg-blue-100 rounded animate-pulse" />
+                        <div className="h-3 w-24 bg-gray-100 rounded animate-pulse" />
+                      </div>
+                    </td>
+                    <td className="px-4 py-4 text-center">
+                      <div className="h-5 w-10 bg-gray-200 rounded animate-pulse mx-auto" />
+                    </td>
+                    <td className="px-4 py-4 text-center">
+                      <div className="h-5 w-10 bg-gray-200 rounded animate-pulse mx-auto" />
+                    </td>
+                    <td className="px-4 py-4 text-center">
+                      <div className="h-5 w-16 bg-gray-200 rounded animate-pulse mx-auto" />
+                    </td>
+                    <td className="px-4 py-4">
+                      <div className="h-4 w-28 bg-gray-100 rounded animate-pulse" />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     );

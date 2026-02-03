@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import dbConnect from '@/lib/mongodb';
-import Comment from '@/models/Comment';
-import Training from '@/models/Training';
+import { supabaseAdmin } from '@/lib/supabase';
 import { verifyToken } from '@/lib/auth';
 
 export async function POST(
@@ -9,8 +7,6 @@ export async function POST(
   context: { params: Promise<{ slug: string }> }
 ) {
   try {
-    await dbConnect();
-
     // Verify authentication
     const authHeader = request.headers.get('authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -22,7 +18,7 @@ export async function POST(
 
     const token = authHeader.substring(7);
     const userData = await verifyToken(token);
-    
+
     if (!userData || !userData.userId) {
       return NextResponse.json(
         { error: 'Invalid token' },
@@ -43,8 +39,13 @@ export async function POST(
     }
 
     // Find training by slug
-    const training = await Training.findOne({ slug });
-    if (!training) {
+    const { data: training, error: trainingError } = await supabaseAdmin
+      .from('trainings')
+      .select('id, comment_count')
+      .eq('slug', slug)
+      .single();
+
+    if (trainingError || !training) {
       return NextResponse.json(
         { error: 'Training not found' },
         { status: 404 }
@@ -52,25 +53,39 @@ export async function POST(
     }
 
     // Create comment
-    const comment = await Comment.create({
-      contentType: 'training',
-      contentId: training._id.toString(),
-      userId: userData.userId,
-      content: content.trim(),
-      created_at: new Date(),
-      likes: 0
-    });
+    const { data: comment, error: commentError } = await supabaseAdmin
+      .from('comments')
+      .insert({
+        content_type: 'training',
+        content_id: training.id,
+        user_id: userData.userId,
+        content: content.trim(),
+        created_at: new Date().toISOString(),
+        likes: 0
+      })
+      .select()
+      .single();
+
+    if (commentError || !comment) {
+      console.error('Error creating comment:', commentError);
+      return NextResponse.json(
+        { error: 'Failed to create comment' },
+        { status: 500 }
+      );
+    }
 
     // Increment training comment count
-    training.commentCount = (training.commentCount || 0) + 1;
-    await training.save();
+    await supabaseAdmin
+      .from('trainings')
+      .update({ comment_count: (training.comment_count || 0) + 1 })
+      .eq('id', training.id);
 
     return NextResponse.json({
       success: true,
       comment: {
-        id: (comment as any)._id.toString(),
+        id: comment.id,
         content: comment.content,
-        user_id: comment.userId,
+        user_id: comment.user_id,
         created_at: comment.created_at
       }
     });
@@ -83,4 +98,3 @@ export async function POST(
     );
   }
 }
-

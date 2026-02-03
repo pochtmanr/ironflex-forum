@@ -210,6 +210,20 @@ export const forumAPI = {
     return apiRequest(`/forum/posts/${postId}`, {
       method: 'DELETE'
     }, false); // Use auth token
+  },
+
+  // Conversation Hub
+  getConversationMessages: async (limit = 50, before?: string) => {
+    const params = new URLSearchParams({ limit: String(limit) });
+    if (before) params.set('before', before);
+    return apiRequest(`/forum/conversation?${params.toString()}`);
+  },
+
+  sendConversationMessage: async (content: string) => {
+    return apiRequest('/forum/conversation', {
+      method: 'POST',
+      body: JSON.stringify({ content })
+    }, false); // Requires auth token
   }
 };
 

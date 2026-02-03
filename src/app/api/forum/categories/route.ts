@@ -1,43 +1,54 @@
 import { NextResponse } from 'next/server'
-import connectDB from '@/lib/mongodb'
-import Category from '@/models/Category'
-import Topic from '@/models/Topic'
+import { supabaseAdmin } from '@/lib/supabase'
 
 export async function GET() {
   try {
-    await connectDB()
-    
-    const categories = await Category.find({ isActive: true })
-      .sort({ orderIndex: 1 })
-      .lean() as unknown as Array<{ _id: unknown; name: string; description?: string; slug: string; createdAt: Date }>
+    const { data: categories, error } = await supabaseAdmin
+      .from('categories')
+      .select('*')
+      .eq('is_active', true)
+      .order('order_index', { ascending: true })
+
+    if (error) throw error
 
     // Get topic counts for each category
     const categoriesWithCounts = await Promise.all(
-      categories.map(async (category) => {
-        const categoryId = String(category._id)
-        const topicCount = await Topic.countDocuments({ 
-          categoryId: categoryId,
-          isActive: true 
-        })
-        
-        const postCount = await Topic.aggregate([
-          { $match: { categoryId: categoryId, isActive: true } },
-          { $group: { _id: null, total: { $sum: '$replyCount' } } }
-        ])
+      (categories || []).map(async (category) => {
+        const categoryId = category.id
 
-        const lastTopic = await Topic.findOne({ 
-          categoryId: categoryId,
-          isActive: true 
-        }).sort({ lastPostAt: -1 })
+        const { count: topicCount } = await supabaseAdmin
+          .from('topics')
+          .select('*', { count: 'exact', head: true })
+          .eq('category_id', categoryId)
+          .eq('is_active', true)
+
+        // Sum reply_count for all active topics in this category
+        const { data: topicsWithReplies } = await supabaseAdmin
+          .from('topics')
+          .select('reply_count')
+          .eq('category_id', categoryId)
+          .eq('is_active', true)
+
+        const postCount = (topicsWithReplies || []).reduce((sum, t) => sum + (t.reply_count || 0), 0)
+
+        const { data: lastTopic } = await supabaseAdmin
+          .from('topics')
+          .select('last_post_at')
+          .eq('category_id', categoryId)
+          .eq('is_active', true)
+          .order('last_post_at', { ascending: false })
+          .limit(1)
+          .single()
 
         return {
           id: categoryId,
           name: category.name,
           description: category.description,
           slug: category.slug,
-          topic_count: topicCount,
-          post_count: postCount[0]?.total || 0,
-          last_activity: lastTopic?.lastPostAt || category.createdAt
+          section: category.section || null,
+          topic_count: topicCount || 0,
+          post_count: postCount,
+          last_activity: lastTopic?.last_post_at || category.created_at
         }
       })
     )

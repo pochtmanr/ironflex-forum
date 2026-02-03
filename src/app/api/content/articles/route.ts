@@ -1,39 +1,51 @@
 import { NextRequest, NextResponse } from 'next/server'
-import connectDB from '@/lib/mongodb'
-import Article from '@/models/Article'
+import { supabaseAdmin } from '@/lib/supabase'
 
 // GET /api/content/articles - Public endpoint to get all articles
 export async function GET(request: NextRequest) {
   try {
-    await connectDB()
-
     const searchParams = request.nextUrl.searchParams
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '20')
     const skip = (page - 1) * limit
 
-    // Get published articles only (or articles without published field - treat as published)
-    const articles = await Article.find({ $or: [{ published: true }, { published: { $exists: false } }] })
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit)
-      .select('title slug subheader coverImageUrl tags createdAt likes views')
-      .lean()
+    const { data: articles, error } = await supabaseAdmin
+      .from('articles')
+      .select('id, title, slug, subheader, cover_image_url, tags, created_at, likes, views')
+      .order('created_at', { ascending: false })
+      .range(skip, skip + limit - 1)
 
-    const total = await Article.countDocuments({ $or: [{ published: true }, { published: { $exists: false } }] })
+    if (error) {
+      console.error('Supabase error fetching articles:', error)
+      return NextResponse.json(
+        { error: 'Failed to fetch articles' },
+        { status: 500 }
+      )
+    }
+
+    // Get total count
+    const { count: total, error: countError } = await supabaseAdmin
+      .from('articles')
+      .select('*', { count: 'exact', head: true })
+
+    if (countError) {
+      console.error('Supabase count error:', countError)
+    }
+
+    const totalCount = total || 0
 
     // Format articles for frontend
-    const formattedArticles = articles.map(article => ({
-      id: String(article._id),
+    const formattedArticles = (articles || []).map(article => ({
+      id: article.id,
       title: article.title,
       slug: article.slug,
       subheader: article.subheader || '',
-      coverImageUrl: article.coverImageUrl || '',
+      coverImageUrl: article.cover_image_url || '',
       tags: article.tags || '',
-      created_at: article.createdAt,
+      created_at: article.created_at,
       likes: article.likes || 0,
       views: article.views || 0,
-      commentCount: 0 // TODO: Implement comments
+      commentCount: 0
     }))
 
     return NextResponse.json({
@@ -41,8 +53,8 @@ export async function GET(request: NextRequest) {
       pagination: {
         page,
         limit,
-        total,
-        pages: Math.ceil(total / limit)
+        total: totalCount,
+        pages: Math.ceil(totalCount / limit)
       }
     })
   } catch (error) {
@@ -53,4 +65,3 @@ export async function GET(request: NextRequest) {
     )
   }
 }
-

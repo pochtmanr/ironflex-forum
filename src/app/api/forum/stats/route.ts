@@ -1,23 +1,26 @@
 import { NextResponse } from 'next/server'
-import connectDB from '@/lib/mongodb'
-import Topic from '@/models/Topic'
-import Post from '@/models/Post'
-import User from '@/models/User'
+import { supabaseAdmin } from '@/lib/supabase'
 
 export async function GET() {
   try {
-    await connectDB()
-
-    const [totalTopics, totalPosts, totalUsers] = await Promise.all([
-      Topic.countDocuments({ isActive: true }),
-      Post.countDocuments({ isActive: true }),
-      User.countDocuments({ isActive: true })
+    const [topicsResult, postsResult, usersResult] = await Promise.all([
+      supabaseAdmin.from('topics').select('*', { count: 'exact', head: true }).eq('is_active', true),
+      supabaseAdmin.from('posts').select('*', { count: 'exact', head: true }).eq('is_active', true),
+      supabaseAdmin.from('users').select('*', { count: 'exact', head: true }).eq('is_active', true)
     ])
 
+    const totalTopics = topicsResult.count || 0
+    const totalPosts = postsResult.count || 0
+    const totalUsers = usersResult.count || 0
+
     // Get latest user
-    const latestUser = await User.findOne({ isActive: true })
-      .sort({ createdAt: -1 })
+    const { data: latestUser } = await supabaseAdmin
+      .from('users')
       .select('username')
+      .eq('is_active', true)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single()
 
     return NextResponse.json({
       stats: {
@@ -26,7 +29,6 @@ export async function GET() {
         total_users: totalUsers,
         latest_username: latestUser?.username || null
       }
-      // Removed onlineUsers - real-time online tracking is complex and not implemented
     })
   } catch (error) {
     console.error('Error fetching forum stats:', error)

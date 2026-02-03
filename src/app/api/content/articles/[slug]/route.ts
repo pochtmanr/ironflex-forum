@@ -1,23 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
-import dbConnect from '@/lib/mongodb';
-import Article from '@/models/Article';
-import Comment from '@/models/Comment';
-import User from '@/models/User';
+import { supabaseAdmin } from '@/lib/supabase';
 
 export async function GET(
   request: NextRequest,
   context: { params: Promise<{ slug: string }> }
 ) {
   try {
-    await dbConnect();
-
     const params = await context.params;
     const slug = params.slug;
-    
+
     // Find article by slug
-    const article = await Article.findOne({ slug });
-    
-    if (!article) {
+    const { data: article, error: articleError } = await supabaseAdmin
+      .from('articles')
+      .select('*')
+      .eq('slug', slug)
+      .single();
+
+    if (articleError || !article) {
       return NextResponse.json(
         { error: 'Article not found' },
         { status: 404 }
@@ -25,26 +24,39 @@ export async function GET(
     }
 
     // Increment view count
-    article.views = (article.views || 0) + 1;
-    await article.save();
+    await supabaseAdmin
+      .from('articles')
+      .update({ views: (article.views || 0) + 1 })
+      .eq('id', article.id);
 
     // Fetch comments for this article
-    const comments = await Comment.find({
-      contentType: 'article',
-      contentId: article._id.toString()
-    }).sort({ created_at: -1 });
+    const { data: comments, error: commentsError } = await supabaseAdmin
+      .from('comments')
+      .select('*')
+      .eq('content_type', 'article')
+      .eq('content_id', article.id)
+      .order('created_at', { ascending: false });
+
+    if (commentsError) {
+      console.error('Error fetching comments:', commentsError);
+    }
 
     // Fetch user details for each comment
     const commentsWithUsers = await Promise.all(
-      comments.map(async (comment) => {
-        const user = await User.findById(comment.userId);
+      (comments || []).map(async (comment) => {
+        const { data: user } = await supabaseAdmin
+          .from('users')
+          .select('id, display_name, username, email, photo_url')
+          .eq('id', comment.user_id)
+          .single();
+
         return {
-          id: (comment as any)._id.toString(),
+          id: comment.id,
           content: comment.content,
-          user_name: user?.displayName || user?.username || 'Anonymous',
+          user_name: user?.display_name || user?.username || 'Anonymous',
           user_email: user?.email || '',
-          user_id: comment.userId,
-          user_photo: user?.photoURL || null,
+          user_id: comment.user_id,
+          user_photo: user?.photo_url || null,
           created_at: comment.created_at,
           likes: comment.likes || 0,
           is_author: false
@@ -54,15 +66,15 @@ export async function GET(
 
     return NextResponse.json({
       article: {
-        id: article._id.toString(),
+        id: article.id,
         title: article.title,
         slug: article.slug,
         subheader: article.subheader,
         content: article.content,
-        coverImageUrl: article.coverImageUrl,
+        coverImageUrl: article.cover_image_url,
         tags: article.tags,
         likes: article.likes || 0,
-        views: article.views || 0,
+        views: (article.views || 0) + 1,
         created_at: article.created_at,
         updated_at: article.updated_at
       },
@@ -77,4 +89,3 @@ export async function GET(
     );
   }
 }
-

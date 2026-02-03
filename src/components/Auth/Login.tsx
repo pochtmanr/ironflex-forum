@@ -128,6 +128,29 @@ const Login: React.FC = () => {
           </div>
         </form>
 
+        <div className="mt-6">
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-gray-300" />
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="bg-white px-2 text-gray-500">или</span>
+            </div>
+          </div>
+
+          <div className="mt-4">
+            <a
+              href="/api/auth/yandex"
+              className="flex w-full items-center justify-center gap-3 rounded-md bg-black px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-gray-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-900 transition-colors"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M13.32 24h-2.64v-9.6L6.4 2.4h3.12l2.72 7.68h.08L15.04 2.4h3.12l-4.84 12v9.6z" fill="currentColor"/>
+              </svg>
+              Войти через Яндекс
+            </a>
+          </div>
+        </div>
+
         <p className="mt-10 text-center text-sm text-gray-500">
           Нет аккаунта?{' '}
           <Link href="/register" className="font-semibold leading-6 text-blue-500 hover:text-blue-700">

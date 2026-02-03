@@ -1,13 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import connectDB from '@/lib/mongodb'
-import User from '@/models/User'
-import ResetToken from '@/models/ResetToken'
+import { supabaseAdmin } from '@/lib/supabase'
 import { generateSecureToken, sendPasswordResetEmail } from '@/lib/email'
 
 export async function POST(request: NextRequest) {
   try {
-    await connectDB()
-    
     const { email } = await request.json()
 
     // Validation
@@ -19,8 +15,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Find user by email
-    const user = await User.findOne({ email: email.toLowerCase(), isActive: true })
-    
+    const { data: user } = await supabaseAdmin
+      .from('users')
+      .select('*')
+      .eq('email', email.toLowerCase())
+      .eq('is_active', true)
+      .single()
+
     // Always return success to prevent email enumeration attacks
     if (!user) {
       return NextResponse.json({
@@ -29,34 +30,37 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if user has a password (not OAuth-only)
-    if (!user.passwordHash) {
+    if (!user.password_hash) {
       return NextResponse.json({
         message: 'Если аккаунт с таким email существует, то ссылка для сброса пароля была отправлена.'
       })
     }
 
     // Delete any existing password reset tokens for this user
-    await ResetToken.deleteMany({
-      userId: user._id.toString(),
-      type: 'password_reset'
-    })
+    await supabaseAdmin
+      .from('reset_tokens')
+      .delete()
+      .eq('user_id', user.id)
+      .eq('type', 'password_reset')
 
     // Generate reset token
     const resetToken = generateSecureToken()
-    const expiresAt = new Date(Date.now() + 60 * 60 * 1000) // 1 hour
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString() // 1 hour
 
     // Save reset token
-    await ResetToken.create({
-      userId: user._id.toString(),
-      token: resetToken,
-      type: 'password_reset',
-      expiresAt
-    })
+    await supabaseAdmin
+      .from('reset_tokens')
+      .insert({
+        user_id: user.id,
+        token: resetToken,
+        type: 'password_reset',
+        expires_at: expiresAt
+      })
 
     // Send reset email
     const emailSent = await sendPasswordResetEmail(
       user.email,
-      user.username || user.displayName || 'Пользователь',
+      user.username || user.display_name || 'Пользователь',
       resetToken
     )
 
@@ -80,4 +84,3 @@ export async function POST(request: NextRequest) {
     )
   }
 }
-

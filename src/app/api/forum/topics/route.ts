@@ -1,62 +1,69 @@
 import { NextRequest, NextResponse } from 'next/server'
-import connectDB from '@/lib/mongodb'
-import Topic from '@/models/Topic'
-import Category from '@/models/Category'
-import User from '@/models/User'
-import { getUserFromToken } from '@/lib/auth'
+import { supabaseAdmin } from '@/lib/supabase'
 
 export async function GET(request: NextRequest) {
   try {
-    await connectDB()
-    
     const { searchParams } = new URL(request.url)
     const categoryId = searchParams.get('categoryId')
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '20')
     const offset = (page - 1) * limit
 
-    const where: Record<string, unknown> = { isActive: true }
+    // Build query for topics
+    let topicsQuery = supabaseAdmin
+      .from('topics')
+      .select('*')
+      .eq('is_active', true)
+
+    let countQuery = supabaseAdmin
+      .from('topics')
+      .select('*', { count: 'exact', head: true })
+      .eq('is_active', true)
+
     if (categoryId) {
-      where.categoryId = categoryId
+      topicsQuery = topicsQuery.eq('category_id', categoryId)
+      countQuery = countQuery.eq('category_id', categoryId)
     }
 
-    const [topics, total] = await Promise.all([
-      Topic.find(where)
-        .sort({ isPinned: -1, lastPostAt: -1 })
-        .skip(offset)
-        .limit(limit)
-        .lean(),
-      Topic.countDocuments(where)
+    const [topicsResult, countResult] = await Promise.all([
+      topicsQuery
+        .order('is_pinned', { ascending: false })
+        .order('last_post_at', { ascending: false })
+        .range(offset, offset + limit - 1),
+      countQuery
     ])
+
+    const topics = topicsResult.data || []
+    const total = countResult.count || 0
 
     // Get user and category info for each topic
     const formattedTopics = await Promise.all(
       topics.map(async (topic) => {
-        const [user, category] = await Promise.all([
-          User.findById(topic.userId).select('photoURL').lean(),
-          Category.findById(topic.categoryId).select('name slug').lean()
-        ]) as [{ photoURL?: string } | null, { name: string; slug: string } | null]
+        const [userResult, categoryResult] = await Promise.all([
+          supabaseAdmin.from('users').select('photo_url').eq('id', topic.user_id).single(),
+          supabaseAdmin.from('categories').select('name, slug').eq('id', topic.category_id).single()
+        ])
 
         return {
-          id: String(topic._id),
+          id: topic.id,
           title: topic.title,
           content: topic.content,
-          user_name: topic.userName,
-          user_email: topic.userEmail,
-          user_id: topic.userId,
-          user_photo_url: user?.photoURL || null,
-          category_id: topic.categoryId,
-          category_name: category?.name || 'Unknown Category',
-          category_slug: category?.slug || topic.categoryId,
-          reply_count: topic.replyCount,
+          user_name: topic.user_name,
+          user_email: topic.user_email,
+          user_id: topic.user_id,
+          user_photo_url: userResult.data?.photo_url || null,
+          category_id: topic.category_id,
+          category_name: categoryResult.data?.name || 'Unknown Category',
+          category_slug: categoryResult.data?.slug || topic.category_id,
+          reply_count: topic.reply_count,
           views: topic.views,
           likes: topic.likes,
           dislikes: topic.dislikes,
-          created_at: topic.createdAt.toISOString(),
-          last_post_at: topic.lastPostAt.toISOString(),
-          is_pinned: topic.isPinned,
-          is_locked: topic.isLocked,
-          media_links: topic.mediaLinks?.join('\n') || ''
+          created_at: topic.created_at,
+          last_post_at: topic.last_post_at,
+          is_pinned: topic.is_pinned,
+          is_locked: topic.is_locked,
+          media_links: Array.isArray(topic.media_links) ? topic.media_links.join('\n') : (topic.media_links || '')
         }
       })
     )
@@ -82,12 +89,10 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    await connectDB()
-    
     // Get user data from request body (like React app approach)
     const body = await request.json()
     const { categoryId, title, content, mediaLinks, userData } = body
-    
+
     console.log('Received topic creation request:', { categoryId, title, content, mediaLinks, userData })
 
     // Validation
@@ -102,20 +107,34 @@ export async function POST(request: NextRequest) {
     let user;
     if (userData && userData.email) {
       // Find or create user based on userData
-      user = await User.findOne({ email: userData.email }).select('-passwordHash')
-      if (!user) {
-        const username = userData.email.split('@')[0] + '_' + Math.random().toString(36).substr(2, 5);
-        user = await User.create({
-          email: userData.email,
-          username,
-          displayName: userData.displayName || userData.name || userData.email.split('@')[0],
-          photoURL: userData.photoURL || userData.picture,
-          googleId: userData.id,
-          isVerified: true,
-          isAdmin: false,
-          isActive: true
-        });
-        console.log('Created new user:', user._id);
+      const { data: existingUser } = await supabaseAdmin
+        .from('users')
+        .select('id, email, username, display_name, photo_url')
+        .eq('email', userData.email)
+        .single()
+
+      if (existingUser) {
+        user = existingUser
+      } else {
+        const username = userData.email.split('@')[0] + '_' + Math.random().toString(36).substr(2, 5)
+        const { data: newUser, error: createError } = await supabaseAdmin
+          .from('users')
+          .insert({
+            email: userData.email,
+            username,
+            display_name: userData.displayName || userData.name || userData.email.split('@')[0],
+            photo_url: userData.photoURL || userData.picture,
+            google_id: userData.id,
+            is_verified: true,
+            is_admin: false,
+            is_active: true
+          })
+          .select('id, email, username, display_name, photo_url')
+          .single()
+
+        if (createError) throw createError
+        user = newUser
+        console.log('Created new user:', user.id)
       }
     } else {
       return NextResponse.json(
@@ -124,10 +143,14 @@ export async function POST(request: NextRequest) {
       )
     }
 
-
     // Verify category exists
-    const category = await Category.findById(categoryId)
-    if (!category) {
+    const { data: category, error: catError } = await supabaseAdmin
+      .from('categories')
+      .select('id, name, slug')
+      .eq('id', categoryId)
+      .single()
+
+    if (catError || !category) {
       return NextResponse.json(
         { error: 'Category not found' },
         { status: 404 }
@@ -135,38 +158,44 @@ export async function POST(request: NextRequest) {
     }
 
     // Create topic
-    const topic = await Topic.create({
-      categoryId,
-      userId: user._id.toString(),
-      userName: user.displayName || user.username,
-      userEmail: user.email,
-      title,
-      content,
-      mediaLinks: mediaLinks || []
-    })
+    const { data: topic, error: topicError } = await supabaseAdmin
+      .from('topics')
+      .insert({
+        category_id: categoryId,
+        user_id: user.id,
+        user_name: user.display_name || user.username,
+        user_email: user.email,
+        title,
+        content,
+        media_links: mediaLinks || []
+      })
+      .select()
+      .single()
+
+    if (topicError) throw topicError
 
     return NextResponse.json({
       message: 'Topic created successfully',
       topic: {
-        id: topic._id.toString(),
+        id: topic.id,
         title: topic.title,
         content: topic.content,
-        user_name: topic.userName,
-        user_email: topic.userEmail,
-        user_id: topic.userId,
-        user_photo_url: user.photoURL,
-        category_id: topic.categoryId,
+        user_name: topic.user_name,
+        user_email: topic.user_email,
+        user_id: topic.user_id,
+        user_photo_url: user.photo_url,
+        category_id: topic.category_id,
         category_name: category.name,
         category_slug: category.slug,
-        reply_count: topic.replyCount,
+        reply_count: topic.reply_count,
         views: topic.views,
         likes: topic.likes,
         dislikes: topic.dislikes,
-        created_at: topic.createdAt.toISOString(),
-        last_post_at: topic.lastPostAt.toISOString(),
-        is_pinned: topic.isPinned,
-        is_locked: topic.isLocked,
-        media_links: topic.mediaLinks?.join('\n') || ''
+        created_at: topic.created_at,
+        last_post_at: topic.last_post_at,
+        is_pinned: topic.is_pinned,
+        is_locked: topic.is_locked,
+        media_links: Array.isArray(topic.media_links) ? topic.media_links.join('\n') : (topic.media_links || '')
       }
     })
 

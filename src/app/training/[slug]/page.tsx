@@ -9,6 +9,7 @@ import remarkGfm from 'remark-gfm';
 import { useAuth } from '@/contexts/AuthContext';
 import { contentAPI } from '@/services/api';
 import { RichTextEditor } from '@/components/UI/RichTextEditor';
+import { VideoEmbed, isVideoUrl } from '@/components/UI/VideoEmbed';
 
 interface Training {
   id: string;
@@ -268,9 +269,16 @@ const TrainingViewPage: React.FC = () => {
 
           {/* Training Content */}
           <div className="prose max-w-none text-gray-900 text-base">
-            <ReactMarkdown 
+            <ReactMarkdown
               remarkPlugins={[remarkGfm]}
               components={{
+                p: ({node, children, ...props}) => {
+                  const hasBlockChild = Array.isArray(children)
+                    ? children.some(child => typeof child === 'object' && child !== null && 'type' in child && (child as React.ReactElement).type === 'div')
+                    : typeof children === 'object' && children !== null && 'type' in children && (children as React.ReactElement).type === 'div';
+                  if (hasBlockChild) return <div {...props}>{children}</div>;
+                  return <p {...props}>{children}</p>;
+                },
                 img: ({node, ...props}) => (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
@@ -280,6 +288,16 @@ const TrainingViewPage: React.FC = () => {
                     style={{ objectFit: 'contain', maxHeight: '400px' }}
                   />
                 ),
+                a: ({node, href, children, ...props}) => {
+                  if (href && isVideoUrl(href)) {
+                    return <VideoEmbed url={href} />;
+                  }
+                  return (
+                    <a href={href} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 underline" {...props}>
+                      {children}
+                    </a>
+                  );
+                },
               }}
             >
               {training.content}
@@ -382,9 +400,16 @@ const TrainingViewPage: React.FC = () => {
                 
                 <div className="p-4">
                   <div className="prose max-w-none text-gray-900 text-base">
-                    <ReactMarkdown 
+                    <ReactMarkdown
                       remarkPlugins={[remarkGfm]}
                       components={{
+                        p: ({node, children, ...props}) => {
+                          const hasBlockChild = Array.isArray(children)
+                            ? children.some(child => typeof child === 'object' && child !== null && 'type' in child && (child as React.ReactElement).type === 'div')
+                            : typeof children === 'object' && children !== null && 'type' in children && (children as React.ReactElement).type === 'div';
+                          if (hasBlockChild) return <div {...props}>{children}</div>;
+                          return <p {...props}>{children}</p>;
+                        },
                         img: ({node, ...props}) => (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img
@@ -394,6 +419,16 @@ const TrainingViewPage: React.FC = () => {
                             style={{ objectFit: 'contain', maxHeight: '400px' }}
                           />
                         ),
+                        a: ({node, href, children, ...props}) => {
+                          if (href && isVideoUrl(href)) {
+                            return <VideoEmbed url={href} />;
+                          }
+                          return (
+                            <a href={href} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 underline" {...props}>
+                              {children}
+                            </a>
+                          );
+                        },
                       }}
                     >
                       {comment.content}

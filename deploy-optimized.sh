@@ -70,3 +70,4 @@ echo ""
 echo "🔍 Monitor memory with: docker stats"
 echo "📋 View logs with: docker-compose logs -f [service-name]"
 
+

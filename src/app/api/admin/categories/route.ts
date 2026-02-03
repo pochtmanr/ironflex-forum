@@ -1,11 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import connectDB from '@/lib/mongodb'
-import Category from '@/models/Category'
+import { supabaseAdmin } from '@/lib/supabase'
 
 export async function POST(request: NextRequest) {
   try {
-    await connectDB()
-    
     const { name, description, slug } = await request.json()
 
     // Validate required fields
@@ -17,7 +14,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if category with same slug already exists
-    const existingCategory = await Category.findOne({ slug })
+    const { data: existingCategory } = await supabaseAdmin
+      .from('categories')
+      .select('id')
+      .eq('slug', slug)
+      .single()
+
     if (existingCategory) {
       return NextResponse.json(
         { error: 'Category with this slug already exists' },
@@ -26,20 +28,26 @@ export async function POST(request: NextRequest) {
     }
 
     // Create new category
-    const category = new Category({
-      name,
-      description,
-      slug,
-      isActive: true,
-      orderIndex: 0
-    })
+    const { data: category, error } = await supabaseAdmin
+      .from('categories')
+      .insert({
+        name,
+        description,
+        slug,
+        is_active: true,
+        order_index: 0
+      })
+      .select()
+      .single()
 
-    await category.save()
+    if (error) {
+      throw error
+    }
 
     return NextResponse.json({
       message: 'Category created successfully',
       category: {
-        id: category._id.toString(),
+        id: category.id,
         name: category.name,
         description: category.description,
         slug: category.slug

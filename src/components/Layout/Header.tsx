@@ -76,54 +76,12 @@ const Header: React.FC = () => {
           
         {/* Navigation bar */}
         <div className="bg-gray-50">
-          <div className=" mx-auto px-4 py-1">
+          <div className="max-w-7xl mx-auto px-4 py-1">
             <div className="flex items-center justify-between">
-              {/* Group logo and navigation menu */}
-              <div className="flex items-center space-x-6">
-                <Link href="/" className="inline-flex items-center">
-                    <img src="/images/4_logo1.svg" alt="Протокол Тарновского" className="h-10" />
-                </Link>
-                <nav>
-                  <ul className="flex items-center">
-                    <li className="relative">
-                      <Link 
-                        href="/" 
-                        className={`block px-4 py-3 transition-colors text-md ${
-                          isActive('/') 
-                            ? 'text-white bg-gray-600' 
-                            : 'text-gray-700 hover:bg-gray-200'
-                        }`}
-                      >
-                        Форум
-                      </Link>
-                    </li>
-                    <li className="relative">
-                      <Link 
-                        href="/articles" 
-                        className={`block px-4 py-3 transition-colors text-md ${
-                          isActive('/articles') 
-                            ? 'text-white bg-gray-600' 
-                            : 'text-gray-700 hover:bg-gray-200'
-                        }`}
-                      >
-                        Статьи
-                      </Link>
-                    </li>
-                    <li className="relative">
-                      <Link 
-                        href="/trainings" 
-                        className={`block px-4 py-3 transition-colors text-md ${
-                          isActive('/trainings') 
-                            ? 'text-white bg-gray-600' 
-                            : 'text-gray-700 hover:bg-gray-200'
-                        }`}
-                      >
-                        Тренировки
-                      </Link>
-                    </li>
-                  </ul>
-                </nav>
-              </div>
+              {/* Logo */}
+              <Link href="/" className="inline-flex items-center">
+                  <img src="/images/4_logo1.svg" alt="Протокол Тарновского" className="h-10" />
+              </Link>
               
               {/* Desktop search and profile */}
               <div className="flex items-center gap-4">

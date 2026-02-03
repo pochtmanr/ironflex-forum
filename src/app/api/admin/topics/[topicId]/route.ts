@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import connectDB from '@/lib/mongodb';
 import { verifyAccessToken } from '@/lib/auth';
-import Topic from '@/models/Topic';
-import Post from '@/models/Post';
+import { supabaseAdmin } from '@/lib/supabase';
 
 export async function DELETE(
   request: NextRequest,
@@ -10,7 +8,7 @@ export async function DELETE(
 ) {
   try {
     const { topicId } = await params;
-    
+
     // Verify authentication (no admin check - any user can access)
     const authHeader = request.headers.get('authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -29,11 +27,14 @@ export async function DELETE(
       );
     }
 
-    await connectDB();
-
     // Check if topic exists
-    const topic = await Topic.findById(topicId);
-    if (!topic) {
+    const { data: topic, error: fetchError } = await supabaseAdmin
+      .from('topics')
+      .select('id, user_id, created_at')
+      .eq('id', topicId)
+      .single();
+
+    if (fetchError || !topic) {
       return NextResponse.json(
         { error: 'Topic not found' },
         { status: 404 }
@@ -41,7 +42,7 @@ export async function DELETE(
     }
 
     // Verify ownership - only the author can delete
-    if (topic.userId !== userPayload.id) {
+    if (topic.user_id !== userPayload.id) {
       return NextResponse.json(
         { error: 'You can only delete your own topics' },
         { status: 403 }
@@ -49,7 +50,7 @@ export async function DELETE(
     }
 
     // Check if topic is within 2-hour edit window
-    const createdAt = new Date(topic.createdAt);
+    const createdAt = new Date(topic.created_at);
     const now = new Date();
     const twoHoursInMs = 2 * 60 * 60 * 1000; // 2 hours in milliseconds
     const timeSinceCreation = now.getTime() - createdAt.getTime();
@@ -62,10 +63,16 @@ export async function DELETE(
     }
 
     // Delete all posts in this topic
-    await Post.deleteMany({ topicId: topicId });
+    await supabaseAdmin
+      .from('posts')
+      .delete()
+      .eq('topic_id', topicId);
 
     // Delete the topic
-    await Topic.findByIdAndDelete(topicId);
+    await supabaseAdmin
+      .from('topics')
+      .delete()
+      .eq('id', topicId);
 
     return NextResponse.json({
       message: 'Topic and all its posts deleted successfully'
@@ -87,7 +94,7 @@ export async function PATCH(
   try {
     const { topicId } = await params;
     const { title, content } = await request.json();
-    
+
     // Verify authentication (no admin check - any user can access)
     const authHeader = request.headers.get('authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -113,11 +120,14 @@ export async function PATCH(
       );
     }
 
-    await connectDB();
-
     // Check if topic exists
-    const topic = await Topic.findById(topicId);
-    if (!topic) {
+    const { data: topic, error: fetchError } = await supabaseAdmin
+      .from('topics')
+      .select('id, user_id, created_at')
+      .eq('id', topicId)
+      .single();
+
+    if (fetchError || !topic) {
       return NextResponse.json(
         { error: 'Topic not found' },
         { status: 404 }
@@ -125,7 +135,7 @@ export async function PATCH(
     }
 
     // Verify ownership - only the author can edit
-    if (topic.userId !== userPayload.id) {
+    if (topic.user_id !== userPayload.id) {
       return NextResponse.json(
         { error: 'You can only edit your own topics' },
         { status: 403 }
@@ -133,7 +143,7 @@ export async function PATCH(
     }
 
     // Check if topic is within 2-hour edit window
-    const createdAt = new Date(topic.createdAt);
+    const createdAt = new Date(topic.created_at);
     const now = new Date();
     const twoHoursInMs = 2 * 60 * 60 * 1000; // 2 hours in milliseconds
     const timeSinceCreation = now.getTime() - createdAt.getTime();
@@ -146,10 +156,13 @@ export async function PATCH(
     }
 
     // Update the topic
-    await Topic.findByIdAndUpdate(topicId, {
-      title: title.trim(),
-      content: content.trim()
-    });
+    await supabaseAdmin
+      .from('topics')
+      .update({
+        title: title.trim(),
+        content: content.trim()
+      })
+      .eq('id', topicId);
 
     return NextResponse.json({
       message: 'Topic updated successfully'

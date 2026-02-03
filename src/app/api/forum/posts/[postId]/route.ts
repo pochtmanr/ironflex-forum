@@ -1,9 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import connectDB from '@/lib/mongodb';
 import { verifyAccessToken } from '@/lib/auth';
-import Post from '@/models/Post';
-import Topic from '@/models/Topic';
-import User from '@/models/User';
+import { supabaseAdmin } from '@/lib/supabase';
 
 // CORS headers
 const corsHeaders = {
@@ -42,11 +39,14 @@ export async function DELETE(
       );
     }
 
-    await connectDB();
-
     // Find the post
-    const post = await Post.findById(postId);
-    if (!post) {
+    const { data: post, error: postError } = await supabaseAdmin
+      .from('posts')
+      .select('id, user_id, topic_id')
+      .eq('id', postId)
+      .single();
+
+    if (postError || !post) {
       return NextResponse.json(
         { error: 'Post not found' },
         { status: 404, headers: corsHeaders }
@@ -54,8 +54,13 @@ export async function DELETE(
     }
 
     // Find the topic to check if user is topic author
-    const topic = await Topic.findById(post.topicId);
-    if (!topic) {
+    const { data: topic, error: topicError } = await supabaseAdmin
+      .from('topics')
+      .select('id, user_id, reply_count')
+      .eq('id', post.topic_id)
+      .single();
+
+    if (topicError || !topic) {
       return NextResponse.json(
         { error: 'Topic not found' },
         { status: 404, headers: corsHeaders }
@@ -63,13 +68,13 @@ export async function DELETE(
     }
 
     // Check if user is the post author OR the topic author
-    const isPostAuthor = post.userId === userPayload.id;
-    const isTopicAuthor = topic.userId === userPayload.id;
+    const isPostAuthor = post.user_id === userPayload.id;
+    const isTopicAuthor = topic.user_id === userPayload.id;
 
     console.log('Delete post authorization check:', {
       postId,
-      postUserId: post.userId,
-      topicUserId: topic.userId,
+      postUserId: post.user_id,
+      topicUserId: topic.user_id,
       requestUserId: userPayload.id,
       isPostAuthor,
       isTopicAuthor
@@ -82,13 +87,23 @@ export async function DELETE(
       );
     }
 
+    // Delete post votes first
+    await supabaseAdmin
+      .from('post_votes')
+      .delete()
+      .eq('post_id', postId);
+
     // Delete the post
-    await Post.findByIdAndDelete(postId);
+    await supabaseAdmin
+      .from('posts')
+      .delete()
+      .eq('id', postId);
 
     // Update topic reply count
-    await Topic.findByIdAndUpdate(post.topicId, {
-      $inc: { replyCount: -1 }
-    });
+    await supabaseAdmin
+      .from('topics')
+      .update({ reply_count: Math.max(0, (topic.reply_count || 0) - 1) })
+      .eq('id', post.topic_id);
 
     return NextResponse.json(
       { message: 'Post deleted successfully' },
@@ -103,4 +118,3 @@ export async function DELETE(
     );
   }
 }
-

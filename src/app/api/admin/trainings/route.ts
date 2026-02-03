@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import connectDB from '@/lib/mongodb'
-import Training from '@/models/Training'
 import { verifyToken } from '@/lib/auth'
-import mongoose from 'mongoose'
+import { supabaseAdmin } from '@/lib/supabase'
 
 // GET - List all trainings (admin only)
 export async function GET(request: NextRequest) {
@@ -15,31 +13,34 @@ export async function GET(request: NextRequest) {
 
     const token = authHeader.substring(7)
     const decoded = await verifyToken(token)
-    
+
     if (!decoded || decoded.role !== 'admin') {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
     }
 
-    await connectDB()
+    const { data: trainings, error } = await supabaseAdmin
+      .from('trainings')
+      .select('id, title, slug, subheader, content, cover_image_url, level, duration_minutes, author_name, likes, views, comment_count, created_at, updated_at')
+      .order('created_at', { ascending: false })
 
-    const trainings = await Training.find()
-      .sort({ created_at: -1 })
-      .lean()
+    if (error) {
+      throw error
+    }
 
     return NextResponse.json({
-      trainings: trainings.map(training => ({
-        id: (training._id as mongoose.Types.ObjectId).toString(),
+      trainings: (trainings || []).map(training => ({
+        id: training.id,
         title: training.title,
         slug: training.slug,
         subheader: training.subheader,
         content: training.content,
-        coverImageUrl: training.coverImageUrl,
+        coverImageUrl: training.cover_image_url,
         level: training.level,
-        durationMinutes: training.durationMinutes,
-        authorName: training.authorName,
+        durationMinutes: training.duration_minutes,
+        authorName: training.author_name,
         likes: training.likes,
         views: training.views,
-        commentCount: training.commentCount,
+        commentCount: training.comment_count,
         created_at: training.created_at,
         updated_at: training.updated_at
       }))
@@ -64,12 +65,10 @@ export async function POST(request: NextRequest) {
 
     const token = authHeader.substring(7)
     const decoded = await verifyToken(token)
-    
+
     if (!decoded || decoded.role !== 'admin') {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
     }
-
-    await connectDB()
 
     const body = await request.json()
     const { title, slug, subheader, content, coverImageUrl, level, durationMinutes, authorName } = body
@@ -83,7 +82,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if slug already exists
-    const existing = await Training.findOne({ slug })
+    const { data: existing } = await supabaseAdmin
+      .from('trainings')
+      .select('id')
+      .eq('slug', slug)
+      .single()
+
     if (existing) {
       return NextResponse.json(
         { error: 'Training with this slug already exists' },
@@ -91,31 +95,37 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const training = new Training({
-      title,
-      slug,
-      subheader: subheader || '',
-      content,
-      coverImageUrl: coverImageUrl || '',
-      level: level || 'beginner',
-      durationMinutes: durationMinutes || null,
-      authorName
-    })
+    const { data: training, error } = await supabaseAdmin
+      .from('trainings')
+      .insert({
+        title,
+        slug,
+        subheader: subheader || '',
+        content,
+        cover_image_url: coverImageUrl || '',
+        level: level || 'beginner',
+        duration_minutes: durationMinutes || null,
+        author_name: authorName
+      })
+      .select()
+      .single()
 
-    await training.save()
+    if (error) {
+      throw error
+    }
 
     return NextResponse.json({
       message: 'Training created successfully',
       training: {
-        id: (training._id as mongoose.Types.ObjectId).toString(),
+        id: training.id,
         title: training.title,
         slug: training.slug,
         subheader: training.subheader,
         content: training.content,
-        coverImageUrl: training.coverImageUrl,
+        coverImageUrl: training.cover_image_url,
         level: training.level,
-        durationMinutes: training.durationMinutes,
-        authorName: training.authorName,
+        durationMinutes: training.duration_minutes,
+        authorName: training.author_name,
         created_at: training.created_at
       }
     }, { status: 201 })
@@ -127,4 +137,3 @@ export async function POST(request: NextRequest) {
     )
   }
 }
-

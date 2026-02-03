@@ -378,6 +378,51 @@ const getEmailTemplate = (type: string, data: Record<string, unknown>) => {
         </html>
       `
 
+    case 'contact_form':
+      return `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Обращение с сайта - ${FROM_NAME}</title>
+            ${baseStyle}
+          </head>
+          <body>
+            <div class="email-wrapper">
+              <div class="email-container">
+                <div class="email-header">
+                  <h1>Новое обращение</h1>
+                  <div class="subtitle">Форма обратной связи</div>
+                </div>
+
+                <div class="email-content">
+                  <h2>${data.subject}</h2>
+
+                  <div class="email-info-box">
+                    <h3>Отправитель:</h3>
+                    <ul>
+                      <li><strong>Имя:</strong> ${data.name}</li>
+                      <li><strong>Email:</strong> ${data.email}</li>
+                    </ul>
+                  </div>
+
+                  <p style="white-space: pre-wrap;">${data.message}</p>
+                </div>
+
+                <div class="email-footer">
+                  <p class="brand">${FROM_NAME}</p>
+                  <p>Отправлено через форму обратной связи на ${SITE_URL}</p>
+                  <p style="margin-top: 15px; font-size: 12px; opacity: 0.7;">
+                    &copy; ${new Date().getFullYear()} ${FROM_NAME}. Все права защищены.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </body>
+        </html>
+      `
+
     default:
       throw new Error(`Unknown email template type: ${type}`)
   }
@@ -480,12 +525,54 @@ export const sendWelcomeEmail = async (
   username: string
 ): Promise<boolean> => {
   const loginUrl = SITE_URL
-  
+
   return sendEmail(
     email,
     'Добро пожаловать в Клинический Протокол Тарновского!',
     'welcome',
     { username, loginUrl }
   )
+}
+
+// Secure email send — never logs the recipient address
+export const sendEmailSecure = async (
+  to: string,
+  subject: string,
+  type: string,
+  data: Record<string, unknown>
+): Promise<boolean> => {
+  try {
+    if (!SMTP_PASS) {
+      console.error('[EMAIL] SMTP_PASS not configured')
+      return false
+    }
+
+    console.log('[EMAIL] Preparing secure email send')
+    console.log(`[EMAIL] Subject: ${subject}`)
+    console.log(`[EMAIL] Type: ${type}`)
+
+    const html = getEmailTemplate(type, data)
+    const emailTransporter = transporter || createTransporter()
+
+    if (!emailTransporter) {
+      console.error('[EMAIL] Failed to create email transporter')
+      return false
+    }
+
+    await emailTransporter.verify()
+
+    const info = await emailTransporter.sendMail({
+      from: `"${FROM_NAME}" <${FROM_EMAIL}>`,
+      to,
+      subject,
+      html,
+    })
+
+    console.log('[EMAIL] Secure email sent, ID:', info.messageId)
+    return true
+  } catch (error) {
+    console.error('[EMAIL] Secure email send failed:', error instanceof Error ? error.message : 'Unknown error')
+    return false
+  }
 }
 

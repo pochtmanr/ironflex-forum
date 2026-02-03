@@ -1,25 +1,4 @@
 services:
-  mongodb:
-    image: mongo:7.0
-    container_name: mongodb
-    ports:
-      - "0.0.0.0:27017:27017"  # Expose to all interfaces for internet access
-    environment:
-      - MONGO_INITDB_ROOT_USERNAME=admin
-      - MONGO_INITDB_ROOT_PASSWORD=StrongPassword123!
-      - MONGO_INITDB_DATABASE=ironblog
-      - MONGO_INITDB_DATABASE_USER=ironblog_user
-      - MONGO_INITDB_DATABASE_PASSWORD=IronBlogPass456!
-    command: --bind_ip_all --auth --wiredTigerCacheSizeGB 0.5
-    volumes:
-      - mongodb_data:/data/db
-      - ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
-    restart: unless-stopped
-    networks:
-      - my_custom_network
-    mem_limit: 1g
-    memswap_limit: 1g
-
   fileserver:
     container_name: fileserver
     build:
@@ -54,20 +33,9 @@ services:
       - .env.production
     environment:
       - NODE_ENV=production
-      - MONGODB_URI=mongodb://admin:StrongPassword123!@mongodb:27017/ironblog?authSource=admin
-      - FILESERVER_URL=http://fileserver:3001
-      - FILESERVER_FALLBACK=http://localhost:3001
-      - SMTP_HOST=smtp.timeweb.ru
-      - SMTP_PORT=465
-      - SMTP_SECURE=true
-      - SMTP_USER=support@tarnovsky.ru
-      - SMTP_PASS=VWJetta2014Asd))!
-      - FROM_EMAIL=support@tarnovsky.ru
-      - FROM_NAME=Клинический Протокол Тарновского
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
-      - mongodb
       - fileserver
     restart: unless-stopped
     networks:
@@ -108,7 +76,6 @@ services:
   ipsec-vpn:
     image: hwdsl2/ipsec-vpn-server:latest
     container_name: ipsec-vpn
-    # Use host networking so UDP 500/4500 are reachable directly
     network_mode: "host"
     privileged: true
     cap_add:
@@ -122,7 +89,6 @@ services:
     restart: unless-stopped
 
 volumes:
-  mongodb_data:
   fileserver_uploads:
 
 networks:

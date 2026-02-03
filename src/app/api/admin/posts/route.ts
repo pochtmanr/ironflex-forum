@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import connectDB from '@/lib/mongodb';
 import { verifyAccessToken } from '@/lib/auth';
-import Post from '@/models/Post';
+import { supabaseAdmin } from '@/lib/supabase';
 
 export async function GET(request: NextRequest) {
   try {
@@ -23,84 +22,59 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    await connectDB();
-
     // Get all posts with topic and category information
-    const posts = await Post.aggregate([
-      {
-        $lookup: {
-          from: 'topics',
-          localField: 'topicId',
-          foreignField: '_id',
-          as: 'topic'
-        }
-      },
-      {
-        $unwind: {
-          path: '$topic',
-          preserveNullAndEmptyArrays: true
-        }
-      },
-      {
-        $lookup: {
-          from: 'categories',
-          localField: 'topic.categoryId',
-          foreignField: '_id',
-          as: 'category'
-        }
-      },
-      {
-        $unwind: {
-          path: '$category',
-          preserveNullAndEmptyArrays: true
-        }
-      },
-      {
-        $project: {
-          _id: 1,
-          topicId: 1,
-          userId: 1,
-          userName: 1,
-          userEmail: 1,
-          content: 1,
-          mediaLinks: 1,
-          likes: 1,
-          dislikes: 1,
-          isEdited: 1,
-          editedAt: 1,
-          isActive: 1,
-          parentPostId: 1,
-          createdAt: 1,
-          updatedAt: 1,
-          topicTitle: '$topic.title',
-          categoryName: '$category.name'
-        }
-      },
-      {
-        $sort: { createdAt: -1 }
-      }
-    ]);
+    const { data: posts, error } = await supabaseAdmin
+      .from('posts')
+      .select(`
+        id,
+        topic_id,
+        user_id,
+        user_name,
+        user_email,
+        content,
+        media_links,
+        likes,
+        dislikes,
+        is_edited,
+        edited_at,
+        is_active,
+        parent_post_id,
+        created_at,
+        updated_at,
+        topics (
+          title,
+          category_id,
+          categories (
+            name
+          )
+        )
+      `)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      throw error;
+    }
 
     return NextResponse.json({
       message: 'Posts retrieved successfully',
-      posts: posts.map(post => ({
-        id: post._id,
-        topicId: post.topicId,
-        userId: post.userId,
-        userName: post.userName,
-        userEmail: post.userEmail,
+      posts: (posts || []).map((post: any) => ({
+        id: post.id,
+        topicId: post.topic_id,
+        userId: post.user_id,
+        userName: post.user_name,
+        userEmail: post.user_email,
         content: post.content,
-        mediaLinks: post.mediaLinks,
+        mediaLinks: post.media_links,
         likes: post.likes,
         dislikes: post.dislikes,
-        isEdited: post.isEdited,
-        editedAt: post.editedAt,
-        isActive: post.isActive,
-        parentPostId: post.parentPostId,
-        createdAt: post.createdAt,
-        updatedAt: post.updatedAt,
-        topicTitle: post.topicTitle,
-        categoryName: post.categoryName
+        isEdited: post.is_edited,
+        editedAt: post.edited_at,
+        isActive: post.is_active,
+        parentPostId: post.parent_post_id,
+        createdAt: post.created_at,
+        updatedAt: post.updated_at,
+        topicTitle: post.topics?.title ?? null,
+        categoryName: post.topics?.categories?.name ?? null
       }))
     });
 

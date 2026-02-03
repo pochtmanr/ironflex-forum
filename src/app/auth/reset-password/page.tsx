@@ -54,23 +54,8 @@ function ResetPasswordContent() {
     setMessage('')
 
     // Validation
-    if (newPassword.length < 8) {
-      setError('Пароль должен содержать не менее 8 символов')
-      return
-    }
-
-    if (!/[A-Z]/.test(newPassword)) {
-      setError('Пароль должен содержать хотя бы одну заглавную букву (A-Z)')
-      return
-    }
-
-    if (!/[a-z]/.test(newPassword)) {
-      setError('Пароль должен содержать хотя бы одну строчную букву (a-z)')
-      return
-    }
-
-    if (!/[0-9]/.test(newPassword)) {
-      setError('Пароль должен содержать хотя бы одну цифру (0-9)')
+    if (newPassword.length < 6) {
+      setError('Пароль должен содержать не менее 6ти символов')
       return
     }
 
@@ -204,7 +189,7 @@ function ResetPasswordContent() {
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                placeholder="Минимум 8 символов"
+                placeholder="Минимум 6 символов"
               />
             </div>
 
@@ -225,15 +210,9 @@ function ResetPasswordContent() {
             </div>
           </div>
 
-          <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
-            <h3 className="text-sm font-medium text-blue-800 mb-2">Требования к паролю:</h3>
-            <ul className="text-xs text-blue-700 space-y-1">
-              <li>• Минимум 8 символов</li>
-              <li>• Хотя бы одна заглавная буква (A-Z)</li>
-              <li>• Хотя бы одна строчная буква (a-z)</li>
-              <li>• Хотя бы одна цифра (0-9)</li>
-            </ul>
-          </div>
+          <p className="text-xs text-gray-500">
+            Минимум 6 символов
+          </p>
 
           <div>
             <button

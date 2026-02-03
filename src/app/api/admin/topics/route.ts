@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import connectDB from '@/lib/mongodb';
 import { verifyAccessToken } from '@/lib/auth';
-import Topic from '@/models/Topic';
+import { supabaseAdmin } from '@/lib/supabase';
 
 export async function GET(request: NextRequest) {
   try {
@@ -23,74 +22,60 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    await connectDB();
-
     // Get all topics with category information
-    const topics = await Topic.aggregate([
-      {
-        $lookup: {
-          from: 'categories',
-          localField: 'categoryId',
-          foreignField: '_id',
-          as: 'category'
-        }
-      },
-      {
-        $unwind: {
-          path: '$category',
-          preserveNullAndEmptyArrays: true
-        }
-      },
-      {
-        $project: {
-          _id: 1,
-          categoryId: 1,
-          userId: 1,
-          userName: 1,
-          userEmail: 1,
-          title: 1,
-          content: 1,
-          mediaLinks: 1,
-          views: 1,
-          likes: 1,
-          dislikes: 1,
-          isPinned: 1,
-          isLocked: 1,
-          isActive: 1,
-          createdAt: 1,
-          updatedAt: 1,
-          lastPostAt: 1,
-          replyCount: 1,
-          categoryName: '$category.name'
-        }
-      },
-      {
-        $sort: { createdAt: -1 }
-      }
-    ]);
+    const { data: topics, error } = await supabaseAdmin
+      .from('topics')
+      .select(`
+        id,
+        category_id,
+        user_id,
+        user_name,
+        user_email,
+        title,
+        content,
+        media_links,
+        views,
+        likes,
+        dislikes,
+        is_pinned,
+        is_locked,
+        is_active,
+        created_at,
+        updated_at,
+        last_post_at,
+        reply_count,
+        categories (
+          name
+        )
+      `)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      throw error;
+    }
 
     return NextResponse.json({
       message: 'Topics retrieved successfully',
-      topics: topics.map(topic => ({
-        id: topic._id,
-        categoryId: topic.categoryId,
-        userId: topic.userId,
-        userName: topic.userName,
-        userEmail: topic.userEmail,
+      topics: (topics || []).map((topic: any) => ({
+        id: topic.id,
+        categoryId: topic.category_id,
+        userId: topic.user_id,
+        userName: topic.user_name,
+        userEmail: topic.user_email,
         title: topic.title,
         content: topic.content,
-        mediaLinks: topic.mediaLinks,
+        mediaLinks: topic.media_links,
         views: topic.views,
         likes: topic.likes,
         dislikes: topic.dislikes,
-        isPinned: topic.isPinned,
-        isLocked: topic.isLocked,
-        isActive: topic.isActive,
-        createdAt: topic.createdAt,
-        updatedAt: topic.updatedAt,
-        lastPostAt: topic.lastPostAt,
-        replyCount: topic.replyCount,
-        categoryName: topic.categoryName
+        isPinned: topic.is_pinned,
+        isLocked: topic.is_locked,
+        isActive: topic.is_active,
+        createdAt: topic.created_at,
+        updatedAt: topic.updated_at,
+        lastPostAt: topic.last_post_at,
+        replyCount: topic.reply_count,
+        categoryName: topic.categories?.name ?? null
       }))
     });
 

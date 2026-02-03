@@ -9,7 +9,7 @@ interface ReplyFormProps {
   onImageUpload: (file: File) => Promise<string>;
 }
 
-export const ReplyForm: React.FC<ReplyFormProps> = ({
+export const ReplyForm: React.FC<ReplyFormProps> = React.memo(({
   replyContent,
   setReplyContent,
   submittingReply,
@@ -19,7 +19,7 @@ export const ReplyForm: React.FC<ReplyFormProps> = ({
   return (
     <div className="bg-white max-w-4xl mx-auto">
       <h3 className="text-sm font-medium text-gray-900/70 mb-2">Напишите ваш ответ:</h3>
-      
+
       <form onSubmit={onSubmit} className="p-4">
         {/* Rich Text Editor with built-in image upload */}
         <RichTextEditor
@@ -31,7 +31,7 @@ export const ReplyForm: React.FC<ReplyFormProps> = ({
           onImageUpload={onImageUpload}
           className="text-sm text-gray-900/70 border-2 border-gray-200/50 rounded-md"
         />
-        
+
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-end mt-4 gap-3">
           <button
             type="submit"
@@ -44,5 +44,5 @@ export const ReplyForm: React.FC<ReplyFormProps> = ({
       </form>
     </div>
   );
-};
+});
 

@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import connectDB from '@/lib/mongodb'
-import Article from '@/models/Article'
 import { verifyToken } from '@/lib/auth'
-import mongoose from 'mongoose'
+import { supabaseAdmin } from '@/lib/supabase'
 
 // GET - List all articles (admin only)
 export async function GET(request: NextRequest) {
@@ -15,29 +13,32 @@ export async function GET(request: NextRequest) {
 
     const token = authHeader.substring(7)
     const decoded = await verifyToken(token)
-    
+
     if (!decoded || decoded.role !== 'admin') {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
     }
 
-    await connectDB()
+    const { data: articles, error } = await supabaseAdmin
+      .from('articles')
+      .select('id, title, slug, subheader, content, cover_image_url, tags, likes, views, comment_count, created_at, updated_at')
+      .order('created_at', { ascending: false })
 
-    const articles = await Article.find()
-      .sort({ created_at: -1 })
-      .lean()
+    if (error) {
+      throw error
+    }
 
     return NextResponse.json({
-      articles: articles.map(article => ({
-        id: (article._id as mongoose.Types.ObjectId).toString(),
+      articles: (articles || []).map(article => ({
+        id: article.id,
         title: article.title,
         slug: article.slug,
         subheader: article.subheader,
         content: article.content,
-        coverImageUrl: article.coverImageUrl,
+        coverImageUrl: article.cover_image_url,
         tags: article.tags,
         likes: article.likes,
         views: article.views,
-        commentCount: article.commentCount,
+        commentCount: article.comment_count,
         created_at: article.created_at,
         updated_at: article.updated_at
       }))
@@ -62,12 +63,10 @@ export async function POST(request: NextRequest) {
 
     const token = authHeader.substring(7)
     const decoded = await verifyToken(token)
-    
+
     if (!decoded || decoded.role !== 'admin') {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
     }
-
-    await connectDB()
 
     const body = await request.json()
     const { title, slug, subheader, content, coverImageUrl, tags } = body
@@ -81,7 +80,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if slug already exists
-    const existing = await Article.findOne({ slug })
+    const { data: existing } = await supabaseAdmin
+      .from('articles')
+      .select('id')
+      .eq('slug', slug)
+      .single()
+
     if (existing) {
       return NextResponse.json(
         { error: 'Article with this slug already exists' },
@@ -89,26 +93,32 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const article = new Article({
-      title,
-      slug,
-      subheader: subheader || '',
-      content,
-      coverImageUrl: coverImageUrl || '',
-      tags: tags || ''
-    })
+    const { data: article, error } = await supabaseAdmin
+      .from('articles')
+      .insert({
+        title,
+        slug,
+        subheader: subheader || '',
+        content,
+        cover_image_url: coverImageUrl || '',
+        tags: tags || ''
+      })
+      .select()
+      .single()
 
-    await article.save()
+    if (error) {
+      throw error
+    }
 
     return NextResponse.json({
       message: 'Article created successfully',
       article: {
-        id: article._id.toString(),
+        id: article.id,
         title: article.title,
         slug: article.slug,
         subheader: article.subheader,
         content: article.content,
-        coverImageUrl: article.coverImageUrl,
+        coverImageUrl: article.cover_image_url,
         tags: article.tags,
         created_at: article.created_at
       }
@@ -121,4 +131,3 @@ export async function POST(request: NextRequest) {
     )
   }
 }
-

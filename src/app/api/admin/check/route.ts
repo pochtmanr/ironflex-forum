@@ -1,12 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyToken } from '@/lib/auth';
-import dbConnect from '@/lib/mongodb';
-import User from '@/models/User';
+import { supabaseAdmin } from '@/lib/supabase';
 
 export async function GET(request: NextRequest) {
   try {
-    await dbConnect();
-
     // Verify authentication
     const authHeader = request.headers.get('authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -18,7 +15,7 @@ export async function GET(request: NextRequest) {
 
     const token = authHeader.substring(7);
     const userData = await verifyToken(token);
-    
+
     if (!userData || !userData.userId) {
       return NextResponse.json(
         { error: 'Invalid token' },
@@ -27,9 +24,13 @@ export async function GET(request: NextRequest) {
     }
 
     // Check if user is admin
-    const user = await User.findById(userData.userId);
-    
-    if (!user || !user.isAdmin) {
+    const { data: user, error } = await supabaseAdmin
+      .from('users')
+      .select('id, is_admin')
+      .eq('id', userData.userId)
+      .single();
+
+    if (error || !user || !user.is_admin) {
       return NextResponse.json(
         { error: 'Forbidden: Admin access required' },
         { status: 403 }
@@ -49,4 +50,3 @@ export async function GET(request: NextRequest) {
     );
   }
 }
-

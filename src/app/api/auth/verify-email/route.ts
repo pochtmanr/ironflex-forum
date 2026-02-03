@@ -1,15 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import connectDB from '@/lib/mongodb'
-import User from '@/models/User'
-import ResetToken from '@/models/ResetToken'
+import { supabaseAdmin } from '@/lib/supabase'
 import { verifyAccessToken } from '@/lib/auth'
 import { generateSecureToken, sendEmailVerificationEmail, sendWelcomeEmail } from '@/lib/email'
 
 // POST endpoint to send verification email
 export async function POST(request: NextRequest) {
   try {
-    await connectDB()
-
     // Get token from Authorization header
     const authHeader = request.headers.get('authorization')
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -20,7 +16,7 @@ export async function POST(request: NextRequest) {
     }
 
     const token = authHeader.substring(7)
-    const userPayload = await verifyAccessToken(token)
+    const userPayload = verifyAccessToken(token)
 
     if (!userPayload) {
       return NextResponse.json(
@@ -30,8 +26,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Get user
-    const user = await User.findById(userPayload.id)
-    if (!user) {
+    const { data: user, error } = await supabaseAdmin
+      .from('users')
+      .select('*')
+      .eq('id', userPayload.id)
+      .single()
+
+    if (error || !user) {
       return NextResponse.json(
         { error: 'User not found' },
         { status: 404 }
@@ -39,7 +40,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if already verified
-    if (user.isVerified) {
+    if (user.is_verified) {
       return NextResponse.json(
         { error: 'Email is already verified' },
         { status: 400 }
@@ -47,32 +48,34 @@ export async function POST(request: NextRequest) {
     }
 
     // Delete any existing verification tokens for this user
-    await ResetToken.deleteMany({
-      userId: user._id.toString(),
-      type: 'email_verification'
-    })
+    await supabaseAdmin
+      .from('reset_tokens')
+      .delete()
+      .eq('user_id', user.id)
+      .eq('type', 'email_verification')
 
     // Generate new verification token
     const verificationToken = generateSecureToken()
-    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
 
     // Save verification token
-    await ResetToken.create({
-      userId: user._id.toString(),
-      token: verificationToken,
-      type: 'email_verification',
-      expiresAt
-    })
+    await supabaseAdmin
+      .from('reset_tokens')
+      .insert({
+        user_id: user.id,
+        token: verificationToken,
+        type: 'email_verification',
+        expires_at: expiresAt
+      })
 
     // Send verification email
     const emailSent = await sendEmailVerificationEmail(
       user.email,
-      user.username || user.displayName || 'Пользователь',
+      user.username || user.display_name || 'Пользователь',
       verificationToken
     )
 
     if (!emailSent) {
-      console.error('Failed to send email verification')
       return NextResponse.json(
         { error: 'Failed to send verification email. Please try again later.' },
         { status: 500 }
@@ -95,8 +98,6 @@ export async function POST(request: NextRequest) {
 // GET endpoint to verify email with token
 export async function GET(request: NextRequest) {
   try {
-    await connectDB()
-
     const { searchParams } = new URL(request.url)
     const token = searchParams.get('token')
 
@@ -108,14 +109,16 @@ export async function GET(request: NextRequest) {
     }
 
     // Find verification token
-    const verificationToken = await ResetToken.findOne({
-      token,
-      type: 'email_verification',
-      used: false,
-      expiresAt: { $gt: new Date() }
-    })
+    const { data: verificationToken, error: tokenError } = await supabaseAdmin
+      .from('reset_tokens')
+      .select('*')
+      .eq('token', token)
+      .eq('type', 'email_verification')
+      .eq('used', false)
+      .gt('expires_at', new Date().toISOString())
+      .single()
 
-    if (!verificationToken) {
+    if (tokenError || !verificationToken) {
       return NextResponse.json(
         { error: 'Invalid or expired verification token' },
         { status: 400 }
@@ -123,8 +126,13 @@ export async function GET(request: NextRequest) {
     }
 
     // Get user
-    const user = await User.findById(verificationToken.userId)
-    if (!user) {
+    const { data: user, error: userError } = await supabaseAdmin
+      .from('users')
+      .select('*')
+      .eq('id', verificationToken.user_id)
+      .single()
+
+    if (userError || !user) {
       return NextResponse.json(
         { error: 'User not found' },
         { status: 404 }
@@ -132,10 +140,11 @@ export async function GET(request: NextRequest) {
     }
 
     // Check if already verified
-    if (user.isVerified) {
-      // Mark token as used
-      verificationToken.used = true
-      await verificationToken.save()
+    if (user.is_verified) {
+      await supabaseAdmin
+        .from('reset_tokens')
+        .update({ used: true })
+        .eq('id', verificationToken.id)
 
       return NextResponse.json({
         message: 'Email is already verified',
@@ -144,30 +153,34 @@ export async function GET(request: NextRequest) {
     }
 
     // Update user verification status
-    user.isVerified = true
-    await user.save()
+    await supabaseAdmin
+      .from('users')
+      .update({ is_verified: true })
+      .eq('id', user.id)
 
     // Mark token as used
-    verificationToken.used = true
-    await verificationToken.save()
+    await supabaseAdmin
+      .from('reset_tokens')
+      .update({ used: true })
+      .eq('id', verificationToken.id)
 
     // Send welcome email
     try {
       await sendWelcomeEmail(
         user.email,
-        user.username || user.displayName || 'Пользователь'
+        user.username || user.display_name || 'Пользователь'
       )
     } catch (emailError) {
       console.error('Failed to send welcome email:', emailError)
-      // Don't fail the verification if welcome email fails
     }
 
     // Delete all other verification tokens for this user
-    await ResetToken.deleteMany({
-      userId: user._id.toString(),
-      type: 'email_verification',
-      _id: { $ne: verificationToken._id }
-    })
+    await supabaseAdmin
+      .from('reset_tokens')
+      .delete()
+      .eq('user_id', user.id)
+      .eq('type', 'email_verification')
+      .neq('id', verificationToken.id)
 
     return NextResponse.json({
       message: 'Email has been verified successfully',
@@ -182,4 +195,3 @@ export async function GET(request: NextRequest) {
     )
   }
 }
-

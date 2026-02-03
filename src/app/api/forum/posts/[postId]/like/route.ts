@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import connectDB from '@/lib/mongodb';
 import { verifyAccessToken } from '@/lib/auth';
-import Post from '@/models/Post';
-import { processVote } from '@/services/likeService';
+import { supabaseAdmin } from '@/lib/supabase';
 
 export async function POST(
   request: NextRequest,
@@ -38,24 +36,96 @@ export async function POST(
       );
     }
 
-    await connectDB();
+    // Check if post exists
+    const { data: post, error: postError } = await supabaseAdmin
+      .from('posts')
+      .select('id, likes, dislikes')
+      .eq('id', postId)
+      .single();
 
-    // Process the vote using the like service
-    const result = await processVote(Post, postId, userPayload.id, likeType);
-
-    if (!result.success) {
+    if (postError || !post) {
       return NextResponse.json(
-        { error: result.message },
+        { error: 'Post not found' },
         { status: 404 }
       );
     }
 
+    // Check if user already voted
+    const { data: existingVote } = await supabaseAdmin
+      .from('post_votes')
+      .select('id, vote_type')
+      .eq('post_id', postId)
+      .eq('user_id', userPayload.id)
+      .single();
+
+    let likes = post.likes || 0;
+    let dislikes = post.dislikes || 0;
+    let userVote: string | null = null;
+    let message = '';
+
+    if (existingVote) {
+      if (existingVote.vote_type === likeType) {
+        // Remove the vote (toggle off)
+        await supabaseAdmin
+          .from('post_votes')
+          .delete()
+          .eq('id', existingVote.id);
+
+        if (likeType === 'like') {
+          likes = Math.max(0, likes - 1);
+        } else {
+          dislikes = Math.max(0, dislikes - 1);
+        }
+        userVote = null;
+        message = 'Vote removed';
+      } else {
+        // Change vote type
+        await supabaseAdmin
+          .from('post_votes')
+          .update({ vote_type: likeType })
+          .eq('id', existingVote.id);
+
+        if (likeType === 'like') {
+          likes += 1;
+          dislikes = Math.max(0, dislikes - 1);
+        } else {
+          dislikes += 1;
+          likes = Math.max(0, likes - 1);
+        }
+        userVote = likeType;
+        message = 'Vote changed';
+      }
+    } else {
+      // New vote
+      await supabaseAdmin
+        .from('post_votes')
+        .insert({
+          post_id: postId,
+          user_id: userPayload.id,
+          vote_type: likeType
+        });
+
+      if (likeType === 'like') {
+        likes += 1;
+      } else {
+        dislikes += 1;
+      }
+      userVote = likeType;
+      message = 'Vote added';
+    }
+
+    // Update post counts
+    await supabaseAdmin
+      .from('posts')
+      .update({ likes, dislikes })
+      .eq('id', postId);
+
     return NextResponse.json({
-      message: result.message,
+      message,
       likeType,
-      likes: result.likes,
-      dislikes: result.dislikes,
-      userVote: result.userVote
+      likes,
+      dislikes,
+      userVote
     });
 
   } catch (error) {

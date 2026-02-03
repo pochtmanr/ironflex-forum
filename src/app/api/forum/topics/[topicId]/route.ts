@@ -1,10 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import connectDB from '@/lib/mongodb';
 import { verifyAccessToken } from '@/lib/auth';
-import Topic from '@/models/Topic';
-import Post from '@/models/Post';
-import User from '@/models/User';
-import Category from '@/models/Category';
+import { supabaseAdmin } from '@/lib/supabase';
 
 export async function GET(
   request: NextRequest,
@@ -29,12 +25,14 @@ export async function GET(
       }
     }
 
-    await connectDB();
-
     // Find the topic
-    const topic = await Topic.findById(topicId).lean() as { _id: unknown; title: string; mediaLinks: string[]; userId: string; content: string; replyCount: number; views: number; likes: number; dislikes: number; likedBy?: string[]; dislikedBy?: string[]; createdAt: Date; lastPostAt: Date; isPinned: boolean; isLocked: boolean; categoryId: string } | null;
+    const { data: topic, error: topicError } = await supabaseAdmin
+      .from('topics')
+      .select('*')
+      .eq('id', topicId)
+      .single();
 
-    if (!topic) {
+    if (topicError || !topic) {
       return NextResponse.json(
         { error: 'Topic not found' },
         { status: 404 }
@@ -42,44 +40,64 @@ export async function GET(
     }
 
     // Get current user information for the topic author
-    const topicAuthor = await User.findById(topic.userId).select('username displayName email photoURL').lean() as { username: string; displayName: string; email: string; photoURL?: string } | null;
-    if (!topicAuthor) {
+    const { data: topicAuthor, error: authorError } = await supabaseAdmin
+      .from('users')
+      .select('username, display_name, email, photo_url')
+      .eq('id', topic.user_id)
+      .single();
+
+    if (authorError || !topicAuthor) {
       return NextResponse.json(
         { error: 'Topic author not found' },
         { status: 404 }
       );
     }
+
     console.log('Raw topic data:', {
-      id: String(topic._id),
+      id: topic.id,
       title: topic.title,
-      mediaLinks: topic.mediaLinks,
-      hasMediaLinks: !!topic.mediaLinks,
-      mediaLinksLength: topic.mediaLinks?.length || 0
+      mediaLinks: topic.media_links,
+      hasMediaLinks: !!topic.media_links,
+      mediaLinksLength: topic.media_links?.length || 0
     });
 
     // Get posts for this topic
-    const posts = await Post.find({ topicId: topicId })
-      .sort({ createdAt: 1 })
-      .skip(skip)
-      .limit(limit)
-      .lean();
+    const { data: posts } = await supabaseAdmin
+      .from('posts')
+      .select('*')
+      .eq('topic_id', topicId)
+      .order('created_at', { ascending: true })
+      .range(skip, skip + limit - 1);
 
     // Get unique user IDs from posts to fetch current usernames
-    const postUserIds = [...new Set(posts.map(post => String(post.userId)))];
-    const postAuthors = await User.find({ _id: { $in: postUserIds } })
-      .select('_id username displayName email photoURL')
-      .lean();
-    
-    // Create a map of userId to user data for quick lookup
-    const userMap = new Map(postAuthors.map(user => [String(user._id), user]));
+    const postUserIds = [...new Set((posts || []).map(post => post.user_id))];
+
+    let userMap = new Map<string, { username: string; display_name: string; email: string; photo_url: string | null }>();
+    if (postUserIds.length > 0) {
+      const { data: postAuthors } = await supabaseAdmin
+        .from('users')
+        .select('id, username, display_name, email, photo_url')
+        .in('id', postUserIds);
+
+      userMap = new Map((postAuthors || []).map(user => [user.id, user]));
+    }
 
     // Get total posts count for pagination
-    const totalPosts = await Post.countDocuments({ topicId: topicId });
-    const totalPages = Math.ceil(totalPosts / limit);
+    const { count: totalPosts } = await supabaseAdmin
+      .from('posts')
+      .select('*', { count: 'exact', head: true })
+      .eq('topic_id', topicId);
+
+    const totalPages = Math.ceil((totalPosts || 0) / limit);
 
     // Get category information
-    const category = await Category.findById(topic.categoryId).lean() as { name: string } | null;
-    if (!category) {
+    const { data: category, error: catError } = await supabaseAdmin
+      .from('categories')
+      .select('name')
+      .eq('id', topic.category_id)
+      .single();
+
+    if (catError || !category) {
       return NextResponse.json(
         { error: 'Category not found' },
         { status: 404 }
@@ -88,77 +106,93 @@ export async function GET(
 
     // Increment view count only on page 1 and when incrementView is true
     if (page === 1 && incrementView) {
-    await Topic.findByIdAndUpdate(topicId, { $inc: { views: 1 } });
+      await supabaseAdmin
+        .from('topics')
+        .update({ views: (topic.views || 0) + 1 })
+        .eq('id', topicId);
     }
 
     // Determine user's vote on this topic
     let userVote: 'like' | 'dislike' | null = null;
     if (currentUserId) {
-      if (topic.likedBy && topic.likedBy.includes(currentUserId)) {
-        userVote = 'like';
-      } else if (topic.dislikedBy && topic.dislikedBy.includes(currentUserId)) {
-        userVote = 'dislike';
+      const { data: vote } = await supabaseAdmin
+        .from('topic_votes')
+        .select('vote_type')
+        .eq('topic_id', topicId)
+        .eq('user_id', currentUserId)
+        .single();
+
+      if (vote) {
+        userVote = vote.vote_type as 'like' | 'dislike';
       }
     }
 
     // Format the response with current user data
     const formattedTopic = {
-      id: String(topic._id),
+      id: topic.id,
       title: topic.title,
       content: topic.content,
-      user_name: topicAuthor?.displayName || topicAuthor?.username || 'Unknown',
+      user_name: topicAuthor?.display_name || topicAuthor?.username || 'Unknown',
       user_email: topicAuthor?.email || '',
-      user_id: String(topic.userId) || '', // Ensure it's always a string
-      user_photo: topicAuthor?.photoURL || null,
-      category_id: topic.categoryId,
+      user_id: topic.user_id || '',
+      user_photo: topicAuthor?.photo_url || null,
+      category_id: topic.category_id,
       category_name: category?.name || 'Unknown Category',
-      reply_count: topic.replyCount || 0,
-      views: topic.views + 1, // Include the increment
+      reply_count: topic.reply_count || 0,
+      views: (topic.views || 0) + 1, // Include the increment
       likes: topic.likes || 0,
       dislikes: topic.dislikes || 0,
-      user_vote: userVote, // Add user's current vote
-      created_at: topic.createdAt?.toISOString() || new Date().toISOString(),
-      last_post_at: topic.lastPostAt?.toISOString() || new Date().toISOString(),
-      is_pinned: topic.isPinned || false,
-      is_locked: topic.isLocked || false,
-      media_links: topic.mediaLinks || [],
-      is_author: currentUserId ? String(topic.userId) === String(currentUserId) : false
+      user_vote: userVote,
+      created_at: topic.created_at,
+      last_post_at: topic.last_post_at,
+      is_pinned: topic.is_pinned || false,
+      is_locked: topic.is_locked || false,
+      media_links: topic.media_links || [],
+      is_author: currentUserId ? topic.user_id === currentUserId : false
     };
 
-    const formattedPosts = posts.map((post: any) => {
-      console.log('Post data:', { 
-        id: post._id, 
-        mediaLinks: post.mediaLinks,
-        hasMediaLinks: !!post.mediaLinks,
-        mediaLinksLength: post.mediaLinks?.length || 0
-      });
-      
-      // Get current user data for this post
-      const postUser = userMap.get(String(post.userId));
-      
-      // Determine user's vote on this post
-      let postUserVote: 'like' | 'dislike' | null = null;
-      if (currentUserId) {
-        if (post.likedBy && post.likedBy.includes(currentUserId)) {
-          postUserVote = 'like';
-        } else if (post.dislikedBy && post.dislikedBy.includes(currentUserId)) {
-          postUserVote = 'dislike';
-        }
+    // Determine user's votes on posts
+    let postVotesMap = new Map<string, string>();
+    if (currentUserId && posts && posts.length > 0) {
+      const postIds = posts.map(p => p.id);
+      const { data: postVotes } = await supabaseAdmin
+        .from('post_votes')
+        .select('post_id, vote_type')
+        .in('post_id', postIds)
+        .eq('user_id', currentUserId);
+
+      if (postVotes) {
+        postVotesMap = new Map(postVotes.map(v => [v.post_id, v.vote_type]));
       }
-      
+    }
+
+    const formattedPosts = (posts || []).map((post) => {
+      console.log('Post data:', {
+        id: post.id,
+        mediaLinks: post.media_links,
+        hasMediaLinks: !!post.media_links,
+        mediaLinksLength: post.media_links?.length || 0
+      });
+
+      // Get current user data for this post
+      const postUser = userMap.get(post.user_id);
+
+      // Determine user's vote on this post
+      const postUserVote = currentUserId ? (postVotesMap.get(post.id) as 'like' | 'dislike' | undefined) || null : null;
+
       return {
-        id: String(post._id),
+        id: post.id,
         content: post.content,
-        user_name: postUser?.displayName || postUser?.username || 'Unknown',
+        user_name: postUser?.display_name || postUser?.username || 'Unknown',
         user_email: postUser?.email || '',
-        user_id: String(post.userId) || '', // Ensure it's always a string
-        user_photo: postUser?.photoURL || null,
-        created_at: post.createdAt,
+        user_id: post.user_id || '',
+        user_photo: postUser?.photo_url || null,
+        created_at: post.created_at,
         likes: post.likes || 0,
         dislikes: post.dislikes || 0,
-        user_vote: postUserVote, // Add user's current vote
-        media_links: post.mediaLinks || [],
-        is_author: currentUserId ? String(post.userId) === String(currentUserId) : false
+        user_vote: postUserVote,
+        media_links: post.media_links || [],
+        is_author: currentUserId ? post.user_id === currentUserId : false
       };
     });
 
@@ -168,7 +202,7 @@ export async function GET(
       pagination: {
         page,
         limit,
-        total: totalPosts,
+        total: totalPosts || 0,
         pages: totalPages
       }
     });
@@ -217,11 +251,14 @@ export async function POST(
       );
     }
 
-    await connectDB();
-
     // Get user information
-    const user = await User.findById(userPayload.id) as { _id: unknown; username: string; email: string } | null;
-    if (!user) {
+    const { data: user, error: userError } = await supabaseAdmin
+      .from('users')
+      .select('id, username, email')
+      .eq('id', userPayload.id)
+      .single();
+
+    if (userError || !user) {
       return NextResponse.json(
         { error: 'User not found' },
         { status: 404 }
@@ -229,8 +266,13 @@ export async function POST(
     }
 
     // Verify topic exists
-    const topic = await Topic.findById(topicId) as { _id: unknown; is_locked: boolean; userId: string } | null;
-    if (!topic) {
+    const { data: topic, error: topicError } = await supabaseAdmin
+      .from('topics')
+      .select('id, is_locked, user_id')
+      .eq('id', topicId)
+      .single();
+
+    if (topicError || !topic) {
       return NextResponse.json(
         { error: 'Topic not found' },
         { status: 404 }
@@ -246,42 +288,46 @@ export async function POST(
     }
 
     // Create new post
-    const post = new Post({
-      topicId: topicId,
-      userId: userPayload.id,
-      userName: user.username,
-      userEmail: user.email,
-      content: content.trim(),
-      mediaLinks: mediaLinks || []
-    });
+    const { data: createdPost, error: postError } = await supabaseAdmin
+      .from('posts')
+      .insert({
+        topic_id: topicId,
+        user_id: userPayload.id,
+        user_name: user.username,
+        user_email: user.email,
+        content: content.trim(),
+        media_links: mediaLinks || []
+      })
+      .select()
+      .single();
 
-    await post.save();
+    if (postError) throw postError;
 
     // Update topic's last_post_at and increment reply_count
-    await Topic.findByIdAndUpdate(topicId, {
-      last_post_at: new Date(),
-      $inc: { reply_count: 1 }
-    });
+    const { data: currentTopic } = await supabaseAdmin
+      .from('topics')
+      .select('reply_count')
+      .eq('id', topicId)
+      .single();
 
-    // Get the created post
-    const createdPost = await Post.findById(post._id).lean() as { _id: unknown; content: string; userName: string; userEmail: string; userId: string; createdAt: Date; likes: number; dislikes: number; mediaLinks: string[] } | null;
-    if (!createdPost) {
-      return NextResponse.json(
-        { error: 'Post not found' },
-        { status: 404 }
-      );
-    }
+    await supabaseAdmin
+      .from('topics')
+      .update({
+        last_post_at: new Date().toISOString(),
+        reply_count: (currentTopic?.reply_count || 0) + 1
+      })
+      .eq('id', topicId);
 
     const formattedPost = {
-      id: String(createdPost._id),
+      id: createdPost.id,
       content: createdPost.content,
-      user_name: createdPost.userName || 'Unknown',
-      user_email: createdPost.userEmail || '',
-      user_id: createdPost.userId || '',
-      created_at: createdPost.createdAt?.toISOString() || new Date().toISOString(),
+      user_name: createdPost.user_name || 'Unknown',
+      user_email: createdPost.user_email || '',
+      user_id: createdPost.user_id || '',
+      created_at: createdPost.created_at,
       likes: createdPost.likes || 0,
       dislikes: createdPost.dislikes || 0,
-      media_links: createdPost.mediaLinks || [],
+      media_links: createdPost.media_links || [],
       is_author: true
     };
 
@@ -324,11 +370,14 @@ export async function DELETE(
       );
     }
 
-    await connectDB();
-
     // Get user information
-    const user = await User.findById(userPayload.id);
-    if (!user) {
+    const { data: user, error: userError } = await supabaseAdmin
+      .from('users')
+      .select('id')
+      .eq('id', userPayload.id)
+      .single();
+
+    if (userError || !user) {
       return NextResponse.json(
         { error: 'User not found' },
         { status: 404 }
@@ -336,8 +385,13 @@ export async function DELETE(
     }
 
     // Find the topic
-    const topic = await Topic.findById(topicId);
-    if (!topic) {
+    const { data: topic, error: topicError } = await supabaseAdmin
+      .from('topics')
+      .select('id, user_id, category_id')
+      .eq('id', topicId)
+      .single();
+
+    if (topicError || !topic) {
       return NextResponse.json(
         { error: 'Topic not found' },
         { status: 404 }
@@ -345,7 +399,7 @@ export async function DELETE(
     }
 
     // Check if user is the author of the topic
-    if (topic.userId !== userPayload.id) {
+    if (topic.user_id !== userPayload.id) {
       return NextResponse.json(
         { error: 'You can only delete your own topics' },
         { status: 403 }
@@ -353,15 +407,22 @@ export async function DELETE(
     }
 
     // Delete all posts in this topic
-    await Post.deleteMany({ topicId: topicId });
+    await supabaseAdmin
+      .from('posts')
+      .delete()
+      .eq('topic_id', topicId);
+
+    // Delete topic votes
+    await supabaseAdmin
+      .from('topic_votes')
+      .delete()
+      .eq('topic_id', topicId);
 
     // Delete the topic
-    await Topic.findByIdAndDelete(topicId);
-
-    // Update category stats (decrement topic count)
-    await Category.findByIdAndUpdate(topic.categoryId, {
-      $inc: { topicCount: -1 }
-    });
+    await supabaseAdmin
+      .from('topics')
+      .delete()
+      .eq('id', topicId);
 
     return NextResponse.json({
       message: 'Topic deleted successfully'

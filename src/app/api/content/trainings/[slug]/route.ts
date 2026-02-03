@@ -1,23 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
-import dbConnect from '@/lib/mongodb';
-import Training from '@/models/Training';
-import Comment from '@/models/Comment';
-import User from '@/models/User';
+import { supabaseAdmin } from '@/lib/supabase';
 
 export async function GET(
   request: NextRequest,
   context: { params: Promise<{ slug: string }> }
 ) {
   try {
-    await dbConnect();
-
     const params = await context.params;
     const slug = params.slug;
-    
+
     // Find training by slug
-    const training = await Training.findOne({ slug });
-    
-    if (!training) {
+    const { data: training, error: trainingError } = await supabaseAdmin
+      .from('trainings')
+      .select('*')
+      .eq('slug', slug)
+      .single();
+
+    if (trainingError || !training) {
       return NextResponse.json(
         { error: 'Training not found' },
         { status: 404 }
@@ -25,26 +24,39 @@ export async function GET(
     }
 
     // Increment view count
-    training.views = (training.views || 0) + 1;
-    await training.save();
+    await supabaseAdmin
+      .from('trainings')
+      .update({ views: (training.views || 0) + 1 })
+      .eq('id', training.id);
 
     // Fetch comments for this training
-    const comments = await Comment.find({
-      contentType: 'training',
-      contentId: training._id.toString()
-    }).sort({ created_at: -1 });
+    const { data: comments, error: commentsError } = await supabaseAdmin
+      .from('comments')
+      .select('*')
+      .eq('content_type', 'training')
+      .eq('content_id', training.id)
+      .order('created_at', { ascending: false });
+
+    if (commentsError) {
+      console.error('Error fetching comments:', commentsError);
+    }
 
     // Fetch user details for each comment
     const commentsWithUsers = await Promise.all(
-      comments.map(async (comment) => {
-        const user = await User.findById(comment.userId);
+      (comments || []).map(async (comment) => {
+        const { data: user } = await supabaseAdmin
+          .from('users')
+          .select('id, display_name, username, email, photo_url')
+          .eq('id', comment.user_id)
+          .single();
+
         return {
-          id: (comment as any)._id.toString(),
+          id: comment.id,
           content: comment.content,
-          user_name: user?.displayName || user?.username || 'Anonymous',
+          user_name: user?.display_name || user?.username || 'Anonymous',
           user_email: user?.email || '',
-          user_id: comment.userId,
-          user_photo: user?.photoURL || null,
+          user_id: comment.user_id,
+          user_photo: user?.photo_url || null,
           created_at: comment.created_at,
           likes: comment.likes || 0,
           is_author: false
@@ -54,17 +66,17 @@ export async function GET(
 
     return NextResponse.json({
       training: {
-        id: training._id.toString(),
+        id: training.id,
         title: training.title,
         slug: training.slug,
         subheader: training.subheader,
         content: training.content,
-        coverImageUrl: training.coverImageUrl,
+        coverImageUrl: training.cover_image_url,
         level: training.level,
-        durationMinutes: training.durationMinutes,
-        authorName: training.authorName,
+        durationMinutes: training.duration_minutes,
+        authorName: training.author_name,
         likes: training.likes || 0,
-        views: training.views || 0,
+        views: (training.views || 0) + 1,
         created_at: training.created_at,
         updated_at: training.updated_at
       },
@@ -79,4 +91,3 @@ export async function GET(
     );
   }
 }
-

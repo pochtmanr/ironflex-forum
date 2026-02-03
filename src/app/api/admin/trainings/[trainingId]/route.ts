@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import connectDB from '@/lib/mongodb'
-import Training from '@/models/Training'
 import { verifyToken } from '@/lib/auth'
+import { supabaseAdmin } from '@/lib/supabase'
 
 // PUT - Update training (admin only)
 export async function PUT(
@@ -17,26 +16,36 @@ export async function PUT(
 
     const token = authHeader.substring(7)
     const decoded = await verifyToken(token)
-    
+
     if (!decoded || decoded.role !== 'admin') {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
     }
-
-    await connectDB()
 
     const body = await request.json()
     const { title, slug, subheader, content, coverImageUrl, level, durationMinutes, authorName } = body
 
     const { trainingId } = await params
-    const training = await Training.findById(trainingId)
-    if (!training) {
+
+    // Check if training exists
+    const { data: existingTraining, error: fetchError } = await supabaseAdmin
+      .from('trainings')
+      .select('id, slug')
+      .eq('id', trainingId)
+      .single()
+
+    if (fetchError || !existingTraining) {
       return NextResponse.json({ error: 'Training not found' }, { status: 404 })
     }
 
     // Check if slug is being changed and if it conflicts
-    if (slug && slug !== training.slug) {
-      const existing = await Training.findOne({ slug })
-      if (existing) {
+    if (slug && slug !== existingTraining.slug) {
+      const { data: slugConflict } = await supabaseAdmin
+        .from('trainings')
+        .select('id')
+        .eq('slug', slug)
+        .single()
+
+      if (slugConflict) {
         return NextResponse.json(
           { error: 'Training with this slug already exists' },
           { status: 400 }
@@ -44,30 +53,40 @@ export async function PUT(
       }
     }
 
-    // Update fields
-    if (title !== undefined) training.title = title
-    if (slug !== undefined) training.slug = slug
-    if (subheader !== undefined) training.subheader = subheader
-    if (content !== undefined) training.content = content
-    if (coverImageUrl !== undefined) training.coverImageUrl = coverImageUrl
-    if (level !== undefined) training.level = level
-    if (durationMinutes !== undefined) training.durationMinutes = durationMinutes
-    if (authorName !== undefined) training.authorName = authorName
+    // Build update object with only provided fields
+    const updateData: Record<string, any> = {}
+    if (title !== undefined) updateData.title = title
+    if (slug !== undefined) updateData.slug = slug
+    if (subheader !== undefined) updateData.subheader = subheader
+    if (content !== undefined) updateData.content = content
+    if (coverImageUrl !== undefined) updateData.cover_image_url = coverImageUrl
+    if (level !== undefined) updateData.level = level
+    if (durationMinutes !== undefined) updateData.duration_minutes = durationMinutes
+    if (authorName !== undefined) updateData.author_name = authorName
 
-    await training.save()
+    const { data: training, error } = await supabaseAdmin
+      .from('trainings')
+      .update(updateData)
+      .eq('id', trainingId)
+      .select()
+      .single()
+
+    if (error) {
+      throw error
+    }
 
     return NextResponse.json({
       message: 'Training updated successfully',
       training: {
-        id: training._id.toString(),
+        id: training.id,
         title: training.title,
         slug: training.slug,
         subheader: training.subheader,
         content: training.content,
-        coverImageUrl: training.coverImageUrl,
+        coverImageUrl: training.cover_image_url,
         level: training.level,
-        durationMinutes: training.durationMinutes,
-        authorName: training.authorName,
+        durationMinutes: training.duration_minutes,
+        authorName: training.author_name,
         updated_at: training.updated_at
       }
     })
@@ -94,17 +113,31 @@ export async function DELETE(
 
     const token = authHeader.substring(7)
     const decoded = await verifyToken(token)
-    
+
     if (!decoded || decoded.role !== 'admin') {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
     }
 
-    await connectDB()
-
     const { trainingId } = await params
-    const training = await Training.findByIdAndDelete(trainingId)
-    if (!training) {
+
+    // Check if training exists before deleting
+    const { data: training, error: fetchError } = await supabaseAdmin
+      .from('trainings')
+      .select('id')
+      .eq('id', trainingId)
+      .single()
+
+    if (fetchError || !training) {
       return NextResponse.json({ error: 'Training not found' }, { status: 404 })
+    }
+
+    const { error } = await supabaseAdmin
+      .from('trainings')
+      .delete()
+      .eq('id', trainingId)
+
+    if (error) {
+      throw error
     }
 
     return NextResponse.json({
@@ -118,4 +151,3 @@ export async function DELETE(
     )
   }
 }
-

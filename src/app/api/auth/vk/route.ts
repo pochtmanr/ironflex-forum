@@ -1,22 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
-import connectDB from '@/lib/mongodb';
-import User from '@/models/User';
+import { supabaseAdmin } from '@/lib/supabase';
 import { generateTokens } from '@/lib/auth';
 
 const VK_APP_ID = process.env.VK_APP_ID || '54219432';
 const VK_SECRET_KEY = process.env.VK_SECRET_KEY || 'qN5oY1IJe9uUFsxxRTil';
 const VK_SERVICE_KEY = process.env.VK_SERVICE_KEY || 'e60b849ae60b849ae60b849a0ee530d632ee60be60b849a8eedd4c410c10ed625908ed1';
-// VK requires exact redirect URL match - no trailing slash
 const VK_REDIRECT_URI = process.env.NEXT_PUBLIC_SITE_URL || 'https://tarnovsky.ru';
+
+// Suppress unused variable warnings for VK config used in commented-out code
+void VK_APP_ID; void VK_SECRET_KEY; void VK_SERVICE_KEY; void VK_REDIRECT_URI;
 
 export async function POST(request: NextRequest) {
   try {
-    await connectDB();
-
     const body = await request.json();
     const { code, deviceId, accessToken: vkAccessToken } = body;
-
-    console.log('VK auth request:', { code, deviceId, hasAccessToken: !!vkAccessToken });
 
     let accessToken = vkAccessToken;
     let userId = null;
@@ -24,34 +21,11 @@ export async function POST(request: NextRequest) {
     // If we have code and deviceId, exchange them for an access token
     if (code && deviceId && !accessToken) {
       try {
-        // VK ID SDK handles the code exchange on the client side
-        // We should receive the access_token directly from the client
-        // If we're here, something went wrong - return error
         console.error('VK auth: received code instead of access_token - client should exchange code');
         return NextResponse.json(
           { error: 'VK authentication incomplete - client should exchange code for token' },
           { status: 400 }
         );
-        
-        /* 
-        // Note: VK ID SDK uses PKCE and exchanges the code on the client side
-        // The client should send us the access_token directly after exchanging the code
-        // Server-side code exchange requires code_verifier which is generated on client
-        const tokenResponse = await fetch('https://id.vk.com/oauth2/auth', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-          },
-          body: new URLSearchParams({
-            grant_type: 'authorization_code',
-            code: code,
-            device_id: deviceId,
-            redirect_uri: VK_REDIRECT_URI,
-            client_id: VK_APP_ID,
-            // code_verifier is required but we don't have it server-side
-          }),
-        });
-        */
       } catch (error) {
         console.error('Error handling VK code:', error);
         return NextResponse.json(
@@ -83,7 +57,7 @@ export async function POST(request: NextRequest) {
       }
 
       const userInfoData = await userInfoResponse.json();
-      
+
       if (userInfoData.error) {
         console.error('VK API error:', userInfoData.error);
         return NextResponse.json(
@@ -95,61 +69,80 @@ export async function POST(request: NextRequest) {
       const vkUser = userInfoData.response[0];
       const vkUserId = userId || vkUser.id.toString();
 
-      console.log('VK user info:', vkUser);
-
       // Find or create user in our database
-      let user = await User.findOne({ vkId: vkUserId });
+      const { data: existingUser } = await supabaseAdmin
+        .from('users')
+        .select('*')
+        .eq('vk_id', vkUserId)
+        .single();
 
-      if (!user) {
-        // Try to find by email if available
-        // Note: VK doesn't always provide email without special permissions
+      let user;
+
+      if (!existingUser) {
         // Create new user
         const username = `vk_${vkUserId}_${Math.random().toString(36).substr(2, 5)}`;
         const displayName = `${vkUser.first_name} ${vkUser.last_name}`.trim();
 
-        user = await User.create({
-          email: `vk_${vkUserId}@vk.placeholder.com`, // VK doesn't always provide email
-          username,
-          displayName,
-          photoURL: vkUser.photo_200 || null,
-          city: vkUser.city?.title || null,
-          country: vkUser.country?.title || null,
-          vkId: vkUserId,
-          isVerified: true, // VK users are considered verified
-          isAdmin: false,
-          isActive: true,
-        });
+        const { data: newUser, error: insertError } = await supabaseAdmin
+          .from('users')
+          .insert({
+            email: `vk_${vkUserId}@vk.placeholder.com`,
+            username,
+            display_name: displayName,
+            photo_url: vkUser.photo_200 || null,
+            city: vkUser.city?.title || null,
+            country: vkUser.country?.title || null,
+            vk_id: vkUserId,
+            is_verified: true,
+            is_admin: false,
+            is_active: true,
+          })
+          .select()
+          .single();
 
-        console.log('Created new VK user:', user._id);
+        if (insertError || !newUser) {
+          console.error('VK user creation error:', insertError);
+          return NextResponse.json(
+            { error: 'Failed to create VK user' },
+            { status: 500 }
+          );
+        }
+
+        user = newUser;
       } else {
         // Update last login
-        user.lastLogin = new Date();
-        await user.save();
-        console.log('Existing VK user logged in:', user._id);
+        await supabaseAdmin
+          .from('users')
+          .update({ last_login: new Date().toISOString() })
+          .eq('id', existingUser.id);
+
+        user = existingUser;
       }
 
       // Generate JWT tokens
       const tokens = generateTokens({
-        id: user._id.toString(),
+        id: user.id,
         email: user.email,
         username: user.username,
-        isAdmin: user.isAdmin,
+        isAdmin: user.is_admin,
       });
 
       // Store refresh token in database
-      user.refreshToken = tokens.refreshToken;
-      await user.save();
+      await supabaseAdmin
+        .from('users')
+        .update({ refresh_token: tokens.refreshToken })
+        .eq('id', user.id);
 
       return NextResponse.json({
         accessToken: tokens.accessToken,
         refreshToken: tokens.refreshToken,
         user: {
-          id: user._id.toString(),
+          id: user.id,
           email: user.email,
           username: user.username,
-          displayName: user.displayName,
-          photoURL: user.photoURL,
-          isAdmin: user.isAdmin,
+          displayName: user.display_name,
+          photoURL: user.photo_url,
+          isAdmin: user.is_admin,
         },
       });
     } catch (error) {
@@ -167,4 +160,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-

@@ -1,12 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import connectDB from '@/lib/mongodb'
-import User from '@/models/User'
+import { supabaseAdmin } from '@/lib/supabase'
 import { verifyAccessToken, verifyPassword, hashPassword } from '@/lib/auth'
 
 export async function POST(request: NextRequest) {
   try {
-    await connectDB()
-    
     // Verify authentication
     const authHeader = request.headers.get('authorization')
     if (!authHeader?.startsWith('Bearer ')) {
@@ -19,14 +16,11 @@ export async function POST(request: NextRequest) {
     const token = authHeader.substring(7)
     const userPayload = verifyAccessToken(token)
     if (!userPayload) {
-      console.log('Change password: Token verification failed')
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
       )
     }
-    
-    console.log('Change password: Token verified for user:', userPayload.id)
 
     const { currentPassword, newPassword } = await request.json()
 
@@ -53,8 +47,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Find current user
-    const user = await User.findById(userPayload.id)
-    if (!user) {
+    const { data: user, error } = await supabaseAdmin
+      .from('users')
+      .select('id, password_hash')
+      .eq('id', userPayload.id)
+      .single()
+
+    if (error || !user) {
       return NextResponse.json(
         { error: 'User not found' },
         { status: 404 }
@@ -62,7 +61,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if user has a password (not OAuth only)
-    if (!user.passwordHash) {
+    if (!user.password_hash) {
       return NextResponse.json(
         { error: 'This account uses social login. Cannot change password.' },
         { status: 400 }
@@ -70,7 +69,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify current password
-    const isValidPassword = await verifyPassword(currentPassword, user.passwordHash)
+    const isValidPassword = await verifyPassword(currentPassword, user.password_hash)
     if (!isValidPassword) {
       return NextResponse.json(
         { error: 'Current password is incorrect' },
@@ -82,10 +81,10 @@ export async function POST(request: NextRequest) {
     const newPasswordHash = await hashPassword(newPassword)
 
     // Update user password
-    await User.findByIdAndUpdate(user._id, {
-      passwordHash: newPasswordHash,
-      updatedAt: new Date()
-    })
+    await supabaseAdmin
+      .from('users')
+      .update({ password_hash: newPasswordHash })
+      .eq('id', user.id)
 
     return NextResponse.json({
       message: 'Password has been changed successfully'

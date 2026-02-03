@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyToken } from '@/lib/auth';
-import connectDB from '@/lib/mongodb';
-import User from '@/models/User';
-import FlaggedPost from '@/models/FlaggedPost';
+import { supabaseAdmin } from '@/lib/supabase';
 
 export async function PATCH(
   request: NextRequest,
@@ -11,8 +9,6 @@ export async function PATCH(
   try {
     const { flagId } = await params;
     const { status } = await request.json();
-
-    await connectDB();
 
     // Verify authentication
     const authHeader = request.headers.get('authorization');
@@ -25,7 +21,7 @@ export async function PATCH(
 
     const token = authHeader.substring(7);
     const userData = await verifyToken(token);
-    
+
     if (!userData || !userData.userId) {
       return NextResponse.json(
         { error: 'Invalid token' },
@@ -34,9 +30,13 @@ export async function PATCH(
     }
 
     // Check if user is admin
-    const user = await User.findById(userData.userId);
-    
-    if (!user || !user.isAdmin) {
+    const { data: user, error: userError } = await supabaseAdmin
+      .from('users')
+      .select('id, is_admin')
+      .eq('id', userData.userId)
+      .single();
+
+    if (userError || !user || !user.is_admin) {
       return NextResponse.json(
         { error: 'Forbidden: Admin access required' },
         { status: 403 }
@@ -52,17 +52,18 @@ export async function PATCH(
     }
 
     // Update flagged post
-    const flaggedPost = await FlaggedPost.findByIdAndUpdate(
-      flagId,
-      {
+    const { data: flaggedPost, error } = await supabaseAdmin
+      .from('flagged_posts')
+      .update({
         status,
-        reviewedAt: new Date(),
-        reviewedBy: userData.userId
-      },
-      { new: true }
-    );
+        reviewed_at: new Date().toISOString(),
+        reviewed_by: userData.userId
+      })
+      .eq('id', flagId)
+      .select()
+      .single();
 
-    if (!flaggedPost) {
+    if (error || !flaggedPost) {
       return NextResponse.json(
         { error: 'Flagged post not found' },
         { status: 404 }
@@ -82,4 +83,3 @@ export async function PATCH(
     );
   }
 }
-

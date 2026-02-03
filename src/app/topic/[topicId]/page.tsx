@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
@@ -67,7 +67,7 @@ const TopicViewPage: React.FC = () => {
   const [postVotes, setPostVotes] = useState<Record<string, 'like' | 'dislike' | null>>({});
   
   // Image lightbox
-  const [lightboxImage, setLightboxImage] = useState<string | null>(null);
+  const [lightboxState, setLightboxState] = useState<{ images: string[]; index: number } | null>(null);
   
   // Edit modals
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -83,6 +83,31 @@ const TopicViewPage: React.FC = () => {
   // Track if we've already counted a view for this topic in this session
   // Use ref to persist across React Strict Mode double renders
   const viewCountedRef = useRef<string | null>(null);
+
+  // Collect all images from topic + posts for lightbox gallery navigation
+  const handleImageClick = (clickedSrc: string) => {
+    const allImages: string[] = [];
+    const isImg = (link: string) => /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(link.split('/').pop() || '');
+
+    // Topic media images
+    if (topic?.media_links) {
+      topic.media_links.filter(isImg).forEach(l => allImages.push(l));
+    }
+    // Post media images
+    posts.forEach(post => {
+      if (post.media_links) {
+        post.media_links.filter(isImg).forEach(l => allImages.push(l));
+      }
+    });
+
+    // Also include the clicked src if it's an inline markdown image not in media_links
+    if (!allImages.includes(clickedSrc)) {
+      allImages.push(clickedSrc);
+    }
+
+    const index = allImages.indexOf(clickedSrc);
+    setLightboxState({ images: allImages, index: Math.max(0, index) });
+  };
 
   useEffect(() => {
     if (topicId) {
@@ -520,9 +545,9 @@ const TopicViewPage: React.FC = () => {
   };
 
 
-  const handleSubmitReply = async (e: React.FormEvent) => {
+  const handleSubmitReply = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!replyContent.trim()) {
       setError('Введите текст ответа');
       return;
@@ -543,31 +568,31 @@ const TopicViewPage: React.FC = () => {
     } finally {
       setSubmittingReply(false);
     }
-  };
+  }, [replyContent, topicId]);
 
   // Handle image upload for RichTextEditor
-  const handleEditorImageUpload = async (file: File): Promise<string> => {
+  const handleEditorImageUpload = useCallback(async (file: File): Promise<string> => {
     try {
       const formData = new FormData();
       formData.append('file', file);
-      
+
       const response = await fetch('/api/upload', {
         method: 'POST',
         body: formData,
       });
-      
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.error || 'Upload failed');
       }
-      
+
       const data = await response.json();
       const fileUrl = data.url || data.file_url;
-      
+
       if (!fileUrl) {
         throw new Error('No file URL returned from upload');
       }
-      
+
       // Return the full URL - the image will be embedded in markdown content
       return fileUrl;
     } catch (error) {
@@ -576,7 +601,7 @@ const TopicViewPage: React.FC = () => {
       setError(`Ошибка загрузки изображения: ${errorMessage}`);
       throw error;
     }
-  };
+  }, []);
 
   const formatDate = (dateString: string) => {
     if (!dateString) return 'Неизвестная дата';
@@ -633,9 +658,84 @@ const TopicViewPage: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="max-w-7xl mx-auto px-4 py-8 min-h-screen">
-        <div className="text-center">
-          <div className="text-gray-500 mt-10">Загрузка темы...</div>
+      <div className="mx-auto px-2 sm:px-4 py-4 sm:py-4 max-w-7xl min-h-screen">
+        {/* Breadcrumb skeleton */}
+        <nav className="mb-4 sm:mb-4">
+          <div className="flex items-center space-x-2">
+            <div className="h-4 w-12 bg-gray-200 rounded animate-pulse" />
+            <span className="text-gray-400">/</span>
+            <div className="h-4 w-24 bg-gray-200 rounded animate-pulse" />
+            <span className="text-gray-400">/</span>
+            <div className="h-4 w-40 bg-gray-200 rounded animate-pulse" />
+          </div>
+        </nav>
+
+        {/* Topic Header skeleton */}
+        <div className="bg-white border-2 border-gray-200/50 mb-4 rounded-sm">
+          <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-full bg-gray-200 animate-pulse flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <div className="h-4 w-28 bg-gray-200 rounded animate-pulse mb-2" />
+                <div className="flex items-center gap-3">
+                  <div className="h-3 w-24 bg-gray-100 rounded animate-pulse" />
+                  <div className="h-3 w-10 bg-gray-100 rounded animate-pulse" />
+                  <div className="h-3 w-10 bg-gray-100 rounded animate-pulse" />
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="p-4">
+            <div className="h-6 w-2/3 bg-gray-200 rounded animate-pulse mb-4" />
+            <div className="space-y-2">
+              <div className="h-4 w-full bg-gray-100 rounded animate-pulse" />
+              <div className="h-4 w-full bg-gray-100 rounded animate-pulse" />
+              <div className="h-4 w-4/5 bg-gray-100 rounded animate-pulse" />
+              <div className="h-4 w-3/5 bg-gray-100 rounded animate-pulse" />
+            </div>
+            <div className="mt-10 pt-2 border-t border-gray-200">
+              <div className="flex gap-2">
+                <div className="h-8 w-16 bg-gray-100 rounded animate-pulse" />
+                <div className="h-8 w-16 bg-gray-100 rounded animate-pulse" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Comments header skeleton */}
+        <div className="flex items-center justify-between mb-2 gap-4">
+          <div className="h-4 w-32 bg-gray-200 rounded animate-pulse" />
+          <div className="h-7 w-36 bg-gray-100 rounded animate-pulse" />
+        </div>
+
+        {/* Post items skeleton */}
+        <div className="space-y-4 mb-4 sm:mb-6">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="bg-white border border-gray-200 rounded-sm">
+              <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-gray-200 animate-pulse flex-shrink-0" />
+                  <div className="flex-1">
+                    <div className="h-4 w-24 bg-gray-200 rounded animate-pulse mb-1" />
+                    <div className="h-3 w-20 bg-gray-100 rounded animate-pulse" />
+                  </div>
+                </div>
+              </div>
+              <div className="p-4">
+                <div className="space-y-2">
+                  <div className="h-3 w-full bg-gray-100 rounded animate-pulse" />
+                  <div className="h-3 w-5/6 bg-gray-100 rounded animate-pulse" />
+                  <div className="h-3 w-2/3 bg-gray-100 rounded animate-pulse" />
+                </div>
+                <div className="mt-4 pt-2 border-t border-gray-200">
+                  <div className="flex gap-2">
+                    <div className="h-7 w-14 bg-gray-100 rounded animate-pulse" />
+                    <div className="h-7 w-14 bg-gray-100 rounded animate-pulse" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     );
@@ -696,7 +796,7 @@ const TopicViewPage: React.FC = () => {
         onEditTopic={handleEditTopic}
         formatDate={formatDate}
         currentUser={currentUser}
-        onImageClick={setLightboxImage}
+        onImageClick={handleImageClick}
         canEdit={canEditTopic(topic.created_at)}
         remainingEditTime={getRemainingEditTime(topic.created_at)}
       />
@@ -741,7 +841,7 @@ const TopicViewPage: React.FC = () => {
         isTopicAuthor={topic.is_author}
         canEditPost={canEditTopic}
         getRemainingEditTime={getRemainingEditTime}
-        onImageClick={setLightboxImage}
+        onImageClick={handleImageClick}
       />
 
       {/* Reply Form */}
@@ -788,11 +888,12 @@ const TopicViewPage: React.FC = () => {
       )}
 
       {/* Image Lightbox */}
-      {lightboxImage && (
+      {lightboxState && (
         <ImageLightbox
-          src={lightboxImage}
+          images={lightboxState.images}
+          initialIndex={lightboxState.index}
           alt="Full screen image"
-          onClose={() => setLightboxImage(null)}
+          onClose={() => setLightboxState(null)}
         />
       )}
 

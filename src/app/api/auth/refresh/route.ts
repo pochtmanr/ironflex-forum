@@ -1,12 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import connectDB from '@/lib/mongodb'
-import User from '@/models/User'
+import { supabaseAdmin } from '@/lib/supabase'
 import { verifyRefreshToken, generateTokens } from '@/lib/auth'
 
 export async function POST(request: NextRequest) {
   try {
-    await connectDB()
-    
     const { refreshToken } = await request.json()
 
     // Validation
@@ -27,8 +24,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Find user
-    const user = await User.findById(payload.id).select('-passwordHash')
-    if (!user || !user.isActive) {
+    const { data: user, error } = await supabaseAdmin
+      .from('users')
+      .select('id, email, username, display_name, photo_url, is_admin, is_active')
+      .eq('id', payload.id)
+      .single()
+
+    if (error || !user || !user.is_active) {
       return NextResponse.json(
         { error: 'User not found or inactive' },
         { status: 404 }
@@ -37,21 +39,21 @@ export async function POST(request: NextRequest) {
 
     // Generate new tokens
     const { accessToken, refreshToken: newRefreshToken } = generateTokens({
-      id: user._id.toString(),
+      id: user.id,
       email: user.email,
       username: user.username,
-      isAdmin: user.isAdmin
+      isAdmin: user.is_admin
     })
 
     return NextResponse.json({
       message: 'Tokens refreshed successfully',
       user: {
-        id: user._id,
+        id: user.id,
         email: user.email,
         username: user.username,
-        displayName: user.displayName,
-        photoURL: user.photoURL,
-        isAdmin: user.isAdmin
+        displayName: user.display_name,
+        photoURL: user.photo_url,
+        isAdmin: user.is_admin
       },
       accessToken,
       refreshToken: newRefreshToken

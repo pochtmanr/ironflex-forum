@@ -1,8 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import connectDB from '@/lib/mongodb';
-import User from '@/models/User';
-import Topic from '@/models/Topic';
-import Post from '@/models/Post';
+import { supabaseAdmin } from '@/lib/supabase';
 import jwt from 'jsonwebtoken';
 
 // Verify JWT token
@@ -13,22 +10,15 @@ interface TokenPayload {
   isAdmin: boolean;
 }
 
-function verifyToken(request: NextRequest): TokenPayload | null {
+function verifyTokenLocal(request: NextRequest): TokenPayload | null {
   try {
     const authHeader = request.headers.get('authorization');
-    console.log('Auth header:', authHeader ? 'Present' : 'Missing');
-    
     if (!authHeader?.startsWith('Bearer ')) {
-      console.log('Invalid auth header format');
       return null;
     }
 
     const token = authHeader.substring(7);
-    console.log('Token length:', token.length);
-    console.log('JWT_SECRET defined:', !!process.env.JWT_SECRET);
-    
-    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as TokenPayload; 
-    console.log('Token decoded successfully:', { id: decoded.id, username: decoded.username });
+    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as TokenPayload;
     return decoded;
   } catch (error) {
     console.error('Token verification error:', error);
@@ -42,13 +32,15 @@ export async function GET(
 ) {
   try {
     const { userId } = await params;
-    
-    await connectDB();
 
     // Find user by ID
-    const user = await User.findById(userId).select('-passwordHash -refreshToken');
-    
-    if (!user) {
+    const { data: user, error } = await supabaseAdmin
+      .from('users')
+      .select('id, email, username, display_name, photo_url, bio, city, country, is_active, is_admin, is_verified, google_id, github_id, last_login, created_at, updated_at')
+      .eq('id', userId)
+      .single();
+
+    if (error || !user) {
       return NextResponse.json(
         { error: 'User not found' },
         { status: 404 }
@@ -56,70 +48,70 @@ export async function GET(
     }
 
     // Get user's topic count
-    const topicCount = await Topic.countDocuments({ 
-      userId: userId, 
-      isActive: true 
-    });
+    const { count: topicCount } = await supabaseAdmin
+      .from('topics')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .eq('is_active', true);
 
     // Get user's post count
-    const postCount = await Post.countDocuments({ 
-      userId: userId, 
-      isActive: true 
-    });
+    const { count: postCount } = await supabaseAdmin
+      .from('posts')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .eq('is_active', true);
 
     // Get user's recent topics
-    const recentTopics = await Topic.find({ 
-      userId: userId, 
-      isActive: true 
-    })
-    .sort({ createdAt: -1 })
-    .limit(5)
-    .select('title createdAt views replyCount categoryId')
-    .lean();
+    const { data: recentTopics } = await supabaseAdmin
+      .from('topics')
+      .select('id, title, created_at, views, reply_count, category_id')
+      .eq('user_id', userId)
+      .eq('is_active', true)
+      .order('created_at', { ascending: false })
+      .limit(5);
 
     // Get user's recent posts
-    const recentPosts = await Post.find({ 
-      userId: userId, 
-      isActive: true 
-    })
-    .sort({ createdAt: -1 })
-    .limit(5)
-    .select('content createdAt topicId')
-    .lean();
+    const { data: recentPosts } = await supabaseAdmin
+      .from('posts')
+      .select('id, content, created_at, topic_id')
+      .eq('user_id', userId)
+      .eq('is_active', true)
+      .order('created_at', { ascending: false })
+      .limit(5);
 
-    // Format the response with all available user data
+    // Format the response
     const userProfile = {
-      id: user._id,
+      id: user.id,
       email: user.email,
       username: user.username,
-      displayName: user.displayName,
-      photoURL: user.photoURL,
+      displayName: user.display_name,
+      photoURL: user.photo_url,
       bio: user.bio,
       city: user.city,
       country: user.country,
-      isActive: user.isActive,
-      isAdmin: user.isAdmin,
-      isVerified: user.isVerified,
-      googleId: user.googleId,
-      githubId: user.githubId,
-      createdAt: user.createdAt,
-      updatedAt: user.updatedAt,
-      lastLogin: user.lastLogin,
-      topicCount,
-      postCount,
-      recentTopics: recentTopics.map(topic => ({
-        id: topic._id,
+      isActive: user.is_active,
+      isAdmin: user.is_admin,
+      isVerified: user.is_verified,
+      googleId: user.google_id,
+      githubId: user.github_id,
+      createdAt: user.created_at,
+      updatedAt: user.updated_at,
+      lastLogin: user.last_login,
+      topicCount: topicCount || 0,
+      postCount: postCount || 0,
+      recentTopics: (recentTopics || []).map(topic => ({
+        id: topic.id,
         title: topic.title,
-        createdAt: topic.createdAt,
+        createdAt: topic.created_at,
         views: topic.views || 0,
-        replyCount: topic.replyCount || 0,
-        categoryId: topic.categoryId
+        replyCount: topic.reply_count || 0,
+        categoryId: topic.category_id
       })),
-      recentPosts: recentPosts.map(post => ({
-        id: post._id,
+      recentPosts: (recentPosts || []).map(post => ({
+        id: post.id,
         content: post.content?.substring(0, 100) + (post.content?.length > 100 ? '...' : ''),
-        createdAt: post.createdAt,
-        topicId: post.topicId
+        createdAt: post.created_at,
+        topicId: post.topic_id
       }))
     };
 
@@ -143,9 +135,9 @@ export async function PUT(
 ) {
   try {
     const { userId } = await params;
-    
+
     // Verify authentication
-    const tokenData = verifyToken(request);
+    const tokenData = verifyTokenLocal(request);
     if (!tokenData) {
       return NextResponse.json(
         { error: 'Unauthorized' },
@@ -155,10 +147,13 @@ export async function PUT(
 
     // Check if user is updating their own profile or is an admin
     if (tokenData.id !== userId) {
-      // Optional: Check if user is admin
-      await connectDB();
-      const requestingUser = await User.findById(tokenData.id);
-      if (!requestingUser?.isAdmin) {
+      const { data: requestingUser } = await supabaseAdmin
+        .from('users')
+        .select('is_admin')
+        .eq('id', tokenData.id)
+        .single();
+
+      if (!requestingUser?.is_admin) {
         return NextResponse.json(
           { error: 'Forbidden: You can only update your own profile' },
           { status: 403 }
@@ -166,54 +161,52 @@ export async function PUT(
       }
     }
 
-    await connectDB();
-
     // Get the request body
     const body = await request.json();
     const { username, displayName, bio, city, country, photoURL } = body;
 
     // Validate input
     const updateData: Record<string, string | null> = {};
-    
+
     if (username !== undefined && username !== null) {
       const trimmedUsername = username.trim();
-      
-      // Validate username length
+
       if (trimmedUsername.length < 3) {
         return NextResponse.json(
           { error: 'Username must be at least 3 characters long' },
           { status: 400 }
         );
       }
-      
+
       if (trimmedUsername.length > 30) {
         return NextResponse.json(
           { error: 'Username must be less than 30 characters' },
           { status: 400 }
         );
       }
-      
-      // Validate username format (alphanumeric, underscores, hyphens only)
+
       if (!/^[a-zA-Z0-9_-]+$/.test(trimmedUsername)) {
         return NextResponse.json(
           { error: 'Username can only contain letters, numbers, underscores, and hyphens' },
           { status: 400 }
         );
       }
-      
+
       // Check if username is already taken by another user (case-insensitive)
-      const existingUser = await User.findOne({ 
-        username: { $regex: new RegExp(`^${trimmedUsername}$`, 'i') },
-        _id: { $ne: userId } 
-      });
-      
+      const { data: existingUser } = await supabaseAdmin
+        .from('users')
+        .select('id')
+        .ilike('username', trimmedUsername)
+        .neq('id', userId)
+        .single();
+
       if (existingUser) {
         return NextResponse.json(
           { error: 'Username is already taken' },
           { status: 400 }
         );
       }
-      
+
       updateData.username = trimmedUsername;
     }
 
@@ -225,7 +218,7 @@ export async function PUT(
           { status: 400 }
         );
       }
-      updateData.displayName = trimmedDisplayName || null;
+      updateData.display_name = trimmedDisplayName || null;
     }
 
     if (bio !== undefined) {
@@ -262,17 +255,18 @@ export async function PUT(
     }
 
     if (photoURL !== undefined) {
-      updateData.photoURL = photoURL ? photoURL.trim() : null;
+      updateData.photo_url = photoURL ? photoURL.trim() : null;
     }
 
     // Update the user
-    const updatedUser = await User.findByIdAndUpdate(
-      userId,
-      { $set: updateData },
-      { new: true, runValidators: true }
-    ).select('-passwordHash -refreshToken');
+    const { data: updatedUser, error: updateError } = await supabaseAdmin
+      .from('users')
+      .update(updateData)
+      .eq('id', userId)
+      .select('id, email, username, display_name, photo_url, bio, city, country, is_active, is_admin, is_verified, google_id, github_id, created_at, updated_at, last_login')
+      .single();
 
-    if (!updatedUser) {
+    if (updateError || !updatedUser) {
       return NextResponse.json(
         { error: 'User not found' },
         { status: 404 }
@@ -282,22 +276,22 @@ export async function PUT(
     return NextResponse.json({
       message: 'Profile updated successfully',
       user: {
-        id: updatedUser._id,
+        id: updatedUser.id,
         email: updatedUser.email,
         username: updatedUser.username,
-        displayName: updatedUser.displayName,
-        photoURL: updatedUser.photoURL,
+        displayName: updatedUser.display_name,
+        photoURL: updatedUser.photo_url,
         bio: updatedUser.bio,
         city: updatedUser.city,
         country: updatedUser.country,
-        isActive: updatedUser.isActive,
-        isAdmin: updatedUser.isAdmin,
-        isVerified: updatedUser.isVerified,
-        googleId: updatedUser.googleId,
-        githubId: updatedUser.githubId,
-        createdAt: updatedUser.createdAt,
-        updatedAt: updatedUser.updatedAt,
-        lastLogin: updatedUser.lastLogin
+        isActive: updatedUser.is_active,
+        isAdmin: updatedUser.is_admin,
+        isVerified: updatedUser.is_verified,
+        googleId: updatedUser.google_id,
+        githubId: updatedUser.github_id,
+        createdAt: updatedUser.created_at,
+        updatedAt: updatedUser.updated_at,
+        lastLogin: updatedUser.last_login
       }
     });
 

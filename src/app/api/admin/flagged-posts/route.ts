@@ -1,13 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyToken } from '@/lib/auth';
-import connectDB from '@/lib/mongodb';
-import User from '@/models/User';
-import FlaggedPost from '@/models/FlaggedPost';
+import { supabaseAdmin } from '@/lib/supabase';
 
 export async function GET(request: NextRequest) {
   try {
-    await connectDB();
-
     // Verify authentication
     const authHeader = request.headers.get('authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -19,7 +15,7 @@ export async function GET(request: NextRequest) {
 
     const token = authHeader.substring(7);
     const userData = await verifyToken(token);
-    
+
     if (!userData || !userData.userId) {
       return NextResponse.json(
         { error: 'Invalid token' },
@@ -28,9 +24,13 @@ export async function GET(request: NextRequest) {
     }
 
     // Check if user is admin
-    const user = await User.findById(userData.userId);
-    
-    if (!user || !user.isAdmin) {
+    const { data: user, error: userError } = await supabaseAdmin
+      .from('users')
+      .select('id, is_admin')
+      .eq('id', userData.userId)
+      .single();
+
+    if (userError || !user || !user.is_admin) {
       return NextResponse.json(
         { error: 'Forbidden: Admin access required' },
         { status: 403 }
@@ -42,19 +42,24 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status');
 
     // Build query
-    const query: any = {};
+    let query = supabaseAdmin
+      .from('flagged_posts')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(100);
+
     if (status === 'pending') {
-      query.status = 'pending';
+      query = query.eq('status', 'pending');
     }
 
-    // Fetch flagged posts
-    const flaggedPosts = await FlaggedPost.find(query)
-      .sort({ createdAt: -1 })
-      .limit(100)
-      .lean();
+    const { data: flaggedPosts, error } = await query;
+
+    if (error) {
+      throw error;
+    }
 
     return NextResponse.json({
-      flaggedPosts
+      flaggedPosts: flaggedPosts || []
     });
 
   } catch (error) {
@@ -65,4 +70,3 @@ export async function GET(request: NextRequest) {
     );
   }
 }
-
