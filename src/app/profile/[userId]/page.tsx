@@ -132,7 +132,6 @@ const UserProfile: React.FC = () => {
 
   const loadUserProfile = async () => {
     try {
-      console.log('Loading user profile for userId:', userId);
       const accessToken = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
       const headers: Record<string, string> = {};
       if (accessToken) {
@@ -145,17 +144,9 @@ const UserProfile: React.FC = () => {
         throw new Error(data.error || 'Failed to load user profile');
       }
       
-      console.log('User profile loaded:', {
-        username: data.user?.username,
-        photoURL: data.user?.photoURL,
-        city: data.user?.city,
-        country: data.user?.country
-      });
-      
       setUser(data.user);
       setLoading(false);
     } catch (error) {
-      console.error('Error loading user profile:', error);
       setError(error instanceof Error ? error.message : 'Error loading profile');
       setLoading(false);
     }
@@ -231,7 +222,6 @@ const UserProfile: React.FC = () => {
       }
       return null;
     } catch (error) {
-      console.error('Token refresh failed:', error);
       return null;
     }
   };
@@ -267,9 +257,7 @@ const UserProfile: React.FC = () => {
             quality: 0.85,
             format: 'webp'
           });
-          console.log(`Photo optimized: ${(selectedFile.size / 1024).toFixed(0)}KB → ${(fileToUpload.size / 1024).toFixed(0)}KB`);
         } catch (optError) {
-          console.warn('Image optimization failed, uploading original:', optError);
           fileToUpload = selectedFile;
         }
       }
@@ -297,7 +285,6 @@ const UserProfile: React.FC = () => {
       if (!photoURL) {
         throw new Error('Сервер не вернул URL загруженного файла');
       }
-      console.log('Photo uploaded successfully:', photoURL);
 
       // Step 3: Update user profile with new photo URL
       setUploadStatus('Обновление профиля...');
@@ -355,25 +342,25 @@ const UserProfile: React.FC = () => {
 
   const validateForm = () => {
     if (formData.username.trim().length < 3) {
-      return 'Username must be at least 3 characters long';
+      return 'Имя пользователя должно быть не менее 3 символов';
     }
     if (formData.username.trim().length > 30) {
-      return 'Username must be less than 30 characters';
+      return 'Имя пользователя должно быть менее 30 символов';
     }
     if (!/^[a-zA-Z0-9_-]+$/.test(formData.username.trim())) {
-      return 'Username can only contain letters, numbers, underscores, and hyphens';
+      return 'Имя пользователя может содержать только буквы, цифры, подчеркивания и дефисы';
     }
     if (formData.displayName.trim().length > 50) {
-      return 'Display name must be less than 50 characters';
+      return 'Имя для отображения должно быть менее 50 символов';
     }
     if (formData.bio.trim().length > 500) {
-      return 'Bio must be less than 500 characters';
+      return 'Биография должна быть менее 500 символов';
     }
     if (formData.city.trim().length > 100) {
-      return 'City name must be less than 100 characters';
+      return 'Название города должно быть менее 100 символов';
     }
     if (formData.country.trim().length > 100) {
-      return 'Country name must be less than 100 characters';
+      return 'Название страны должно быть менее 100 символов';
     }
     return null;
   };
@@ -382,7 +369,7 @@ const UserProfile: React.FC = () => {
     let tokenToUse = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
     
     if (!tokenToUse || !canEdit) {
-      setModalError('Authentication required. Please log in again.');
+      setModalError('Требуется авторизация. Войдите снова.');
       return;
     }
     
@@ -412,12 +399,6 @@ const UserProfile: React.FC = () => {
         viberVisible: socialData.viberVisible,
       };
       
-      console.log('Updating profile:', {
-        userId,
-        hasToken: !!tokenToUse,
-        payload: updatePayload
-      });
-      
       const response = await fetch(`/api/users/${userId}`, {
         method: 'PUT',
         headers: {
@@ -430,11 +411,9 @@ const UserProfile: React.FC = () => {
       let data = await response.json();
       
       if (response.status === 401 && data.error === 'Unauthorized') {
-        console.log('Token expired, attempting to refresh...');
         const newToken = await refreshAccessToken();
         
         if (newToken) {
-          console.log('Token refreshed, retrying profile update...');
           tokenToUse = newToken;
           
           const retryResponse = await fetch(`/api/users/${userId}`, {
@@ -511,12 +490,12 @@ const UserProfile: React.FC = () => {
     }
 
     if (newPassword !== confirmPassword) {
-      setModalError('New passwords do not match');
+      setModalError('Новые пароли не совпадают');
       return;
     }
 
     if (newPassword.length < 6) {
-      setModalError('New password must be at least 6 characters');
+      setModalError('Новый пароль должен быть не менее 6 символов');
       return;
     }
     
@@ -538,11 +517,9 @@ const UserProfile: React.FC = () => {
 
       // If token expired, refresh and retry
       if (response.status === 401) {
-        console.log('Token expired, refreshing for password change...', data.error);
         const newToken = await refreshAccessToken();
         
         if (newToken) {
-          console.log('Token refreshed, retrying password change...');
           tokenToUse = newToken;
           
           response = await fetch('/api/auth/change-password', {
@@ -556,13 +533,13 @@ const UserProfile: React.FC = () => {
           
           data = await response.json();
         } else {
-          setModalError('Session expired. Please log in again.');
+          setModalError('Сессия истекла. Войдите снова.');
           return;
         }
       }
 
       if (response.ok) {
-        setModalMessage(data.message || 'Password changed successfully');
+        setModalMessage(data.message || 'Пароль успешно изменен');
         setCurrentPassword('');
         setNewPassword('');
         setConfirmPassword('');
@@ -571,10 +548,10 @@ const UserProfile: React.FC = () => {
           setModalMessage('');
         }, 3000);
       } else {
-        setModalError(data.error || 'Failed to change password');
+        setModalError(data.error || 'Не удалось изменить пароль');
       }
     } catch (error) {
-      setModalError('Network error. Please try again.');
+      setModalError('Ошибка сети. Пожалуйста, попробуйте снова.');
     } finally {
       setModalLoading(false);
     }
@@ -608,7 +585,7 @@ const UserProfile: React.FC = () => {
     try {
       let tokenToUse = localStorage.getItem('accessToken');
       if (!tokenToUse) {
-        setEmailChangeError('Сессия истекла. Войдите снова.');
+        setEmailChangeError('Требуется авторизация. Войдите снова.');
         return;
       }
 
@@ -637,13 +614,13 @@ const UserProfile: React.FC = () => {
           });
           data = await response.json();
         } else {
-          setEmailChangeError('Сессия истекла. Войдите снова.');
+          setEmailChangeError('Требуется авторизация. Войдите снова.');
           return;
         }
       }
 
       if (response.ok) {
-        setEmailChangeMessage(data.message || 'Письмо с подтверждением отправлено');
+        setEmailChangeMessage(data.message || 'Письмо с подтверждением отправлено на новый email');
         setShowChangeEmailModal(false);
         setNewEmailInput('');
         // Start cooldown
@@ -651,10 +628,10 @@ const UserProfile: React.FC = () => {
         // Reload profile to show pending state
         await loadUserProfile();
       } else {
-        setEmailChangeError(data.error || 'Не удалось отправить письмо');
+        setEmailChangeError(data.error || 'Не удалось отправить письмо с подтверждением');
       }
     } catch {
-      setEmailChangeError('Ошибка сети. Попробуйте снова.');
+      setEmailChangeError('Ошибка сети. Пожалуйста, попробуйте снова.');
     } finally {
       setEmailChangeLoading(false);
     }
@@ -694,7 +671,7 @@ const UserProfile: React.FC = () => {
       }
 
       if (response.ok) {
-        setEmailChangeMessage('Запрос на смену email отменён');
+        setEmailChangeMessage('Запрос на смену email адреса отменён');
         setEmailResendCooldown(0);
         await loadUserProfile();
         setTimeout(() => setEmailChangeMessage(''), 3000);

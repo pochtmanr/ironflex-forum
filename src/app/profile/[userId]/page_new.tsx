@@ -98,7 +98,6 @@ const UserProfile: React.FC = () => {
 
   const loadUserProfile = async () => {
     try {
-      console.log('Loading user profile for userId:', userId);
       const response = await fetch(`/api/users/${userId}`);
       const data = await response.json();
       
@@ -106,15 +105,9 @@ const UserProfile: React.FC = () => {
         throw new Error(data.error || 'Failed to load user profile');
       }
       
-      console.log('User profile loaded:', {
-        username: data.user?.username,
-        photoURL: data.user?.photoURL
-      });
-      
       setUser(data.user);
       setLoading(false);
     } catch (error) {
-      console.error('Error loading user profile:', error);
       setError(error instanceof Error ? error.message : 'Error loading profile');
       setLoading(false);
     }
@@ -190,7 +183,6 @@ const UserProfile: React.FC = () => {
       }
       return null;
     } catch (error) {
-      console.error('Token refresh failed:', error);
       return null;
     }
   };
@@ -227,7 +219,6 @@ const UserProfile: React.FC = () => {
       }
 
       const photoURL = uploadData.url || uploadData.file_url;
-      console.log('Photo uploaded successfully:', photoURL);
 
       let updateResponse = await fetch(`/api/users/${userId}`, {
         method: 'PUT',
@@ -243,11 +234,9 @@ const UserProfile: React.FC = () => {
       let updateData = await updateResponse.json();
 
       if (updateResponse.status === 401 && updateData.error === 'Unauthorized') {
-        console.log('Token expired, refreshing for photo update...');
         const newToken = await refreshAccessToken();
         
         if (newToken) {
-          console.log('Token refreshed, retrying photo profile update...');
           updateResponse = await fetch(`/api/users/${userId}`, {
             method: 'PUT',
             headers: {
@@ -267,7 +256,6 @@ const UserProfile: React.FC = () => {
       }
 
       if (updateResponse.ok) {
-        console.log('Photo profile updated successfully:', updateData.user?.photoURL);
         setModalMessage('Photo uploaded successfully!');
         setSelectedFile(null);
         setPhotoPreview(null);
@@ -280,14 +268,12 @@ const UserProfile: React.FC = () => {
           localStorage.setItem('user', JSON.stringify(updatedUser));
         }
         
-        console.log('Reloading user profile...');
         await loadUserProfile();
         
         setTimeout(() => {
           setModalMessage('');
         }, 2000);
       } else {
-        console.error('Failed to update photo profile:', updateData.error);
         setModalError(updateData.error || 'Failed to update profile photo');
       }
     } catch (error) {
@@ -350,12 +336,6 @@ const UserProfile: React.FC = () => {
         photoURL: user?.photoURL
       };
       
-      console.log('Updating profile:', {
-        userId,
-        hasToken: !!tokenToUse,
-        payload: updatePayload
-      });
-      
       const response = await fetch(`/api/users/${userId}`, {
         method: 'PUT',
         headers: {
@@ -368,11 +348,9 @@ const UserProfile: React.FC = () => {
       let data = await response.json();
       
       if (response.status === 401 && data.error === 'Unauthorized') {
-        console.log('Token expired, attempting to refresh...');
         const newToken = await refreshAccessToken();
         
         if (newToken) {
-          console.log('Token refreshed, retrying profile update...');
           tokenToUse = newToken;
           
           const retryResponse = await fetch(`/api/users/${userId}`, {

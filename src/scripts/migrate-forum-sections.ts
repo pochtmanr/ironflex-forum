@@ -53,10 +53,8 @@ async function runSQL(sql: string, label: string) {
 }
 
 async function migrate() {
-  console.log('Starting forum sections migration...\n')
 
   // Step 1: Add section column to categories
-  console.log('Step 1: Adding section column to categories...')
   const { error: alterError } = await supabase.rpc('exec_sql', {
     sql_text: `
       DO $$
@@ -72,14 +70,10 @@ async function migrate() {
   })
 
   if (alterError) {
-    console.log('Note: exec_sql RPC not available. Running migration via direct Supabase operations...')
-    console.log('Will seed categories using Supabase client API instead.\n')
   } else {
-    console.log('✓ Section column added to categories\n')
   }
 
   // Step 2: Deactivate all existing categories
-  console.log('Step 2: Deactivating old categories...')
   const { error: deactivateError } = await supabase
     .from('categories')
     .update({ is_active: false })
@@ -88,11 +82,9 @@ async function migrate() {
   if (deactivateError) {
     console.error('Failed to deactivate old categories:', deactivateError.message)
   } else {
-    console.log('✓ Old categories deactivated\n')
   }
 
   // Step 3: Seed new categories
-  console.log('Step 3: Seeding new categories...')
   const newCategories = [
     {
       name: 'Медицина',
@@ -146,7 +138,6 @@ async function migrate() {
       if (error) {
         console.error(`Failed to update category "${cat.name}":`, error.message)
       } else {
-        console.log(`✓ Updated category: ${cat.name}`)
       }
     } else {
       // Insert new
@@ -163,19 +154,15 @@ async function migrate() {
             .from('categories')
             .insert(catWithoutSection)
           if (retryError) {
-            console.error(`  Retry without section also failed:`, retryError.message)
           } else {
-            console.log(`✓ Inserted category (without section): ${cat.name}`)
           }
         }
       } else {
-        console.log(`✓ Inserted category: ${cat.name}`)
       }
     }
   }
 
   // Step 4: Create conversation_messages table
-  console.log('\nStep 4: Creating conversation_messages table...')
 
   const createTableSQL = `
     CREATE TABLE IF NOT EXISTS conversation_messages (
@@ -210,26 +197,16 @@ async function migrate() {
 
   const { error: tableError } = await supabase.rpc('exec_sql', { sql_text: createTableSQL })
   if (tableError) {
-    console.log('exec_sql not available for table creation.')
-    console.log('\n--- MANUAL SQL REQUIRED ---')
-    console.log('Run the following SQL in Supabase SQL Editor:\n')
-    console.log(createTableSQL)
-    console.log('--- END SQL ---\n')
   } else {
-    console.log('✓ conversation_messages table created with RLS policies\n')
   }
 
   // Verify categories
-  console.log('\nVerifying categories...')
   const { data: cats } = await supabase
     .from('categories')
     .select('id, name, slug, section, is_active, order_index')
     .eq('is_active', true)
     .order('order_index')
 
-  console.log('Active categories:', cats)
-
-  console.log('\nMigration complete!')
 }
 
 migrate().catch(console.error)

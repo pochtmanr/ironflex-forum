@@ -53,14 +53,6 @@ export async function GET(
       );
     }
 
-    console.log('Raw topic data:', {
-      id: topic.id,
-      title: topic.title,
-      mediaLinks: topic.media_links,
-      hasMediaLinks: !!topic.media_links,
-      mediaLinksLength: topic.media_links?.length || 0
-    });
-
     // Get posts for this topic
     const { data: posts } = await supabaseAdmin
       .from('posts')
@@ -191,13 +183,6 @@ export async function GET(
     }
 
     const formattedPosts = (posts || []).map((post) => {
-      console.log('Post data:', {
-        id: post.id,
-        mediaLinks: post.media_links,
-        hasMediaLinks: !!post.media_links,
-        mediaLinksLength: post.media_links?.length || 0
-      });
-
       // Get current user data for this post
       const postUser = userMap.get(post.user_id);
 
@@ -234,7 +219,6 @@ export async function GET(
     });
 
   } catch (error) {
-    console.error('Error fetching topic:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -250,7 +234,6 @@ export async function POST(
     const { topicId } = await params;
     const body = await request.json();
     const { content, mediaLinks, replyToPostId } = body;
-    console.log('Received post creation request:', { content, mediaLinks, replyToPostId });
 
     // Strip rich-text "empty" content: &nbsp;, whitespace, empty HTML tags
     const cleanedContent = content
@@ -404,7 +387,6 @@ export async function POST(
     });
 
   } catch (error) {
-    console.error('Error creating post:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -502,7 +484,6 @@ export async function DELETE(
     });
 
   } catch (error) {
-    console.error('Topic deletion error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

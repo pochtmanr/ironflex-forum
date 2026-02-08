@@ -19,7 +19,7 @@ function VerifyEmailContent() {
   useEffect(() => {
     const verifyEmail = async () => {
       if (!token) {
-        setError('Verification token is missing')
+        setError('Токен подтверждения отсутствует')
         setLoading(false)
         return
       }
@@ -31,16 +31,16 @@ function VerifyEmailContent() {
         if (response.ok) {
           if (data.alreadyVerified) {
             setAlreadyVerified(true)
-            setMessage('Your email is already verified!')
+            setMessage('Email адрес уже подтвержден!')
           } else {
             setVerified(true)
-            setMessage('Email has been verified successfully!')
+            setMessage('Email адрес успешно подтвержден!')
           }
         } else {
-          setError(data.error || 'Failed to verify email')
+          setError(data.error || 'Не удалось подтвердить email')
         }
       } catch (err) {
-        setError('Network error. Please try again later.')
+        setError('Ошибка сети. Пожалуйста, попробуйте позже.')
       } finally {
         setLoading(false)
       }
@@ -56,10 +56,10 @@ function VerifyEmailContent() {
           <div className="bg-white rounded-lg shadow-md p-8 text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
             <h2 className="mt-6 text-2xl font-bold text-gray-900">
-              Verifying your email...
+              Подтверждение email...
             </h2>
             <p className="mt-2 text-gray-600">
-              Please wait while we verify your email address.
+              Пожалуйста, подождите пока мы подтверждаем ваш email адрес.
             </p>
           </div>
         </div>
@@ -79,7 +79,7 @@ function VerifyEmailContent() {
             )}
             
             <h2 className="mt-6 text-2xl font-bold text-gray-900">
-              {verified ? 'Email Verified!' : alreadyVerified ? 'Already Verified' : 'Verification Failed'}
+              {verified ? 'Email адрес подтвержден!' : alreadyVerified ? 'Email адрес уже подтвержден' : 'Не удалось подтвердить email'}
             </h2>
             
             <p className="mt-2 text-gray-600">
@@ -93,13 +93,13 @@ function VerifyEmailContent() {
                     href="/"
                     className="block w-full bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
                   >
-                    Go to Home
+                    На главную
                   </Link>
                   <Link
                     href="/profile"
                     className="block w-full bg-gray-200 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-300 transition-colors"
                   >
-                    Go to Profile
+                    Перейти в профиль
                   </Link>
                 </>
               )}
@@ -109,7 +109,7 @@ function VerifyEmailContent() {
                   href="/"
                   className="block w-full bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
                 >
-                  Go to Home
+                  На главную
                 </Link>
               )}
             </div>

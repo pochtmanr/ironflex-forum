@@ -14,19 +14,7 @@ const Footer: React.FC = () => {
           {/* Logo and Description */}
           <div className="md:col-span-2">
             <div className="flex items-center mb-4">
-              <a 
-                href="https://www.tarnovsky.ru.kz" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="flex items-center space-x-3 hover:opacity-80 transition-opacity"
-              >
-                <img 
-                  src="/images/4_logo12.svg" 
-                  alt="tarnovsky.ru" 
-                  className="h-12 w-auto"
-                />
-                
-              </a>
+              <h2 className="text-2xl font-semibold text-gray-100">Форум <span className="text-blue-100">tarnovsky.ru</span></h2>
             </div>
             <p className="text-gray-400 text-sm leading-relaxed">
               Форум для любителей бодибилдинга, фитнеса и здорового образа жизни. 

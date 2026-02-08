@@ -1,7 +1,6 @@
 import nodemailer from 'nodemailer'
 import crypto from 'crypto'
 
-console.log('[EMAIL MODULE] ✅ Email module loaded with Nodemailer')
 
 // Email configuration for Timeweb
 const SMTP_HOST = process.env.SMTP_HOST || 'smtp.timeweb.ru'
@@ -18,7 +17,6 @@ let transporter: nodemailer.Transporter | null = null
 
 const createTransporter = () => {
   if (!SMTP_PASS) {
-    console.error('[EMAIL] ❌ SMTP_PASS not configured')
     return null
   }
 
@@ -42,12 +40,9 @@ const createTransporter = () => {
       socketTimeout: 10000
     })
 
-    console.log('[EMAIL] ✅ Transporter created successfully')
-    console.log(`[EMAIL] Configuration: ${SMTP_HOST}:${SMTP_PORT} (secure: ${SMTP_SECURE})`)
     
     return transporter
   } catch (error) {
-    console.error('[EMAIL] ❌ Failed to create transporter:', error)
     return null
   }
 }
@@ -543,29 +538,18 @@ export const sendEmail = async (
       return false
     }
 
-    console.log('[EMAIL] =====================================')
-    console.log(`[EMAIL] 📧 Preparing to send email with Nodemailer`)
-    console.log(`[EMAIL] To: ${to}`)
-    console.log(`[EMAIL] Subject: ${subject}`)
-    console.log(`[EMAIL] Type: ${type}`)
-    console.log(`[EMAIL] From: ${FROM_EMAIL}`)
-
     const html = getEmailTemplate(type, data)
 
     // Create or reuse transporter
     const emailTransporter = transporter || createTransporter()
     
     if (!emailTransporter) {
-      console.error('[EMAIL] ❌ Failed to create email transporter')
       return false
     }
 
     // Verify connection
-    console.log('[EMAIL] 🔍 Verifying SMTP connection...')
     await emailTransporter.verify()
-    console.log('[EMAIL] ✅ SMTP connection verified')
 
-    console.log('[EMAIL] 📤 Sending email...')
     const info = await emailTransporter.sendMail({
       from: `"${FROM_NAME}" <${FROM_EMAIL}>`,
       to,
@@ -573,20 +557,8 @@ export const sendEmail = async (
       html,
     })
 
-    console.log('[EMAIL] ✅ Email sent successfully!')
-    console.log('[EMAIL] Message ID:', info.messageId)
-    console.log('[EMAIL] =====================================')
     return true
   } catch (error) {
-    console.error('[EMAIL] =====================================')
-    console.error('[EMAIL] ❌ FAILED to send email')
-    console.error('[EMAIL] Error:', error)
-    if (error instanceof Error) {
-      console.error('[EMAIL] Error name:', error.name)
-      console.error('[EMAIL] Error message:', error.message)
-      console.error('[EMAIL] Error stack:', error.stack)
-    }
-    console.error('[EMAIL] =====================================')
     return false
   }
 }
@@ -601,7 +573,7 @@ export const sendPasswordResetEmail = async (
   
   return sendEmail(
     email,
-    'Сброс пароля - Клинический Протокол Тарновского',
+    'Сброс пароля аккаунта - Клинический Протокол Тарновского',
     'password_reset',
     { username, resetUrl }
   )
@@ -616,7 +588,7 @@ export const sendEmailVerificationEmail = async (
   
   return sendEmail(
     email,
-    'Подтверждение email - Клинический Протокол Тарновского',
+    'Подтверждение email адреса - Клинический Протокол Тарновского',
     'email_verification',
     { username, verificationUrl }
   )
@@ -630,7 +602,7 @@ export const sendWelcomeEmail = async (
 
   return sendEmail(
     email,
-    'Добро пожаловать в Клинический Протокол Тарновского!',
+    'Добро пожаловать в Клинический Протокол Тарновского',
     'welcome',
     { username, loginUrl }
   )
@@ -645,7 +617,7 @@ export const sendEmailChangeVerificationEmail = async (
 
   return sendEmail(
     email,
-    'Подтверждение нового email - Клинический Протокол Тарновского',
+    'Подтверждение нового email адреса - Клинический Протокол Тарновского',
     'email_change_verification',
     { username, confirmUrl }
   )
@@ -657,7 +629,7 @@ export const sendEmailChangedNotification = async (
 ): Promise<boolean> => {
   return sendEmailSecure(
     oldEmail,
-    'Email вашего аккаунта был изменён - Клинический Протокол Тарновского',
+    'Email адрес вашего аккаунта был изменён - Клинический Протокол Тарновского',
     'email_changed_notification',
     { username }
   )
@@ -672,19 +644,13 @@ export const sendEmailSecure = async (
 ): Promise<boolean> => {
   try {
     if (!SMTP_PASS) {
-      console.error('[EMAIL] SMTP_PASS not configured')
       return false
     }
-
-    console.log('[EMAIL] Preparing secure email send')
-    console.log(`[EMAIL] Subject: ${subject}`)
-    console.log(`[EMAIL] Type: ${type}`)
 
     const html = getEmailTemplate(type, data)
     const emailTransporter = transporter || createTransporter()
 
     if (!emailTransporter) {
-      console.error('[EMAIL] Failed to create email transporter')
       return false
     }
 
@@ -697,10 +663,8 @@ export const sendEmailSecure = async (
       html,
     })
 
-    console.log('[EMAIL] Secure email sent, ID:', info.messageId)
     return true
   } catch (error) {
-    console.error('[EMAIL] Secure email send failed:', error instanceof Error ? error.message : 'Unknown error')
     return false
   }
 }

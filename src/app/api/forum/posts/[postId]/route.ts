@@ -71,15 +71,6 @@ export async function DELETE(
     const isPostAuthor = post.user_id === userPayload.id;
     const isTopicAuthor = topic.user_id === userPayload.id;
 
-    console.log('Delete post authorization check:', {
-      postId,
-      postUserId: post.user_id,
-      topicUserId: topic.user_id,
-      requestUserId: userPayload.id,
-      isPostAuthor,
-      isTopicAuthor
-    });
-
     if (!isPostAuthor && !isTopicAuthor) {
       return NextResponse.json(
         { error: 'You can only delete your own posts or posts in your topics' },
@@ -111,7 +102,6 @@ export async function DELETE(
     );
 
   } catch (error) {
-    console.error('Error deleting post:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500, headers: corsHeaders }

@@ -87,7 +87,7 @@ export async function POST(request: NextRequest) {
     })
 
   } catch (error) {
-    console.error('Send verification email error:', error)
+    console.error('Ошибка отправки письма с подтверждением:', error)
     return NextResponse.json(
       { error: 'Внутренняя ошибка сервера' },
       { status: 500 }
@@ -171,7 +171,7 @@ export async function GET(request: NextRequest) {
         user.username || user.display_name || 'Пользователь'
       )
     } catch (emailError) {
-      console.error('Failed to send welcome email:', emailError)
+      console.error('Не удалось отправить письмо приветствия:', emailError)
     }
 
     // Delete all other verification tokens for this user
@@ -183,12 +183,12 @@ export async function GET(request: NextRequest) {
       .neq('id', verificationToken.id)
 
     return NextResponse.json({
-      message: 'Email has been verified successfully',
+      message: 'Email адрес успешно подтвержден!',
       verified: true
     })
 
   } catch (error) {
-    console.error('Verify email error:', error)
+    console.error('Ошибка подтверждения email:', error)
     return NextResponse.json(
       { error: 'Внутренняя ошибка сервера' },
       { status: 500 }

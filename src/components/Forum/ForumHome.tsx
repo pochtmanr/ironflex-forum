@@ -195,7 +195,6 @@ const ForumHome: React.FC = () => {
             }
           }
         } catch (error) {
-          console.log('AdSense initialization error:', error);
         }
       }, 1500);
 
@@ -208,7 +207,6 @@ const ForumHome: React.FC = () => {
       const categoriesResponse = await forumAPI.getCategories();
       setCategories((categoriesResponse as { categories: Category[] }).categories || []);
     } catch (error) {
-      console.error('Error loading forum data:', error);
     } finally {
       setLoading(false);
     }

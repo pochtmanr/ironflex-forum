@@ -21,7 +21,7 @@ function verifyTokenLocal(request: NextRequest): TokenPayload | null {
     const decoded = jwt.verify(token, process.env.JWT_SECRET!) as TokenPayload;
     return decoded;
   } catch (error) {
-    console.error('Token verification error:', error);
+    console.error('Ошибка верификации токена:', error);
     return null;
   }
 }
@@ -46,7 +46,7 @@ export async function GET(
 
     if (error || !user) {
       return NextResponse.json(
-        { error: 'User not found' },
+        { error: 'Аккаунт не найден' },
         { status: 404 }
       );
     }
@@ -132,14 +132,14 @@ export async function GET(
     };
 
     return NextResponse.json({
-      message: 'User profile retrieved successfully',
+      message: 'Профиль пользователя успешно получен',
       user: userProfile
     });
 
   } catch (error) {
-    console.error('Error fetching user profile:', error);
+    console.error('Ошибка получения профиля пользователя:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch user profile' },
+      { error: 'Не удалось получить профиль пользователя' },
       { status: 500 }
     );
   }
@@ -156,7 +156,7 @@ export async function PUT(
     const tokenData = verifyTokenLocal(request);
     if (!tokenData) {
       return NextResponse.json(
-        { error: 'Unauthorized' },
+        { error: 'Не авторизован' },
         { status: 401 }
       );
     }
@@ -171,7 +171,7 @@ export async function PUT(
 
       if (!requestingUser?.is_admin) {
         return NextResponse.json(
-          { error: 'Forbidden: You can only update your own profile' },
+          { error: 'Запрещено: Вы можете обновить только свой профиль' },
           { status: 403 }
         );
       }
@@ -191,21 +191,21 @@ export async function PUT(
 
       if (trimmedUsername.length < 3) {
         return NextResponse.json(
-          { error: 'Username must be at least 3 characters long' },
+          { error: 'Имя пользователя должно быть не менее 3 символов' },
           { status: 400 }
         );
       }
 
       if (trimmedUsername.length > 30) {
         return NextResponse.json(
-          { error: 'Username must be less than 30 characters' },
+          { error: 'Имя пользователя должно быть менее 30 символов' },
           { status: 400 }
         );
       }
 
       if (!/^[a-zA-Z0-9_-]+$/.test(trimmedUsername)) {
         return NextResponse.json(
-          { error: 'Username can only contain letters, numbers, underscores, and hyphens' },
+          { error: 'Имя пользователя может содержать только буквы, цифры, подчеркивания и дефисы' },
           { status: 400 }
         );
       }
@@ -220,8 +220,8 @@ export async function PUT(
 
       if (existingUser) {
         return NextResponse.json(
-          { error: 'Username is already taken' },
-          { status: 400 }
+          { error: 'Имя пользователя уже занято' },
+          { status: 400 } 
         );
       }
 
@@ -232,7 +232,7 @@ export async function PUT(
       const trimmedDisplayName = displayName ? displayName.trim() : '';
       if (trimmedDisplayName.length > 50) {
         return NextResponse.json(
-          { error: 'Display name must be less than 50 characters' },
+          { error: 'Имя для отображения должно быть менее 50 символов' },
           { status: 400 }
         );
       }
@@ -243,7 +243,7 @@ export async function PUT(
       const trimmedBio = bio ? bio.trim() : '';
       if (trimmedBio.length > 500) {
         return NextResponse.json(
-          { error: 'Bio must be less than 500 characters' },
+          { error: 'Биография должна быть менее 500 символов' },
           { status: 400 }
         );
       }
@@ -254,7 +254,7 @@ export async function PUT(
       const trimmedCity = city ? city.trim() : '';
       if (trimmedCity.length > 100) {
         return NextResponse.json(
-          { error: 'City name must be less than 100 characters' },
+          { error: 'Название города должно быть менее 100 символов' },
           { status: 400 }
         );
       }
@@ -265,7 +265,7 @@ export async function PUT(
       const trimmedCountry = country ? country.trim() : '';
       if (trimmedCountry.length > 100) {
         return NextResponse.json(
-          { error: 'Country name must be less than 100 characters' },
+          { error: 'Название страны должно быть менее 100 символов' },
           { status: 400 }
         );
       }
@@ -320,7 +320,7 @@ export async function PUT(
 
     if (updateError || !updatedUser) {
       return NextResponse.json(
-        { error: 'User not found' },
+        { error: 'Аккаунт не найден' },
         { status: 404 }
       );
     }
@@ -356,7 +356,7 @@ export async function PUT(
   } catch (error) {
     console.error('Error updating user profile:', error);
     return NextResponse.json(
-      { error: 'Failed to update user profile' },
+      { error: 'Не удалось обновить профиль' },
       { status: 500 }
     );
   }

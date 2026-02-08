@@ -5,7 +5,6 @@ export async function POST(request: NextRequest) {
   try {
     const authHeader = request.headers.get('authorization')
     
-    console.log('Debug - Auth header:', authHeader)
     
     if (!authHeader?.startsWith('Bearer ')) {
       return NextResponse.json({
@@ -15,10 +14,8 @@ export async function POST(request: NextRequest) {
     }
 
     const token = authHeader.substring(7)
-    console.log('Debug - Extracted token:', token.substring(0, 20) + '...')
     
     const userPayload = verifyAccessToken(token)
-    console.log('Debug - User payload:', userPayload)
     
     if (!userPayload) {
       return NextResponse.json({
@@ -36,7 +33,6 @@ export async function POST(request: NextRequest) {
     })
 
   } catch (error) {
-    console.error('Debug token error:', error)
     return NextResponse.json({
       error: 'Internal server error',
       details: (error as Error).message

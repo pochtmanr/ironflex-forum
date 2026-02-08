@@ -31,18 +31,12 @@ export default function ClientAuth({ children }: ClientAuthProps) {
       const savedUser = localStorage.getItem('user')
       const savedToken = localStorage.getItem('accessToken')
 
-      console.log('ClientAuth: Loading from localStorage')
-      console.log('User data:', savedUser ? 'Present' : 'Missing')
-      console.log('Token data:', savedToken ? 'Present' : 'Missing')
-
       if (savedUser && savedToken) {
         const userData = JSON.parse(savedUser)
         setUser(userData)
         setToken(savedToken)
-        console.log('ClientAuth: User and token loaded successfully')
       }
     } catch (error) {
-      console.error('ClientAuth: Error loading auth data:', error)
       localStorage.removeItem('user')
       localStorage.removeItem('accessToken')
     } finally {

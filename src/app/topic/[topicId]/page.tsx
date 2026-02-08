@@ -158,10 +158,6 @@ const TopicViewPage: React.FC = () => {
         posts: (Post & { user_vote?: 'like' | 'dislike' | null })[]; 
         pagination: { pages: number } 
       };
-      console.log('Topic data received:', response.topic);
-      console.log('Topic media_links:', response.topic.media_links);
-      console.log('Topic media_links length:', response.topic.media_links?.length);
-      console.log('Posts data received:', response.posts);
       
       // Set is_author based on current user for topic
       // Convert both to strings for comparison to ensure consistency
@@ -189,14 +185,6 @@ const TopicViewPage: React.FC = () => {
         const postUserId = String(post.user_id || '');
         const currentUserId = String(currentUser?.id || '');
         const isAuthor = currentUser && postUserId === currentUserId;
-        console.log('Post author check:', {
-          postId: post.id,
-          postUserId: postUserId,
-          currentUserId: currentUserId,
-          isAuthor,
-          postUserIdType: typeof post.user_id,
-          currentUserIdType: typeof currentUser?.id
-        });
         
         // Set initial vote state for this post
         if (post.user_vote) {
@@ -209,14 +197,10 @@ const TopicViewPage: React.FC = () => {
         };
       });
       
-      console.log('Current user full:', currentUser);
-      console.log('Posts with is_author:', postsData);
-      
       setTopic(topicData);
       setPosts(postsData);
       setTotalPages(response.pagination.pages);
     } catch (error: unknown) {
-      console.error('Topic loading error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Ошибка загрузки темы';
       setError(errorMessage);
     } finally {
@@ -385,7 +369,6 @@ const TopicViewPage: React.FC = () => {
         )
       );
     } catch (error: unknown) {
-      console.error('Like post error:', error);
       // Rollback on error
       setPostVotes(prev => ({ ...prev, [postId]: previousVote }));
       setPosts(previousPosts);
@@ -432,7 +415,6 @@ const TopicViewPage: React.FC = () => {
       });
       setIsEditModalOpen(false);
     } catch (error: unknown) {
-      console.error('Topic update error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Ошибка обновления темы';
       throw new Error(errorMessage);
     }
@@ -457,9 +439,8 @@ const TopicViewPage: React.FC = () => {
     try {
       await forumAPI.deleteTopic(topicId);
       // Redirect to the category page after successful deletion
-      router.push(`/category/${topic.category_id}`);
+      router.push(`/category/${topic?.category_id || ''}`);
     } catch (error: unknown) {
-      console.error('Topic deletion error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Ошибка удаления темы';
       setError(errorMessage);
     }
@@ -515,7 +496,6 @@ const TopicViewPage: React.FC = () => {
       setEditingPostId(null);
       setEditingPostContent('');
     } catch (error: unknown) {
-      console.error('Post update error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Ошибка обновления комментария';
       throw new Error(errorMessage);
     }
@@ -565,7 +545,6 @@ const TopicViewPage: React.FC = () => {
       setFlaggingPostId(null);
       setFlaggingPostAuthor('');
     } catch (error: unknown) {
-      console.error('Post flag error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Ошибка отправки жалобы';
       setError(errorMessage);
     }
@@ -608,7 +587,6 @@ const TopicViewPage: React.FC = () => {
       // Reload the page to show updated posts
       loadTopicData();
     } catch (error: unknown) {
-      console.error('Post deletion error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Ошибка удаления комментария';
       setError(errorMessage);
     }
@@ -667,7 +645,6 @@ const TopicViewPage: React.FC = () => {
       setQuotedPost(null);
       loadTopicData(); // Reload to show new post
     } catch (error: unknown) {
-      console.error('Post creation error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Ошибка создания ответа';
       setError(errorMessage);
     } finally {
@@ -701,7 +678,6 @@ const TopicViewPage: React.FC = () => {
       // Return the full URL - the image will be embedded in markdown content
       return fileUrl;
     } catch (error) {
-      console.error('Image upload error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Upload failed';
       setError(`Ошибка загрузки изображения: ${errorMessage}`);
       throw error;

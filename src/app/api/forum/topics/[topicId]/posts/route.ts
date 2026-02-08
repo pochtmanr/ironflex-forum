@@ -9,7 +9,6 @@ export async function POST(
     const { topicId } = await params;
     const body = await request.json();
     const { content, mediaLinks, userData, replyToPostId } = body;
-    console.log('Received post creation request:', { content, mediaLinks, userData, replyToPostId });
 
     if (!content || !content.trim()) {
       return NextResponse.json(
@@ -48,7 +47,6 @@ export async function POST(
 
         if (createError) throw createError;
         user = newUser;
-        console.log('Created new user for post:', user.id);
       }
     } else {
       return NextResponse.json(
@@ -165,7 +163,6 @@ export async function POST(
     });
 
   } catch (error) {
-    console.error('Error creating post:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

@@ -79,7 +79,6 @@ export async function GET(request: NextRequest) {
     })
 
   } catch (error) {
-    console.error('Topics fetch error:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -93,7 +92,6 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { categoryId, title, content, mediaLinks, userData } = body
 
-    console.log('Received topic creation request:', { categoryId, title, content, mediaLinks, userData })
 
     // Validation — content is now optional (topic can exist as description-only)
     if (!categoryId || !title) {
@@ -134,7 +132,6 @@ export async function POST(request: NextRequest) {
 
         if (createError) throw createError
         user = newUser
-        console.log('Created new user:', user.id)
       }
     } else {
       return NextResponse.json(
@@ -199,7 +196,6 @@ export async function POST(request: NextRequest) {
         .single()
 
       if (postError) {
-        console.error('Failed to create first post:', postError)
       } else {
         firstPost = post
       }
@@ -232,7 +228,6 @@ export async function POST(request: NextRequest) {
     })
 
   } catch (error) {
-    console.error('Topic creation error:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

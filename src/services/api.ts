@@ -41,7 +41,6 @@ async function refreshTokens(): Promise<boolean> {
       return false;
     }
   } catch (error) {
-    console.error('Token refresh failed:', error);
     tokenManager.clearTokens();
     return false;
   }
@@ -60,12 +59,9 @@ async function apiRequest(
 
   if (!skipAuth) {
     const token = tokenManager.getAccessToken();
-    console.log('API Request - Auth required:', { endpoint, hasToken: !!token });
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
-      console.log('API Request - Added Bearer token to headers');
     } else {
-      console.warn('API Request - No access token found in localStorage!');
     }
   }
 
@@ -79,21 +75,18 @@ async function apiRequest(
 
   // If we get a 401 and we have auth enabled, try to refresh the token
   if (!response.ok && response.status === 401 && !skipAuth) {
-    console.log('API Request - Got 401, attempting token refresh');
     const refreshed = await refreshTokens();
     if (refreshed) {
       // Retry the request with the new token
       const newToken = tokenManager.getAccessToken();
       if (newToken) {
         headers['Authorization'] = `Bearer ${newToken}`;
-        console.log('API Request - Retrying with refreshed token');
         response = await fetch(`${baseUrl}${endpoint}`, {
           ...options,
           headers
         });
       }
     } else {
-      console.error('API Request - Token refresh failed');
     }
   }
 

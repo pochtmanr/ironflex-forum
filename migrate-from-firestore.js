@@ -70,14 +70,11 @@ const Post = mongoose.model('Post', PostSchema)
 
 async function migrateData() {
   try {
-    console.log('🔄 Starting migration from Firestore to MongoDB...')
     
     // Connect to MongoDB
     await mongoose.connect(process.env.MONGODB_URI)
-    console.log('✅ Connected to MongoDB')
 
     // 1. Create default categories (matching your Firestore structure)
-    console.log('📝 Creating default categories...')
     const defaultCategories = [
       {
         name: 'Новости и соревнования',
@@ -121,30 +118,13 @@ async function migrateData() {
       const existingCategory = await Category.findOne({ slug: categoryData.slug })
       if (!existingCategory) {
         await Category.create(categoryData)
-        console.log(`✅ Created category: ${categoryData.name}`)
       } else {
-        console.log(`⚠️  Category already exists: ${categoryData.name}`)
       }
     }
 
-    console.log('🎉 Migration completed successfully!')
-    console.log('')
-    console.log('📋 Next steps:')
-    console.log('1. Export your Firestore data manually')
-    console.log('2. Transform the data to match MongoDB schema')
-    console.log('3. Import users, topics, and posts using MongoDB tools')
-    console.log('4. Update your frontend to use the new API endpoints')
-    console.log('')
-    console.log('🔗 Useful commands:')
-    console.log('- mongoexport: Export from Firestore')
-    console.log('- mongoimport: Import to MongoDB')
-    console.log('- MongoDB Compass: Visual data management')
-
   } catch (error) {
-    console.error('❌ Migration failed:', error)
   } finally {
     await mongoose.disconnect()
-    console.log('🔌 Disconnected from MongoDB')
   }
 }
 

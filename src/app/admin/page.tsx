@@ -20,35 +20,27 @@ export default function AdminPage() {
     const checkAdmin = async () => {
       // Wait for auth to initialize
       if (currentUser === undefined) {
-        console.log('Admin page: currentUser is undefined, waiting for auth to load...')
         return // Still loading auth
       }
 
       if (!currentUser) {
-        console.log('Admin page: No user logged in, redirecting to login')
         router.push('/login')
         return
       }
 
-      console.log('Admin page: currentUser:', currentUser)
-      console.log('Admin page: currentUser.isAdmin:', currentUser.isAdmin)
-
       // Check if user is admin in currentUser object first
       if (!currentUser.isAdmin) {
-        console.log('Admin page: User is not an admin, redirecting to home')
         alert('У вас нет прав администратора')
         router.push('/')
         setLoading(false)
         return
       }
 
-      console.log('Admin page: User is admin, fetching stats')
 
       // Fetch admin data
       try {
         let token = localStorage.getItem('accessToken')
         if (!token) {
-          console.log('Admin page: No token found, redirecting to login')
           router.push('/login')
           setLoading(false)
           return
@@ -61,11 +53,9 @@ export default function AdminPage() {
           }
         })
 
-        console.log('Admin page: Stats response status:', statsResponse.status)
 
         // If 401, try to refresh the token
         if (statsResponse.status === 401) {
-          console.log('Admin page: Token expired, attempting to refresh...')
           const refreshToken = localStorage.getItem('refreshToken')
           
           if (refreshToken) {
@@ -80,7 +70,6 @@ export default function AdminPage() {
 
               if (refreshResponse.ok) {
                 const refreshData = await refreshResponse.json()
-                console.log('Admin page: Token refreshed successfully')
                 
                 // Update localStorage
                 localStorage.setItem('accessToken', refreshData.accessToken)
@@ -94,9 +83,7 @@ export default function AdminPage() {
                   }
                 })
                 
-                console.log('Admin page: Retry stats response status:', statsResponse.status)
               } else {
-                console.log('Admin page: Token refresh failed, redirecting to login')
                 localStorage.removeItem('accessToken')
                 localStorage.removeItem('refreshToken')
                 localStorage.removeItem('user')
@@ -111,7 +98,6 @@ export default function AdminPage() {
               return
             }
           } else {
-            console.log('Admin page: No refresh token, redirecting to login')
             router.push('/login')
             setLoading(false)
             return
@@ -119,14 +105,11 @@ export default function AdminPage() {
         }
 
         if (statsResponse.ok) {
-          const data = await statsResponse.json()
-          console.log('Admin page: Stats data:', data)
+          const data = await statsResponse.json() 
           setStats(data)
         } else {
-          console.error('Admin page: Failed to fetch stats:', statsResponse.status)
         }
       } catch (error) {
-        console.error('Admin check error:', error)
         alert('Ошибка проверки прав администратора')
         router.push('/')
         return

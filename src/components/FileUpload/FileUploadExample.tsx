@@ -11,36 +11,28 @@ const FileUploadExample: React.FC = () => {
   const handleUploadSuccess = (fileUrl: string, filename: string) => {
     setUploadedFiles(prev => [...prev, { url: fileUrl, filename }]);
     setRefreshTrigger(prev => prev + 1);
-    console.log('File uploaded successfully:', { fileUrl, filename });
   };
 
   const handleUploadError = (error: string) => {
-    alert(`Upload failed: ${error}`);
-    console.error('Upload error:', error);
   };
 
   const handleFileSelect = (fileUrl: string, filename: string) => {
     setSelectedFile({ url: fileUrl, filename });
-    console.log('File selected:', { fileUrl, filename });
   };
 
   const handleHealthCheck = async () => {
     try {
       const health = await uploadAPI.healthCheck();
-      alert(`File server is healthy: ${JSON.stringify(health)}`);
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      alert(`File server health check failed: ${errorMessage}`);
     }
   };
 
   const handleStorageStats = async () => {
     try {
       const stats = await uploadAPI.getStorageStats();
-      alert(`Storage stats: ${JSON.stringify(stats, null, 2)}`);
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      alert(`Failed to get storage stats: ${errorMessage}`);
     }
   };
 
