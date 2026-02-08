@@ -445,6 +445,19 @@ export const authAPI = {
     return apiRequest('/auth/me');
   },
 
+  requestEmailChange: async (newEmail: string) => {
+    return apiRequest('/auth/change-email', {
+      method: 'POST',
+      body: JSON.stringify({ newEmail })
+    }, false);
+  },
+
+  cancelEmailChange: async () => {
+    return apiRequest('/auth/change-email', {
+      method: 'DELETE'
+    }, false);
+  },
+
   refresh: async () => {
     const refreshToken = tokenManager.getRefreshToken();
     if (!refreshToken) {
@@ -455,7 +468,7 @@ export const authAPI = {
       method: 'POST',
       body: JSON.stringify({ refreshToken })
     }, true);
-    
+
     const authResponse = response as { accessToken: string; refreshToken: string; user: unknown };
     tokenManager.setTokens(authResponse.accessToken, authResponse.refreshToken);
     return authResponse;

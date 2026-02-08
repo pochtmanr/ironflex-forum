@@ -23,7 +23,7 @@ function ResetPasswordContent() {
   useEffect(() => {
     const verifyToken = async () => {
       if (!token) {
-        setError('Reset token is missing')
+        setError('Ссылка сброса пароля отсутствует')
         setLoading(false)
         return
       }
@@ -36,10 +36,10 @@ function ResetPasswordContent() {
           setTokenValid(true)
           setUserInfo({ email: data.email, username: data.username })
         } else {
-          setError(data.error || 'Invalid or expired reset token')
+          setError(data.error || 'Недействительная или просроченная ссылка сброса пароля')
         }
       } catch (err) {
-        setError('Network error. Please try again later.')
+        setError('Ошибка сети. Пожалуйста, попробуйте позже.')
       } finally {
         setLoading(false)
       }
@@ -79,15 +79,15 @@ function ResetPasswordContent() {
 
       if (response.ok) {
         setSuccess(true)
-        setMessage(data.message || 'Password has been reset successfully')
+        setMessage(data.message || 'Пароль был успешно сброшен')
         setTimeout(() => {
           router.push('/login')
         }, 3000)
       } else {
-        setError(data.error || 'Failed to reset password')
+        setError(data.error || 'Не удалось сбросить пароль')
       }
     } catch (err) {
-      setError('Network error. Please try again later.')
+      setError('Ошибка сети. Пожалуйста, попробуйте позже.')
     } finally {
       setResetting(false)
     }
@@ -116,7 +116,7 @@ function ResetPasswordContent() {
             <div className="text-center">
               <div className="text-red-600 text-6xl mb-4">✗</div>
               <h2 className="mt-6 text-2xl font-bold text-gray-900">
-                Недействительная ссылка
+                Недействительная или просроченная ссылка
               </h2>
               <p className="mt-2 text-gray-600">{error}</p>
               <div className="mt-8">

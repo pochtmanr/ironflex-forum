@@ -2,8 +2,55 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { generateSecureToken, sendPasswordResetEmail } from '@/lib/email'
 
+// In-memory rate limiting: max 3 requests per IP per 10 minutes
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>()
+
+function checkRateLimit(ip: string): boolean {
+  const now = Date.now()
+  const entry = rateLimitMap.get(ip)
+
+  if (!entry || now > entry.resetAt) {
+    rateLimitMap.set(ip, { count: 1, resetAt: now + 10 * 60 * 1000 })
+    return true
+  }
+
+  if (entry.count >= 3) {
+    return false
+  }
+
+  entry.count++
+  return true
+}
+
+// Periodic cleanup (every 100 requests)
+let requestCounter = 0
+function cleanupRateLimitMap() {
+  requestCounter++
+  if (requestCounter % 100 === 0) {
+    const now = Date.now()
+    for (const [key, value] of rateLimitMap.entries()) {
+      if (now > value.resetAt) {
+        rateLimitMap.delete(key)
+      }
+    }
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
+    // Rate limiting
+    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+      || request.headers.get('x-real-ip')
+      || 'unknown'
+
+    cleanupRateLimitMap()
+
+    if (!checkRateLimit(ip)) {
+      return NextResponse.json(
+        { message: 'Если аккаунт с таким email существует, то ссылка для сброса пароля была отправлена.' }
+      )
+    }
+
     const { email } = await request.json()
 
     // Validation

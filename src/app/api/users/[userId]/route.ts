@@ -40,7 +40,7 @@ export async function GET(
     // Find user by ID
     const { data: user, error } = await supabaseAdmin
       .from('users')
-      .select('id, email, username, display_name, photo_url, bio, city, country, is_active, is_admin, is_verified, google_id, github_id, last_login, created_at, updated_at, telegram_link, vk_link, viber_link, telegram_visible, vk_visible, viber_visible')
+      .select('id, email, username, display_name, photo_url, bio, city, country, is_active, is_admin, is_verified, google_id, github_id, last_login, created_at, updated_at, telegram_link, vk_link, viber_link, telegram_visible, vk_visible, viber_visible, pending_email')
       .eq('id', userId)
       .single();
 
@@ -111,6 +111,7 @@ export async function GET(
       createdAt: user.created_at,
       updatedAt: user.updated_at,
       lastLogin: user.last_login,
+      pendingEmail: isOwner ? (user.pending_email || null) : null,
       ...socialLinks,
       topicCount: topicCount || 0,
       postCount: postCount || 0,

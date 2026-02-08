@@ -378,6 +378,108 @@ const getEmailTemplate = (type: string, data: Record<string, unknown>) => {
         </html>
       `
 
+    case 'email_change_verification':
+      return `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Подтверждение нового email - ${FROM_NAME}</title>
+            ${baseStyle}
+          </head>
+          <body>
+            <div class="email-wrapper">
+              <div class="email-container">
+                <div class="email-header">
+                  <h1>Смена email</h1>
+                  <div class="subtitle">Подтвердите новый адрес электронной почты</div>
+                </div>
+
+                <div class="email-content">
+                  <h2>Здравствуйте, ${data.username}!</h2>
+
+                  <p>Вы запросили смену email на <strong>${FROM_NAME}</strong>.</p>
+
+                  <p>Для подтверждения нового email адреса нажмите на кнопку ниже:</p>
+
+                  <div style="text-align: center;">
+                    <a href="${data.confirmUrl}" class="email-button">Подтвердить новый email</a>
+                  </div>
+
+                  <p style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e2e8f0;">
+                    <strong>Не работает кнопка?</strong> Скопируйте и вставьте эту ссылку в адресную строку браузера:
+                  </p>
+                  <div class="email-link-box">${data.confirmUrl}</div>
+
+                  <div class="email-info-box">
+                    <h3>⚠️ Важная информация:</h3>
+                    <ul>
+                      <li><strong>Срок действия:</strong> Ссылка действительна в течение 1 часа</li>
+                      <li><strong>Безопасность:</strong> Никому не передавайте эту ссылку</li>
+                      <li><strong>Не запрашивали?</strong> Просто проигнорируйте это письмо — ваш текущий email не изменится</li>
+                    </ul>
+                  </div>
+                </div>
+
+                <div class="email-footer">
+                  <p class="brand">${FROM_NAME}</p>
+                  <p>Это автоматическое письмо, пожалуйста, не отвечайте на него.</p>
+                  <p style="margin-top: 15px; font-size: 12px; opacity: 0.7;">
+                    © ${new Date().getFullYear()} ${FROM_NAME}. Все права защищены.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </body>
+        </html>
+      `
+
+    case 'email_changed_notification':
+      return `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Email изменён - ${FROM_NAME}</title>
+            ${baseStyle}
+          </head>
+          <body>
+            <div class="email-wrapper">
+              <div class="email-container">
+                <div class="email-header">
+                  <h1>Email изменён</h1>
+                  <div class="subtitle">Уведомление о смене адреса электронной почты</div>
+                </div>
+
+                <div class="email-content">
+                  <h2>Здравствуйте, ${data.username}!</h2>
+
+                  <p>Email адрес вашего аккаунта на <strong>${FROM_NAME}</strong> был изменён на новый адрес.</p>
+
+                  <div class="email-info-box">
+                    <h3>⚠️ Это были не вы?</h3>
+                    <ul>
+                      <li>Если вы не меняли email, немедленно свяжитесь с администрацией</li>
+                      <li>Рекомендуем сменить пароль на всех связанных аккаунтах</li>
+                    </ul>
+                  </div>
+                </div>
+
+                <div class="email-footer">
+                  <p class="brand">${FROM_NAME}</p>
+                  <p>Это автоматическое письмо, пожалуйста, не отвечайте на него.</p>
+                  <p style="margin-top: 15px; font-size: 12px; opacity: 0.7;">
+                    © ${new Date().getFullYear()} ${FROM_NAME}. Все права защищены.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </body>
+        </html>
+      `
+
     case 'contact_form':
       return `
         <!DOCTYPE html>
@@ -531,6 +633,33 @@ export const sendWelcomeEmail = async (
     'Добро пожаловать в Клинический Протокол Тарновского!',
     'welcome',
     { username, loginUrl }
+  )
+}
+
+export const sendEmailChangeVerificationEmail = async (
+  email: string,
+  username: string,
+  token: string
+): Promise<boolean> => {
+  const confirmUrl = `${SITE_URL}/auth/confirm-email-change?token=${token}`
+
+  return sendEmail(
+    email,
+    'Подтверждение нового email - Клинический Протокол Тарновского',
+    'email_change_verification',
+    { username, confirmUrl }
+  )
+}
+
+export const sendEmailChangedNotification = async (
+  oldEmail: string,
+  username: string
+): Promise<boolean> => {
+  return sendEmailSecure(
+    oldEmail,
+    'Email вашего аккаунта был изменён - Клинический Протокол Тарновского',
+    'email_changed_notification',
+    { username }
   )
 }
 

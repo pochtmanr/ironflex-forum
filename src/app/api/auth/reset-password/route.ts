@@ -78,13 +78,13 @@ export async function POST(request: NextRequest) {
       .neq('id', resetToken.id)
 
     return NextResponse.json({
-      message: 'Password has been reset successfully'
+      message: 'Пароль был успешно сброшен'
     })
 
   } catch (error) {
     console.error('Reset password error:', error)
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Внутренняя ошибка сервера' },
       { status: 500 }
     )
   }

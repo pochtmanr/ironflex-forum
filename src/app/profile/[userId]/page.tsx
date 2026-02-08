@@ -32,6 +32,7 @@ interface User {
   telegramVisible?: boolean;
   vkVisible?: boolean;
   viberVisible?: boolean;
+  pendingEmail?: string | null;
   topicCount: number;
   postCount: number;
   recentTopics: Array<{
@@ -93,6 +94,14 @@ const UserProfile: React.FC = () => {
   const [modalLoading, setModalLoading] = useState(false);
   const [modalMessage, setModalMessage] = useState('');
   const [modalError, setModalError] = useState('');
+
+  // Email change states
+  const [showChangeEmailModal, setShowChangeEmailModal] = useState(false);
+  const [newEmailInput, setNewEmailInput] = useState('');
+  const [emailChangeLoading, setEmailChangeLoading] = useState(false);
+  const [emailChangeMessage, setEmailChangeMessage] = useState('');
+  const [emailChangeError, setEmailChangeError] = useState('');
+  const [emailResendCooldown, setEmailResendCooldown] = useState(0);
 
   useEffect(() => {
     if (userId) {
@@ -579,6 +588,132 @@ const UserProfile: React.FC = () => {
     setNewPassword('');
     setConfirmPassword('');
   };
+
+  const handleRequestEmailChange = async () => {
+    if (!newEmailInput.trim()) {
+      setEmailChangeError('Введите новый email');
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(newEmailInput.trim())) {
+      setEmailChangeError('Некорректный формат email');
+      return;
+    }
+
+    setEmailChangeLoading(true);
+    setEmailChangeError('');
+    setEmailChangeMessage('');
+
+    try {
+      let tokenToUse = localStorage.getItem('accessToken');
+      if (!tokenToUse) {
+        setEmailChangeError('Сессия истекла. Войдите снова.');
+        return;
+      }
+
+      let response = await fetch('/api/auth/change-email', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${tokenToUse}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ newEmail: newEmailInput.trim() }),
+      });
+
+      let data = await response.json();
+
+      if (response.status === 401) {
+        const newToken = await refreshAccessToken();
+        if (newToken) {
+          tokenToUse = newToken;
+          response = await fetch('/api/auth/change-email', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${newToken}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ newEmail: newEmailInput.trim() }),
+          });
+          data = await response.json();
+        } else {
+          setEmailChangeError('Сессия истекла. Войдите снова.');
+          return;
+        }
+      }
+
+      if (response.ok) {
+        setEmailChangeMessage(data.message || 'Письмо с подтверждением отправлено');
+        setShowChangeEmailModal(false);
+        setNewEmailInput('');
+        // Start cooldown
+        setEmailResendCooldown(60);
+        // Reload profile to show pending state
+        await loadUserProfile();
+      } else {
+        setEmailChangeError(data.error || 'Не удалось отправить письмо');
+      }
+    } catch {
+      setEmailChangeError('Ошибка сети. Попробуйте снова.');
+    } finally {
+      setEmailChangeLoading(false);
+    }
+  };
+
+  const handleCancelEmailChange = async () => {
+    setEmailChangeLoading(true);
+    setEmailChangeError('');
+    setEmailChangeMessage('');
+
+    try {
+      let tokenToUse = localStorage.getItem('accessToken');
+      if (!tokenToUse) return;
+
+      let response = await fetch('/api/auth/change-email', {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${tokenToUse}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      let data = await response.json();
+
+      if (response.status === 401) {
+        const newToken = await refreshAccessToken();
+        if (newToken) {
+          response = await fetch('/api/auth/change-email', {
+            method: 'DELETE',
+            headers: {
+              'Authorization': `Bearer ${newToken}`,
+              'Content-Type': 'application/json',
+            },
+          });
+          data = await response.json();
+        }
+      }
+
+      if (response.ok) {
+        setEmailChangeMessage('Запрос на смену email отменён');
+        setEmailResendCooldown(0);
+        await loadUserProfile();
+        setTimeout(() => setEmailChangeMessage(''), 3000);
+      } else {
+        setEmailChangeError(data.error || 'Ошибка отмены');
+      }
+    } catch {
+      setEmailChangeError('Ошибка сети.');
+    } finally {
+      setEmailChangeLoading(false);
+    }
+  };
+
+  // Cooldown timer for resend
+  useEffect(() => {
+    if (emailResendCooldown <= 0) return;
+    const timer = setTimeout(() => setEmailResendCooldown(prev => prev - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [emailResendCooldown]);
 
   if (loading) {
     return (
@@ -1067,51 +1202,116 @@ const UserProfile: React.FC = () => {
               
               <div>
                 <h3 className="text-sm font-medium text-gray-700 mb-2">Email</h3>
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <span className="text-gray-600">{user?.email}</span>
-                    {user?.isVerified ? (
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                        ✓ Подтвержден
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                        ⚠ Не подтвержден
-                      </span>
-                    )}
+                    <div className="flex items-center gap-2">
+                      {user?.isVerified ? (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                          &#10003; Подтвержден
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                          &#9888; Не подтвержден
+                        </span>
+                      )}
+                    </div>
                   </div>
-                  {!user?.isVerified && (
-                    <button
-                      onClick={async () => {
-                        setModalLoading(true);
-                        setModalError('');
-                        setModalMessage('');
-                        try {
-                          const token = localStorage.getItem('accessToken');
-                          const response = await fetch('/api/auth/verify-email', {
-                            method: 'POST',
-                            headers: {
-                              'Authorization': `Bearer ${token}`,
-                              'Content-Type': 'application/json',
-                            },
-                          });
-                          const data = await response.json();
-                          if (response.ok) {
-                            setModalMessage('✉️ Письмо для подтверждения отправлено на ваш email!');
-                          } else {
-                            setModalError(data.error || 'Не удалось отправить письмо');
+
+                  {/* Pending email change banner */}
+                  {user?.pendingEmail && (
+                    <div className="bg-amber-50 border border-amber-200 rounded-md p-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="text-sm">
+                          <p className="text-amber-800 font-medium">Ожидается подтверждение</p>
+                          <p className="text-amber-700 mt-0.5">
+                            Новый email: <strong>{user.pendingEmail}</strong>
+                          </p>
+                          <p className="text-amber-600 text-xs mt-1">Проверьте почту {user.pendingEmail} для подтверждения</p>
+                        </div>
+                        <button
+                          onClick={handleCancelEmailChange}
+                          disabled={emailChangeLoading}
+                          className="text-xs text-amber-700 hover:text-amber-900 font-medium whitespace-nowrap disabled:opacity-50"
+                        >
+                          Отменить
+                        </button>
+                      </div>
+                      <div className="mt-2 flex items-center gap-3">
+                        <button
+                          onClick={() => {
+                            setNewEmailInput(user.pendingEmail || '');
+                            handleRequestEmailChange();
+                          }}
+                          disabled={emailChangeLoading || emailResendCooldown > 0}
+                          className="text-xs text-blue-600 hover:text-blue-700 font-medium disabled:opacity-50"
+                        >
+                          {emailResendCooldown > 0
+                            ? `Отправить повторно (${emailResendCooldown}с)`
+                            : 'Отправить письмо повторно'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Email change / verify buttons */}
+                  <div className="flex items-center gap-3">
+                    {!user?.isVerified && (
+                      <button
+                        onClick={async () => {
+                          setModalLoading(true);
+                          setModalError('');
+                          setModalMessage('');
+                          try {
+                            const accessToken = localStorage.getItem('accessToken');
+                            const response = await fetch('/api/auth/verify-email', {
+                              method: 'POST',
+                              headers: {
+                                'Authorization': `Bearer ${accessToken}`,
+                                'Content-Type': 'application/json',
+                              },
+                            });
+                            const data = await response.json();
+                            if (response.ok) {
+                              setModalMessage('Письмо для подтверждения отправлено на ваш email!');
+                            } else {
+                              setModalError(data.error || 'Не удалось отправить письмо');
+                            }
+                          } catch {
+                            setModalError('Ошибка сети. Попробуйте снова.');
+                          } finally {
+                            setModalLoading(false);
                           }
-                        } catch (error) {
-                          setModalError('Ошибка сети. Попробуйте снова.');
-                        } finally {
-                          setModalLoading(false);
-                        }
+                        }}
+                        disabled={modalLoading}
+                        className="text-sm text-blue-600 hover:text-blue-700 font-medium disabled:opacity-50"
+                      >
+                        {modalLoading ? 'Отправка...' : 'Подтвердить текущий email'}
+                      </button>
+                    )}
+                    <button
+                      onClick={() => {
+                        setShowChangeEmailModal(true);
+                        setNewEmailInput('');
+                        setEmailChangeError('');
+                        setEmailChangeMessage('');
                       }}
-                      disabled={modalLoading}
-                      className="text-sm text-blue-600 hover:text-blue-700 font-medium disabled:opacity-50"
+                      className="text-sm text-blue-600 hover:text-blue-700 font-medium"
                     >
-                      {modalLoading ? 'Отправка...' : '📧 Отправить письмо для подтверждения'}
+                      Изменить email
                     </button>
+                  </div>
+
+                  {/* Email change status messages */}
+                  {emailChangeMessage && (
+                    <div className="bg-green-50 border border-green-200 text-green-700 px-3 py-2 rounded-md text-sm">
+                      {emailChangeMessage}
+                    </div>
+                  )}
+                  {emailChangeError && (
+                    <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-md text-sm">
+                      {emailChangeError}
+                    </div>
                   )}
                 </div>
               </div>
@@ -1119,12 +1319,12 @@ const UserProfile: React.FC = () => {
                 <h3 className="text-sm font-medium text-gray-700 mb-2">Пароль</h3>
                 <div className="flex items-center justify-between">
                   <span className="text-gray-600">{user?.password ? 'Пароль установлен' : 'Пароль не установлен'}</span>
-                  <button 
-                  onClick={() => setShowChangePasswordModal(true)}
-                  className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                  <button
+                    onClick={() => setShowChangePasswordModal(true)}
+                    className="text-sm text-blue-600 hover:text-blue-700 font-medium"
                   >
-                  Изменить пароль
-                </button>
+                    Изменить пароль
+                  </button>
                 </div>
               </div>
             </div>
@@ -1205,6 +1405,66 @@ const UserProfile: React.FC = () => {
         </div>
       </div>
 
+
+      {/* Change Email Modal */}
+      {showChangeEmailModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+            <h3 className="text-lg font-medium text-gray-900 mb-4">Изменить email</h3>
+            <div className="space-y-4">
+              <div>
+                <p className="text-sm text-gray-600 mb-3">
+                  Текущий email: <strong>{user?.email}</strong>
+                </p>
+                <label htmlFor="newEmail" className="block text-sm font-medium text-gray-700 mb-1">
+                  Новый email
+                </label>
+                <input
+                  type="email"
+                  id="newEmail"
+                  value={newEmailInput}
+                  onChange={(e) => setNewEmailInput(e.target.value)}
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  disabled={emailChangeLoading}
+                  placeholder="new@example.com"
+                  autoFocus
+                />
+              </div>
+
+              <p className="text-xs text-gray-500">
+                На новый адрес будет отправлено письмо для подтверждения. Текущий email не изменится, пока вы не подтвердите новый.
+              </p>
+
+              {emailChangeError && (
+                <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-md text-sm">
+                  {emailChangeError}
+                </div>
+              )}
+
+              <div className="flex space-x-3">
+                <button
+                  onClick={handleRequestEmailChange}
+                  disabled={emailChangeLoading || !newEmailInput.trim()}
+                  className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {emailChangeLoading ? 'Отправка...' : 'Отправить подтверждение'}
+                </button>
+                <button
+                  onClick={() => {
+                    setShowChangeEmailModal(false);
+                    setNewEmailInput('');
+                    setEmailChangeError('');
+                  }}
+                  disabled={emailChangeLoading}
+                  className="flex-1 bg-gray-300 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-400 disabled:opacity-50"
+                >
+                  Отмена
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Change Password Modal */}
       {showChangePasswordModal && (
