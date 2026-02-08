@@ -22,18 +22,18 @@ export async function POST(request: NextRequest) {
   try {
     const authHeader = request.headers.get('authorization')
     if (!authHeader?.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return NextResponse.json({ error: 'Не авторизован' }, { status: 401 })
     }
 
     const userPayload = verifyAccessToken(authHeader.substring(7))
     if (!userPayload) {
-      return NextResponse.json({ error: 'Invalid or expired token' }, { status: 401 })
+      return NextResponse.json({ error: 'Недействительный или просроченный токен' }, { status: 401 })
     }
 
     const { newEmail } = await request.json()
 
     if (!newEmail || typeof newEmail !== 'string') {
-      return NextResponse.json({ error: 'Email обязателен' }, { status: 400 })
+      return NextResponse.json({ error: 'Email адрес обязателен' }, { status: 400 })
     }
 
     const trimmedEmail = newEmail.trim().toLowerCase()
@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
     // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     if (!emailRegex.test(trimmedEmail) || trimmedEmail.length > 200) {
-      return NextResponse.json({ error: 'Некорректный формат email' }, { status: 400 })
+      return NextResponse.json({ error: 'Некорректный формат email адреса' }, { status: 400 })
     }
 
     // Get current user
@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (userError || !user) {
-      return NextResponse.json({ error: 'Пользователь не найден' }, { status: 404 })
+      return NextResponse.json({ error: 'Аккаунт не найден' }, { status: 404 })
     }
 
     if (!user.is_active) {
@@ -135,7 +135,7 @@ export async function POST(request: NextRequest) {
     })
   } catch (error) {
     console.error('Change email error:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    return NextResponse.json({ error: 'Внутренняя ошибка сервера' }, { status: 500 })
   }
 }
 
@@ -144,12 +144,12 @@ export async function DELETE(request: NextRequest) {
   try {
     const authHeader = request.headers.get('authorization')
     if (!authHeader?.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return NextResponse.json({ error: 'Не авторизован' }, { status: 401 })
     }
 
     const userPayload = verifyAccessToken(authHeader.substring(7))
     if (!userPayload) {
-      return NextResponse.json({ error: 'Invalid or expired token' }, { status: 401 })
+      return NextResponse.json({ error: 'Недействительный или просроченный токен' }, { status: 401 })
     }
 
     // Delete all email_change tokens
@@ -168,6 +168,6 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ message: 'Запрос на смену email отменён' })
   } catch (error) {
     console.error('Cancel email change error:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    return NextResponse.json({ error: 'Внутренняя ошибка сервера' }, { status: 500 })
   }
 }

@@ -1263,15 +1263,39 @@ const UserProfile: React.FC = () => {
                           setModalError('');
                           setModalMessage('');
                           try {
-                            const accessToken = localStorage.getItem('accessToken');
-                            const response = await fetch('/api/auth/verify-email', {
+                            let tokenToUse = localStorage.getItem('accessToken');
+                            if (!tokenToUse) {
+                              setModalError('Сессия истекла. Войдите снова.');
+                              return;
+                            }
+
+                            let response = await fetch('/api/auth/verify-email', {
                               method: 'POST',
                               headers: {
-                                'Authorization': `Bearer ${accessToken}`,
+                                'Authorization': `Bearer ${tokenToUse}`,
                                 'Content-Type': 'application/json',
                               },
                             });
-                            const data = await response.json();
+                            let data = await response.json();
+
+                            // Retry with refreshed token on 401
+                            if (response.status === 401) {
+                              const newToken = await refreshAccessToken();
+                              if (newToken) {
+                                response = await fetch('/api/auth/verify-email', {
+                                  method: 'POST',
+                                  headers: {
+                                    'Authorization': `Bearer ${newToken}`,
+                                    'Content-Type': 'application/json',
+                                  },
+                                });
+                                data = await response.json();
+                              } else {
+                                setModalError('Сессия истекла. Войдите снова.');
+                                return;
+                              }
+                            }
+
                             if (response.ok) {
                               setModalMessage('Письмо для подтверждения отправлено на ваш email!');
                             } else {

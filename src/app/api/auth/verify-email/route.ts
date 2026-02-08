@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
     const authHeader = request.headers.get('authorization')
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return NextResponse.json(
-        { error: 'Unauthorized' },
+        { error: 'Не авторизован' },
         { status: 401 }
       )
     }
@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
 
     if (!userPayload) {
       return NextResponse.json(
-        { error: 'Invalid or expired token' },
+        { error: 'Недействительный или просроченный токен' },
         { status: 401 }
       )
     }
@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
 
     if (error || !user) {
       return NextResponse.json(
-        { error: 'User not found' },
+        { error: 'Аккаунт не найден' },
         { status: 404 }
       )
     }
@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
     // Check if already verified
     if (user.is_verified) {
       return NextResponse.json(
-        { error: 'Email is already verified' },
+        { error: 'Email адрес уже подтвержден' },
         { status: 400 }
       )
     }
@@ -77,19 +77,19 @@ export async function POST(request: NextRequest) {
 
     if (!emailSent) {
       return NextResponse.json(
-        { error: 'Failed to send verification email. Please try again later.' },
+        { error: 'Не удалось отправить письмо с подтверждением. Пожалуйста, попробуйте позже.' },
         { status: 500 }
       )
     }
 
     return NextResponse.json({
-      message: 'Verification email sent. Please check your inbox.'
+      message: 'Письмо с подтверждением отправлено. Пожалуйста, проверьте ваш почтовый ящик.'
     })
 
   } catch (error) {
     console.error('Send verification email error:', error)
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Внутренняя ошибка сервера' },
       { status: 500 }
     )
   }
@@ -103,7 +103,7 @@ export async function GET(request: NextRequest) {
 
     if (!token) {
       return NextResponse.json(
-        { error: 'Token is required' },
+        { error: 'Токен обязателен' },
         { status: 400 }
       )
     }
@@ -120,7 +120,7 @@ export async function GET(request: NextRequest) {
 
     if (tokenError || !verificationToken) {
       return NextResponse.json(
-        { error: 'Invalid or expired verification token' },
+        { error: 'Недействительный или просроченный токен подтверждения' },
         { status: 400 }
       )
     }
@@ -134,7 +134,7 @@ export async function GET(request: NextRequest) {
 
     if (userError || !user) {
       return NextResponse.json(
-        { error: 'User not found' },
+        { error: 'Аккаунт не найден' },
         { status: 404 }
       )
     }
@@ -147,7 +147,7 @@ export async function GET(request: NextRequest) {
         .eq('id', verificationToken.id)
 
       return NextResponse.json({
-        message: 'Email is already verified',
+        message: 'Email адрес уже подтвержден',
         alreadyVerified: true
       })
     }
@@ -190,7 +190,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('Verify email error:', error)
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Внутренняя ошибка сервера' },
       { status: 500 }
     )
   }
