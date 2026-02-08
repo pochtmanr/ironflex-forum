@@ -5,4 +5,7 @@ export { ReplyForm } from './ReplyForm';
 export { MediaAttachment, MediaGallery } from './MediaAttachment';
 export { EditTopicModal } from './EditTopicModal';
 export { EditPostModal } from './EditPostModal';
+export { AuthorSidebar } from './AuthorSidebar';
+export { TopicRating } from './TopicRating';
+export { TopicTitleBar } from './TopicTitleBar';
 

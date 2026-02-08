@@ -387,7 +387,7 @@ const UserProfile: React.FC = () => {
           data = await retryResponse.json();
           
           if (retryResponse.ok) {
-            setModalMessage('Profile updated successfully!');
+            setModalMessage('Профиль успешно обновлён!');
             setIsEditing(false);
             
             if (currentUser && currentUser.id === userId && data.user) {
@@ -406,17 +406,17 @@ const UserProfile: React.FC = () => {
             }, 2000);
             return;
           } else {
-            setModalError(data.error || 'Failed to update profile');
+            setModalError(data.error || 'Ошибка обновления профиля');
             return;
           }
         } else {
-          setModalError('Session expired. Please log in again.');
+          setModalError('Сессия истекла. Войдите снова.');
           return;
         }
       }
 
       if (response.ok) {
-        setModalMessage('Profile updated successfully!');
+        setModalMessage('Профиль успешно обновлён!');
         setIsEditing(false);
         
         if (currentUser && currentUser.id === userId && data.user) {
@@ -434,10 +434,10 @@ const UserProfile: React.FC = () => {
           setModalMessage('');
         }, 2000);
       } else {
-        setModalError(data.error || 'Failed to update profile');
+        setModalError(data.error || 'Ошибка обновления профиля');
       }
     } catch (error) {
-      setModalError('Network error. Please try again.');
+      setModalError('Ошибка сети. Пожалуйста, попробуйте снова.');
     } finally {
       setModalLoading(false);
     }
@@ -473,7 +473,7 @@ const UserProfile: React.FC = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-gray-500">Loading profile...</div>
+        <div className="text-gray-500">Загрузка профиля...</div>
       </div>
     );
   }
@@ -487,7 +487,7 @@ const UserProfile: React.FC = () => {
             href="/"
             className="text-blue-600 hover:text-blue-700 font-medium"
           >
-            ← Back to Forum
+            ← Вернуться на форум
           </Link>
         </div>
       </div>
@@ -508,7 +508,7 @@ const UserProfile: React.FC = () => {
               <svg className="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
               </svg>
-              Edit Profile
+              Редактировать профиль
             </button>
           </div>
         </div>
@@ -644,14 +644,14 @@ const UserProfile: React.FC = () => {
                 <div className="mt-4 flex items-center gap-6 text-sm">
                   <div>
                     <span className="font-semibold text-gray-900">{user?.topicCount || 0}</span>
-                    <span className="text-gray-600 ml-1">Topics</span>
+                    <span className="text-gray-600 ml-1">Темы</span>
                   </div>
                   <div>
                     <span className="font-semibold text-gray-900">{user?.postCount || 0}</span>
-                    <span className="text-gray-600 ml-1">Posts</span>
+                    <span className="text-gray-600 ml-1">Комментарии</span>
                   </div>
                   <div className="text-gray-600">
-                    Member since {user?.createdAt ? formatDate(user.createdAt) : 'Unknown'}
+                    Зарегистрирован с {user?.createdAt ? formatDate(user.createdAt) : 'Неизвестно'}
                   </div>
                 </div>
               </div>

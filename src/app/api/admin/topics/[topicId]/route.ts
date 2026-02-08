@@ -41,25 +41,23 @@ export async function DELETE(
       );
     }
 
-    // Verify ownership - only the author can delete
-    if (topic.user_id !== userPayload.id) {
-      return NextResponse.json(
-        { error: 'You can only delete your own topics' },
-        { status: 403 }
-      );
-    }
+    // Admins can delete any topic; non-admins: ownership + 2-hour window
+    if (!userPayload.isAdmin) {
+      if (topic.user_id !== userPayload.id) {
+        return NextResponse.json(
+          { error: 'You can only delete your own topics' },
+          { status: 403 }
+        );
+      }
 
-    // Check if topic is within 2-hour edit window
-    const createdAt = new Date(topic.created_at);
-    const now = new Date();
-    const twoHoursInMs = 2 * 60 * 60 * 1000; // 2 hours in milliseconds
-    const timeSinceCreation = now.getTime() - createdAt.getTime();
-
-    if (timeSinceCreation > twoHoursInMs) {
-      return NextResponse.json(
-        { error: 'Topics can only be deleted within 2 hours of creation' },
-        { status: 403 }
-      );
+      const createdAt = new Date(topic.created_at);
+      const twoHoursInMs = 2 * 60 * 60 * 1000;
+      if (Date.now() - createdAt.getTime() > twoHoursInMs) {
+        return NextResponse.json(
+          { error: 'Topics can only be deleted within 2 hours of creation' },
+          { status: 403 }
+        );
+      }
     }
 
     // Delete all posts in this topic
@@ -134,25 +132,23 @@ export async function PATCH(
       );
     }
 
-    // Verify ownership - only the author can edit
-    if (topic.user_id !== userPayload.id) {
-      return NextResponse.json(
-        { error: 'You can only edit your own topics' },
-        { status: 403 }
-      );
-    }
+    // Admins can edit any topic; non-admins: ownership + 2-hour window
+    if (!userPayload.isAdmin) {
+      if (topic.user_id !== userPayload.id) {
+        return NextResponse.json(
+          { error: 'You can only edit your own topics' },
+          { status: 403 }
+        );
+      }
 
-    // Check if topic is within 2-hour edit window
-    const createdAt = new Date(topic.created_at);
-    const now = new Date();
-    const twoHoursInMs = 2 * 60 * 60 * 1000; // 2 hours in milliseconds
-    const timeSinceCreation = now.getTime() - createdAt.getTime();
-
-    if (timeSinceCreation > twoHoursInMs) {
-      return NextResponse.json(
-        { error: 'Topics can only be edited within 2 hours of creation' },
-        { status: 403 }
-      );
+      const createdAt = new Date(topic.created_at);
+      const twoHoursInMs = 2 * 60 * 60 * 1000;
+      if (Date.now() - createdAt.getTime() > twoHoursInMs) {
+        return NextResponse.json(
+          { error: 'Topics can only be edited within 2 hours of creation' },
+          { status: 403 }
+        );
+      }
     }
 
     // Update the topic

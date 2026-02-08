@@ -13,6 +13,8 @@ interface Post {
   dislikes: number;
   media_links: string[];
   is_author: boolean;
+  reply_to_post_id?: string | null;
+  reply_to_excerpt?: { author_name: string; excerpt: string } | null;
 }
 
 interface PostsListProps {
@@ -25,10 +27,13 @@ interface PostsListProps {
   onFlagPost: (postId: string) => void;
   formatDate: (dateString: string) => string;
   currentUser: any;
-  isTopicAuthor: boolean;
+  isCurrentUserTopicAuthor: boolean; // Is the current logged-in user the topic author
+  topicAuthorId: string; // Topic author's user ID for "Автор темы" badge
   canEditPost: (createdAt: string) => boolean;
   getRemainingEditTime: (createdAt: string) => string;
   onImageClick?: (src: string) => void;
+  onQuotePost?: (post: Post) => void;
+  onScrollToPost?: (postId: string) => void;
 }
 
 export const PostsList: React.FC<PostsListProps> = ({
@@ -41,42 +46,64 @@ export const PostsList: React.FC<PostsListProps> = ({
   onFlagPost,
   formatDate,
   currentUser,
-  isTopicAuthor,
+  isCurrentUserTopicAuthor,
+  topicAuthorId,
   canEditPost,
   getRemainingEditTime,
-  onImageClick
+  onImageClick,
+  onQuotePost,
+  onScrollToPost
 }) => {
+  // Add original index to each post before sorting
   const sortedPosts = useMemo(() => {
-    const sorted = [...posts];
-    if (sortOrder === 'popular') {
-      sorted.sort((a, b) => (b.likes - b.dislikes) - (a.likes - a.dislikes));
+    const postsWithIndex = posts.map((post, index) => ({ ...post, originalIndex: index }));
+
+    switch (sortOrder) {
+      case 'newest':
+        // Sort by date descending (newest first)
+        postsWithIndex.sort((a, b) =>
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        );
+        break;
+      case 'popular':
+        // Sort by popularity (likes - dislikes) descending
+        postsWithIndex.sort((a, b) => (b.likes - b.dislikes) - (a.likes - a.dislikes));
+        break;
+      case 'oldest':
+      default:
+        // Default: chronological order (oldest first) - server order
+        break;
     }
-    // 'recent' is default order from server
-    return sorted;
+
+    return postsWithIndex;
   }, [posts, sortOrder]);
 
   return (
-    <div className="space-y-4 mb-4 sm:mb-6">
+    <div className="space-y-2 mb-4 sm:mb-6">
       {sortedPosts.map((post, index) => {
         const isPostAuthor = currentUser && String(post.user_id) === String(currentUser.id);
         return (
-        <PostItem
-          key={post.id}
-          post={post}
-          index={index}
-          userVote={postVotes[post.id.toString()] || null}
-          onLike={(type) => onLikePost(post.id.toString(), type)}
-          onDelete={() => onDeletePost(post.id.toString())}
+          <PostItem
+            key={post.id}
+            post={post}
+            index={index}
+            originalIndex={post.originalIndex}
+            userVote={postVotes[post.id.toString()] || null}
+            onLike={(type) => onLikePost(post.id.toString(), type)}
+            onDelete={() => onDeletePost(post.id.toString())}
             onEdit={() => onEditPost(post.id.toString())}
             onFlag={() => onFlagPost(post.id.toString())}
-          formatDate={formatDate}
-          currentUser={currentUser}
+            onQuote={onQuotePost ? () => onQuotePost(post) : undefined}
+            onScrollToPost={onScrollToPost}
+            formatDate={formatDate}
+            currentUser={currentUser}
             canDelete={isPostAuthor}
             canEdit={canEditPost(post.created_at)}
             remainingEditTime={getRemainingEditTime(post.created_at)}
-            isTopicAuthor={isTopicAuthor}
-          onImageClick={onImageClick}
-        />
+            isCurrentUserTopicAuthor={isCurrentUserTopicAuthor}
+            topicAuthorId={topicAuthorId}
+            onImageClick={onImageClick}
+          />
         );
       })}
     </div>

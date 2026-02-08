@@ -31,14 +31,29 @@ export async function GET() {
 
         const postCount = (topicsWithReplies || []).reduce((sum, t) => sum + (t.reply_count || 0), 0)
 
-        const { data: lastTopic } = await supabaseAdmin
+        const { data: lastTopicData } = await supabaseAdmin
           .from('topics')
-          .select('last_post_at')
+          .select('id, title, last_post_at, user_name')
           .eq('category_id', categoryId)
           .eq('is_active', true)
           .order('last_post_at', { ascending: false })
           .limit(1)
-          .single()
+
+        const lastTopic = lastTopicData?.[0] || null
+
+        // Get the last post for the last topic
+        let lastPost = null
+        if (lastTopic) {
+          const { data: lastPostData } = await supabaseAdmin
+            .from('posts')
+            .select('id, content, user_name, created_at')
+            .eq('topic_id', lastTopic.id)
+            .eq('is_active', true)
+            .order('created_at', { ascending: false })
+            .limit(1)
+
+          lastPost = lastPostData?.[0] || null
+        }
 
         return {
           id: categoryId,
@@ -48,7 +63,14 @@ export async function GET() {
           section: category.section || null,
           topic_count: topicCount || 0,
           post_count: postCount,
-          last_activity: lastTopic?.last_post_at || category.created_at
+          last_activity: lastTopic?.last_post_at || category.created_at,
+          last_topic: lastTopic ? {
+            id: lastTopic.id,
+            title: lastTopic.title,
+            author: lastTopic.user_name,
+            date: lastPost ? lastPost.created_at : lastTopic.last_post_at,
+            content: lastPost ? lastPost.content : null
+          } : null
         }
       })
     )

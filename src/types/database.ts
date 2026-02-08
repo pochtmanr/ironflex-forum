@@ -22,6 +22,13 @@ export interface DbUser {
   last_login: string | null
   created_at: string
   updated_at: string
+  // Social links
+  telegram_link: string | null
+  vk_link: string | null
+  viber_link: string | null
+  telegram_visible: boolean
+  vk_visible: boolean
+  viber_visible: boolean
 }
 
 export interface DbCategory {
@@ -51,7 +58,7 @@ export interface DbTopic {
   user_name: string
   user_email: string
   title: string
-  content: string
+  content: string | null
   media_links: string[]
   views: number
   likes: number
@@ -78,52 +85,10 @@ export interface DbPost {
   is_edited: boolean
   edited_at: string | null
   is_active: boolean
+  is_first_post: boolean
   parent_post_id: string | null
   created_at: string
   updated_at: string
-}
-
-export interface DbArticle {
-  id: string
-  title: string
-  slug: string
-  subheader: string
-  content: string
-  cover_image_url: string
-  tags: string
-  likes: number
-  views: number
-  comment_count: number
-  created_at: string
-  updated_at: string
-}
-
-export interface DbTraining {
-  id: string
-  title: string
-  slug: string
-  subheader: string
-  content: string
-  cover_image_url: string
-  level: 'beginner' | 'intermediate' | 'advanced'
-  duration_minutes: number | null
-  author_name: string
-  likes: number
-  views: number
-  comment_count: number
-  created_at: string
-  updated_at: string
-}
-
-export interface DbComment {
-  id: string
-  content_type: 'article' | 'training' | 'forum'
-  content_id: string
-  user_id: string
-  content: string
-  likes: number
-  created_at: string
-  updated_at: string | null
 }
 
 export interface DbFlaggedPost {

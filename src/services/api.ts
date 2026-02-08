@@ -118,7 +118,7 @@ export const forumAPI = {
   createTopic: async (data: {
     categoryId: string;
     title: string;
-    content: string;
+    content?: string;
     mediaLinks?: string[];
   }) => {
     // Get user data from localStorage (like React app)
@@ -151,17 +151,18 @@ export const forumAPI = {
     }, false); // Use auth token
   },
 
-  createPost: async (topicId: string, content: string, mediaLinks?: string[]) => {
+  createPost: async (topicId: string, content: string, mediaLinks?: string[], replyToPostId?: string | null) => {
     // Get user data from localStorage (like React app)
     const savedUser = localStorage.getItem('user');
     const userData = savedUser ? JSON.parse(savedUser) : null;
-    
+
     return apiRequest(`/forum/topics/${topicId}/posts`, {
       method: 'POST',
-      body: JSON.stringify({ 
-        content, 
+      body: JSON.stringify({
+        content,
         mediaLinks,
-        userData 
+        userData,
+        replyToPostId: replyToPostId || undefined
       })
     }, true); // Skip auth header, we're sending userData directly
   },
@@ -182,6 +183,13 @@ export const forumAPI = {
     return apiRequest(`/forum/topics/${topicId}/like`, {
       method: 'POST',
       body: JSON.stringify({ likeType })
+    }, false); // Use auth token
+  },
+
+  rateTopic: async (topicId: string, rating: number) => {
+    return apiRequest(`/forum/topics/${topicId}/rate`, {
+      method: 'POST',
+      body: JSON.stringify({ rating })
     }, false); // Use auth token
   },
 
@@ -219,11 +227,52 @@ export const forumAPI = {
     return apiRequest(`/forum/conversation?${params.toString()}`);
   },
 
-  sendConversationMessage: async (content: string) => {
+  sendConversationMessage: async (content: string, mediaLinks?: string[], replyTo?: { id: string; author_name: string; excerpt: string } | null) => {
     return apiRequest('/forum/conversation', {
       method: 'POST',
-      body: JSON.stringify({ content })
+      body: JSON.stringify({ content, mediaLinks, replyTo: replyTo || undefined })
     }, false); // Requires auth token
+  },
+
+  deleteConversationMessage: async (messageId: string) => {
+    return apiRequest(`/admin/conversation/${messageId}`, {
+      method: 'DELETE'
+    }, false);
+  }
+};
+
+// Admin Chat Settings API
+export const chatSettingsAPI = {
+  // Word blacklist
+  getBlacklist: async () => {
+    return apiRequest('/admin/chat-settings/blacklist', {}, false);
+  },
+  addBlacklistWord: async (word: string) => {
+    return apiRequest('/admin/chat-settings/blacklist', {
+      method: 'POST',
+      body: JSON.stringify({ word })
+    }, false);
+  },
+  removeBlacklistWord: async (id: string) => {
+    return apiRequest(`/admin/chat-settings/blacklist?id=${id}`, {
+      method: 'DELETE'
+    }, false);
+  },
+
+  // User bans
+  getBans: async () => {
+    return apiRequest('/admin/chat-settings/bans', {}, false);
+  },
+  banUser: async (userId: string, reason?: string, duration?: number) => {
+    return apiRequest('/admin/chat-settings/bans', {
+      method: 'POST',
+      body: JSON.stringify({ userId, reason, duration })
+    }, false);
+  },
+  unbanUser: async (banId: string) => {
+    return apiRequest(`/admin/chat-settings/bans/${banId}`, {
+      method: 'DELETE'
+    }, false);
   }
 };
 
@@ -413,66 +462,3 @@ export const authAPI = {
   }
 };
 
-// Content API (for articles and trainings)
-export const contentAPI = {
-  getArticles: async (page = 1, limit = 20) => {
-    const response = await fetch(`/api/content/articles?page=${page}&limit=${limit}`);
-    if (!response.ok) {
-      console.error('Failed to fetch articles:', response.statusText);
-      return { articles: [], pagination: { page, limit, total: 0, pages: 0 } };
-    }
-    return response.json();
-  },
-  getArticle: async (slug: string) => {
-    const response = await fetch(`/api/content/articles/${slug}`);
-    if (!response.ok) {
-      return null;
-    }
-    return response.json();
-  },
-  getArticleBySlug: async (slug: string) => {
-    const response = await fetch(`/api/content/articles/${slug}`);
-    if (!response.ok) {
-      throw new Error('Failed to fetch article');
-    }
-    return response.json();
-  },
-  createArticleComment: async (articleId: string, content: string) => {
-    return apiRequest(`/content/articles/${articleId}/comments`, {
-      method: 'POST',
-      body: JSON.stringify({ content })
-    });
-  },
-  getTrainings: async (page = 1, limit = 20) => {
-    const response = await fetch(`/api/content/trainings?page=${page}&limit=${limit}`);
-    if (!response.ok) {
-      console.error('Failed to fetch trainings:', response.statusText);
-      return { trainings: [], pagination: { page, limit, total: 0, pages: 0 } };
-    }
-    return response.json();
-  },
-  getTraining: async (slug: string) => {
-    const response = await fetch(`/api/content/trainings/${slug}`);
-    if (!response.ok) {
-      return null;
-    }
-    return response.json();
-  },
-  getTrainingBySlug: async (slug: string) => {
-    const response = await fetch(`/api/content/trainings/${slug}`);
-    if (!response.ok) {
-      throw new Error('Failed to fetch training');
-    }
-    return response.json();
-  },
-  createTrainingComment: async (trainingId: string, content: string) => {
-    return apiRequest(`/content/trainings/${trainingId}/comments`, {
-      method: 'POST',
-      body: JSON.stringify({ content })
-    });
-  },
-  // Use forumAPI for category functionality
-  getCategory: async (categoryId: string, page = 1, limit = 20) => {
-    return forumAPI.getCategory(categoryId, page, limit);
-  }
-};

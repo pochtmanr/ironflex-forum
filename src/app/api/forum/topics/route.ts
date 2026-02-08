@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
         return {
           id: topic.id,
           title: topic.title,
-          content: topic.content,
+          content: topic.content || null,
           user_name: topic.user_name,
           user_email: topic.user_email,
           user_id: topic.user_id,
@@ -95,10 +95,10 @@ export async function POST(request: NextRequest) {
 
     console.log('Received topic creation request:', { categoryId, title, content, mediaLinks, userData })
 
-    // Validation
-    if (!categoryId || !title || !content) {
+    // Validation — content is now optional (topic can exist as description-only)
+    if (!categoryId || !title) {
       return NextResponse.json(
-        { error: 'Category ID, title, and content are required' },
+        { error: 'Category ID and title are required' },
         { status: 400 }
       )
     }
@@ -157,7 +157,14 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Create topic
+    // Strip rich-text "empty" content: &nbsp;, whitespace, empty HTML tags
+    const isContentEmpty = !content || content
+      .replace(/&nbsp;/g, '')
+      .replace(/<[^>]*>/g, '')
+      .trim().length === 0
+    const cleanContent = isContentEmpty ? null : content.trim()
+
+    // Create topic — content is always null; first comment goes to posts table
     const { data: topic, error: topicError } = await supabaseAdmin
       .from('topics')
       .insert({
@@ -166,13 +173,37 @@ export async function POST(request: NextRequest) {
         user_name: user.display_name || user.username,
         user_email: user.email,
         title,
-        content,
-        media_links: mediaLinks || []
+        content: null,
+        media_links: []
       })
       .select()
       .single()
 
     if (topicError) throw topicError
+
+    // If meaningful content was provided, create as first post (separate from topic)
+    let firstPost = null
+    if (cleanContent) {
+      const { data: post, error: postError } = await supabaseAdmin
+        .from('posts')
+        .insert({
+          topic_id: topic.id,
+          user_id: user.id,
+          user_name: user.display_name || user.username,
+          user_email: user.email,
+          content: cleanContent,
+          media_links: mediaLinks || [],
+          is_first_post: true
+        })
+        .select()
+        .single()
+
+      if (postError) {
+        console.error('Failed to create first post:', postError)
+      } else {
+        firstPost = post
+      }
+    }
 
     return NextResponse.json({
       message: 'Topic created successfully',
@@ -195,7 +226,8 @@ export async function POST(request: NextRequest) {
         last_post_at: topic.last_post_at,
         is_pinned: topic.is_pinned,
         is_locked: topic.is_locked,
-        media_links: Array.isArray(topic.media_links) ? topic.media_links.join('\n') : (topic.media_links || '')
+        media_links: Array.isArray(topic.media_links) ? topic.media_links.join('\n') : (topic.media_links || ''),
+        has_first_post: !!firstPost
       }
     })
 

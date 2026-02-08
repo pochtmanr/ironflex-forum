@@ -46,19 +46,31 @@ export async function GET(
     const topics = topicsResult.data || []
     const total = countResult.count || 0
 
-    // Get user info for each topic
+    // Get user info and last post for each topic
     const formattedTopics = await Promise.all(
       topics.map(async (topic) => {
+        // Get user photo
         const { data: user } = await supabaseAdmin
           .from('users')
           .select('photo_url')
           .eq('id', topic.user_id)
           .single()
 
+        // Get last post for this topic
+        const { data: lastPostData } = await supabaseAdmin
+          .from('posts')
+          .select('id, content, user_name, created_at')
+          .eq('topic_id', topic.id)
+          .eq('is_active', true)
+          .order('created_at', { ascending: false })
+          .limit(1)
+
+        const lastPost = lastPostData?.[0] || null
+
         return {
           id: topic.id,
           title: topic.title,
-          content: topic.content,
+          content: topic.content || null,
           user_name: topic.user_name,
           user_email: topic.user_email,
           user_id: topic.user_id,
@@ -72,7 +84,13 @@ export async function GET(
           last_post_at: topic.last_post_at,
           is_pinned: topic.is_pinned,
           is_locked: topic.is_locked,
-          media_links: Array.isArray(topic.media_links) ? topic.media_links.join('\n') : (topic.media_links || '')
+          media_links: Array.isArray(topic.media_links) ? topic.media_links.join('\n') : (topic.media_links || ''),
+          last_post: lastPost ? {
+            id: lastPost.id,
+            content: lastPost.content,
+            author: lastPost.user_name,
+            date: lastPost.created_at
+          } : null
         }
       })
     )

@@ -33,10 +33,14 @@ export async function GET(
   try {
     const { userId } = await params;
 
+    // Check if the requesting user is the profile owner
+    const tokenData = verifyTokenLocal(request);
+    const isOwner = tokenData?.id === userId;
+
     // Find user by ID
     const { data: user, error } = await supabaseAdmin
       .from('users')
-      .select('id, email, username, display_name, photo_url, bio, city, country, is_active, is_admin, is_verified, google_id, github_id, last_login, created_at, updated_at')
+      .select('id, email, username, display_name, photo_url, bio, city, country, is_active, is_admin, is_verified, google_id, github_id, last_login, created_at, updated_at, telegram_link, vk_link, viber_link, telegram_visible, vk_visible, viber_visible')
       .eq('id', userId)
       .single();
 
@@ -80,6 +84,16 @@ export async function GET(
       .limit(5);
 
     // Format the response
+    // Social links: owner sees everything, public sees only visible links
+    const socialLinks = {
+      telegramLink: isOwner || user.telegram_visible ? (user.telegram_link || null) : null,
+      vkLink: isOwner || user.vk_visible ? (user.vk_link || null) : null,
+      viberLink: isOwner || user.viber_visible ? (user.viber_link || null) : null,
+      telegramVisible: user.telegram_visible,
+      vkVisible: user.vk_visible,
+      viberVisible: user.viber_visible,
+    };
+
     const userProfile = {
       id: user.id,
       email: user.email,
@@ -97,6 +111,7 @@ export async function GET(
       createdAt: user.created_at,
       updatedAt: user.updated_at,
       lastLogin: user.last_login,
+      ...socialLinks,
       topicCount: topicCount || 0,
       postCount: postCount || 0,
       recentTopics: (recentTopics || []).map(topic => ({
@@ -163,10 +178,12 @@ export async function PUT(
 
     // Get the request body
     const body = await request.json();
-    const { username, displayName, bio, city, country, photoURL } = body;
+    const { username, displayName, bio, city, country, photoURL,
+            telegramLink, vkLink, viberLink,
+            telegramVisible, vkVisible, viberVisible } = body;
 
     // Validate input
-    const updateData: Record<string, string | null> = {};
+    const updateData: Record<string, string | boolean | null> = {};
 
     if (username !== undefined && username !== null) {
       const trimmedUsername = username.trim();
@@ -258,12 +275,46 @@ export async function PUT(
       updateData.photo_url = photoURL ? photoURL.trim() : null;
     }
 
+    // Social links validation (max 200 chars each)
+    if (telegramLink !== undefined) {
+      const trimmed = telegramLink ? telegramLink.trim() : '';
+      if (trimmed.length > 200) {
+        return NextResponse.json({ error: 'Ссылка Telegram должна быть менее 200 символов' }, { status: 400 });
+      }
+      updateData.telegram_link = trimmed || null;
+    }
+    if (vkLink !== undefined) {
+      const trimmed = vkLink ? vkLink.trim() : '';
+      if (trimmed.length > 200) {
+        return NextResponse.json({ error: 'Ссылка VK должна быть менее 200 символов' }, { status: 400 });
+      }
+      updateData.vk_link = trimmed || null;
+    }
+    if (viberLink !== undefined) {
+      const trimmed = viberLink ? viberLink.trim() : '';
+      if (trimmed.length > 200) {
+        return NextResponse.json({ error: 'Ссылка Viber должна быть менее 200 символов' }, { status: 400 });
+      }
+      updateData.viber_link = trimmed || null;
+    }
+
+    // Social visibility flags
+    if (telegramVisible !== undefined) {
+      updateData.telegram_visible = !!telegramVisible;
+    }
+    if (vkVisible !== undefined) {
+      updateData.vk_visible = !!vkVisible;
+    }
+    if (viberVisible !== undefined) {
+      updateData.viber_visible = !!viberVisible;
+    }
+
     // Update the user
     const { data: updatedUser, error: updateError } = await supabaseAdmin
       .from('users')
       .update(updateData)
       .eq('id', userId)
-      .select('id, email, username, display_name, photo_url, bio, city, country, is_active, is_admin, is_verified, google_id, github_id, created_at, updated_at, last_login')
+      .select('id, email, username, display_name, photo_url, bio, city, country, is_active, is_admin, is_verified, google_id, github_id, created_at, updated_at, last_login, telegram_link, vk_link, viber_link, telegram_visible, vk_visible, viber_visible')
       .single();
 
     if (updateError || !updatedUser) {
@@ -274,7 +325,7 @@ export async function PUT(
     }
 
     return NextResponse.json({
-      message: 'Profile updated successfully',
+      message: 'Профиль успешно обновлён',
       user: {
         id: updatedUser.id,
         email: updatedUser.email,
@@ -291,7 +342,13 @@ export async function PUT(
         githubId: updatedUser.github_id,
         createdAt: updatedUser.created_at,
         updatedAt: updatedUser.updated_at,
-        lastLogin: updatedUser.last_login
+        lastLogin: updatedUser.last_login,
+        telegramLink: updatedUser.telegram_link,
+        vkLink: updatedUser.vk_link,
+        viberLink: updatedUser.viber_link,
+        telegramVisible: updatedUser.telegram_visible,
+        vkVisible: updatedUser.vk_visible,
+        viberVisible: updatedUser.viber_visible,
       }
     });
 

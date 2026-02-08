@@ -1,5 +1,7 @@
 import React from 'react';
 import { RichTextEditor } from '@/components/UI/RichTextEditor';
+import { QuoteChip } from '@/components/UI/QuoteChip';
+import type { QuotedMessage } from '@/components/UI/QuoteChip';
 
 interface ReplyFormProps {
   replyContent: string;
@@ -7,6 +9,8 @@ interface ReplyFormProps {
   submittingReply: boolean;
   onSubmit: (e: React.FormEvent) => void;
   onImageUpload: (file: File) => Promise<string>;
+  quotedPost?: QuotedMessage | null;
+  onDismissQuote?: () => void;
 }
 
 export const ReplyForm: React.FC<ReplyFormProps> = React.memo(({
@@ -14,13 +18,20 @@ export const ReplyForm: React.FC<ReplyFormProps> = React.memo(({
   setReplyContent,
   submittingReply,
   onSubmit,
-  onImageUpload
+  onImageUpload,
+  quotedPost,
+  onDismissQuote
 }) => {
   return (
     <div className="bg-white max-w-4xl mx-auto">
       <h3 className="text-sm font-medium text-gray-900/70 mb-2">Напишите ваш ответ:</h3>
 
       <form onSubmit={onSubmit} className="p-4">
+        {/* Quote chip preview */}
+        {quotedPost && onDismissQuote && (
+          <QuoteChip quote={quotedPost} onDismiss={onDismissQuote} />
+        )}
+
         {/* Rich Text Editor with built-in image upload */}
         <RichTextEditor
           value={replyContent}
@@ -45,4 +56,3 @@ export const ReplyForm: React.FC<ReplyFormProps> = React.memo(({
     </div>
   );
 });
-

@@ -14,6 +14,13 @@ const Header: React.FC = () => {
   const [userPhotoURL, setUserPhotoURL] = useState<string | undefined>(undefined);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
+  // Navigation items
+  const navItems = [
+    { href: '/', label: 'Форум' },
+    { href: '/faq', label: 'FAQ' },
+    { href: '/administration', label: 'Администрация' },
+  ];
+
   // Check if current path matches
   const isActive = (path: string) => {
     if (path === '/') {
@@ -73,17 +80,45 @@ const Header: React.FC = () => {
     <>
       {/* Desktop header - hidden on mobile */}
       <div className="hidden md:block">
-          
-        {/* Navigation bar */}
-        <div className="bg-gray-50">
-          <div className="max-w-7xl mx-auto px-4 py-1">
-            <div className="flex items-center justify-between">
-              {/* Logo */}
+        {/* Logo Section - Centered, above navbar */}
+        <div className="bg-white">
+          <div className="max-w-7xl mx-auto px-2">
+            <div className="flex items-center justify-center py-6">
               <Link href="/" className="inline-flex items-center">
-                  <img src="/images/4_logo1.svg" alt="Протокол Тарновского" className="h-10" />
+                <img
+                  src="/images/4_logo1.svg"
+                  alt="Протокол Тарновского"
+                  className="h-14 max-w-full"
+                />
               </Link>
-              
-              {/* Desktop search and profile */}
+            </div>
+          </div>
+        </div>
+
+        <p className="text-center text-lg font-semibold text-gray-400 -mt-4 mb-2">Форум</p>
+
+        {/* Navigation bar - Below logo */}
+        <div className="max-w-7xl mx-auto px-2">
+          <div className="bg-gray-50 border border-gray-200 rounded-sm">
+            <div className="flex items-center justify-between py-2 px-3">
+              {/* Navigation Links */}
+              <nav className="flex items-center gap-1">
+                {navItems.map((item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={`px-3 py-1.5 text-sm font-medium rounded transition-colors ${
+                      isActive(item.href)
+                        ? 'bg-gray-600 text-white'
+                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                    }`}
+                  >
+                    {item.label}
+                  </Link>
+                ))}
+              </nav>
+
+              {/* Search and Profile */}
               <div className="flex items-center gap-4">
                 <Suspense fallback={<div className="w-72 h-8 bg-gray-200 animate-pulse rounded"></div>}>
                   <SearchBar />
@@ -106,7 +141,7 @@ const Header: React.FC = () => {
                     {/* Dropdown Menu */}
                     {profileDropdownOpen && (
                       <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg border border-gray-200 py-1 z-50">
-                        <div className="px-4 py-2 ">
+                        <div className="px-4 py-2 border-b border-gray-100">
                           <p className="text-sm font-medium text-gray-900 truncate">
                             {currentUser.displayName || 'Пользователь'}
                           </p>
@@ -161,15 +196,12 @@ const Header: React.FC = () => {
 
                 {/* Login/Register for non-authenticated users on desktop */}
                 {!currentUser && (
-                  <div className="flex items-center gap-2">
-                    <Link
-                      href="/login"
-                      className="px-3 py-1.5 text-md text-gray-700 hover:text-gray-900 transition-colors"
-                    >
-                      Вход
-                    </Link>
-                    
-                  </div>
+                  <Link
+                    href="/login"
+                    className="px-3 py-1.5 text-sm text-gray-700 hover:text-gray-900 transition-colors"
+                  >
+                    Вход
+                  </Link>
                 )}
               </div>
             </div>
@@ -179,16 +211,20 @@ const Header: React.FC = () => {
 
       {/* Mobile header - visible only on mobile */}
       <div className="md:hidden">
-        {/* Top bar with logo, profile, and burger */}
-        <div className="flex items-center justify-between px-4 py-3 bg-white shadow-sm">
-          <Link href="/" className="inline-flex items-center">
-            <img src="/images/4_logo1.svg" alt="Протокол Тарновского" className="h-8" />
-          </Link>
-          
-          <div className="flex items-center gap-3">
+        {/* Logo Section - Centered */}
+        <div className="bg-white py-2">
+          <div className="flex items-center justify-between">
+            <div className="w-10 flex-shrink-0" />
+            <Link href="/" className="inline-flex items-center flex-1 justify-center">
+              <img
+                src="/images/4_logo1.svg"
+                alt="Протокол Тарновского"
+                className="h-10 max-w-[80%]"
+              />
+            </Link>
             <button
               onClick={() => setMobileOpen(true)}
-              className="p-2 text-gray-600 hover:text-gray-900 transition-colors"
+              className="p-2 text-gray-600 hover:text-gray-900 transition-colors flex-shrink-0"
               aria-label="Открыть меню"
             >
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -200,8 +236,10 @@ const Header: React.FC = () => {
           </div>
         </div>
 
+        <p className="text-center text-base font-semibold text-gray-400 mb-4">Форум</p>
+
         {/* Mobile search - always visible */}
-        <div className="bg-gray-50 px-4 py-3 shadow-sm shadow-gray-200/50">
+        <div className="bg-white px-4 py-2">
           <Suspense fallback={<div className="h-8 bg-gray-200 animate-pulse rounded"></div>}>
             <SearchBar isMobile={true} />
           </Suspense>
@@ -236,45 +274,21 @@ const Header: React.FC = () => {
           {/* Navigation items */}
           <nav className="p-4">
             <ul className="space-y-2">
-              <li>
-                <Link 
-                  href="/" 
-                  onClick={() => setMobileOpen(false)}
-                  className={`block px-4 py-3 font-medium transition-colors ${
-                    isActive('/')
-                      ? 'text-white bg-gray-600'
-                      : 'text-gray-700 hover:bg-gray-100'
-                  }`}
-                >
-                  Форум
-                </Link>
-              </li>
-              <li>
-                <Link 
-                  href="/articles" 
-                  onClick={() => setMobileOpen(false)}
-                  className={`block px-4 py-3 transition-colors ${
-                    isActive('/articles')
-                      ? 'text-white bg-gray-600'
-                      : 'text-gray-700 hover:bg-gray-100'
-                  }`}
-                >
-                  Статьи
-                </Link>
-              </li>
-              <li>
-                <Link 
-                  href="/trainings" 
-                  onClick={() => setMobileOpen(false)}
-                  className={`block px-4 py-3 transition-colors ${
-                    isActive('/trainings')
-                      ? 'text-white bg-gray-600'
-                      : 'text-gray-700 hover:bg-gray-100'
-                  }`}
-                >
-                  Тренировки
-                </Link>
-              </li>
+              {navItems.map((item) => (
+                <li key={item.href}>
+                  <Link
+                    href={item.href}
+                    onClick={() => setMobileOpen(false)}
+                    className={`block px-4 py-3 rounded transition-colors ${
+                      isActive(item.href)
+                        ? 'text-white bg-gray-600'
+                        : 'text-gray-700 hover:bg-gray-100'
+                    }`}
+                  >
+                    {item.label}
+                  </Link>
+                </li>
+              ))}
             </ul>
           </nav>
 

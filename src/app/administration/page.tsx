@@ -37,23 +37,7 @@ export default function Administration() {
             с администрацией напрямую или через форму ниже.
           </p>
 
-          <div className="bg-gray-50 p-6 rounded-lg mb-6">
-            <p className="text-gray-700 mb-2">
-              <strong>Email:</strong>{" "}
-              <a href="mailto:info@tarnovsky.ru.kz" className="text-blue-600 hover:text-blue-700">
-                info@tarnovsky.ru.kz
-              </a>
-            </p>
-            <p className="text-gray-700 mb-2">
-              <strong>Сайт:</strong>{" "}
-              <a href="https://www.tarnovsky.ru.kz" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-700">
-                www.tarnovsky.ru.kz
-              </a>
-            </p>
-            <p className="text-sm text-gray-500 mt-3">
-              Среднее время ответа — 24–48 часов в рабочие дни.
-            </p>
-          </div>
+          
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

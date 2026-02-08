@@ -41,27 +41,23 @@ export async function DELETE(
       );
     }
 
-    // Check if user is the post author
-    const isPostAuthor = post.user_id === userPayload.id;
+    // Admins can delete any post; non-admins: ownership + 2-hour window
+    if (!userPayload.isAdmin) {
+      if (post.user_id !== userPayload.id) {
+        return NextResponse.json(
+          { error: 'You can only delete your own posts' },
+          { status: 403 }
+        );
+      }
 
-    if (!isPostAuthor) {
-      return NextResponse.json(
-        { error: 'You can only delete your own posts' },
-        { status: 403 }
-      );
-    }
-
-    // Check 2-hour time limit
-    const createdAt = new Date(post.created_at);
-    const now = new Date();
-    const twoHoursInMs = 2 * 60 * 60 * 1000; // 2 hours in milliseconds
-    const timeSinceCreation = now.getTime() - createdAt.getTime();
-
-    if (timeSinceCreation > twoHoursInMs) {
-      return NextResponse.json(
-        { error: 'Posts can only be deleted within 2 hours of creation' },
-        { status: 403 }
-      );
+      const createdAt = new Date(post.created_at);
+      const twoHoursInMs = 2 * 60 * 60 * 1000;
+      if (Date.now() - createdAt.getTime() > twoHoursInMs) {
+        return NextResponse.json(
+          { error: 'Posts can only be deleted within 2 hours of creation' },
+          { status: 403 }
+        );
+      }
     }
 
     // Delete the post
@@ -144,25 +140,23 @@ export async function PATCH(
       );
     }
 
-    // Verify ownership - only the author can edit
-    if (post.user_id !== userPayload.id) {
-      return NextResponse.json(
-        { error: 'You can only edit your own posts' },
-        { status: 403 }
-      );
-    }
+    // Admins can edit any post; non-admins: ownership + 2-hour window
+    if (!userPayload.isAdmin) {
+      if (post.user_id !== userPayload.id) {
+        return NextResponse.json(
+          { error: 'You can only edit your own posts' },
+          { status: 403 }
+        );
+      }
 
-    // Check if post is within 2-hour edit window
-    const createdAt = new Date(post.created_at);
-    const now = new Date();
-    const twoHoursInMs = 2 * 60 * 60 * 1000; // 2 hours in milliseconds
-    const timeSinceCreation = now.getTime() - createdAt.getTime();
-
-    if (timeSinceCreation > twoHoursInMs) {
-      return NextResponse.json(
-        { error: 'Posts can only be edited within 2 hours of creation' },
-        { status: 403 }
-      );
+      const createdAt = new Date(post.created_at);
+      const twoHoursInMs = 2 * 60 * 60 * 1000;
+      if (Date.now() - createdAt.getTime() > twoHoursInMs) {
+        return NextResponse.json(
+          { error: 'Posts can only be edited within 2 hours of creation' },
+          { status: 403 }
+        );
+      }
     }
 
     // Update the post

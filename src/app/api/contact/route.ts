@@ -81,6 +81,11 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Persist contact request to database
+    await supabaseAdmin
+      .from('contact_requests')
+      .insert({ name, email, subject, message, ip_address: ip })
+
     // Sanitize all user input before embedding in HTML template
     const safeName = sanitize(name)
     const safeEmail = sanitize(email)

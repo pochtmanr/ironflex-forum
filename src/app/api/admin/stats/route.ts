@@ -38,12 +38,10 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch stats
-    const [usersRes, topicsRes, postsRes, articlesRes, trainingsRes, flaggedPostsRes] = await Promise.all([
+    const [usersRes, topicsRes, postsRes, flaggedPostsRes] = await Promise.all([
       supabaseAdmin.from('users').select('*', { count: 'exact', head: true }),
       supabaseAdmin.from('topics').select('*', { count: 'exact', head: true }),
       supabaseAdmin.from('posts').select('*', { count: 'exact', head: true }),
-      supabaseAdmin.from('articles').select('*', { count: 'exact', head: true }),
-      supabaseAdmin.from('trainings').select('*', { count: 'exact', head: true }),
       supabaseAdmin.from('flagged_posts').select('*', { count: 'exact', head: true }).eq('status', 'pending')
     ]);
 
@@ -51,8 +49,6 @@ export async function GET(request: NextRequest) {
       users: usersRes.count ?? 0,
       topics: topicsRes.count ?? 0,
       posts: postsRes.count ?? 0,
-      articles: articlesRes.count ?? 0,
-      trainings: trainingsRes.count ?? 0,
       flaggedPosts: flaggedPostsRes.count ?? 0
     });
 

@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
 
     let query = supabaseAdmin
       .from('conversation_messages')
-      .select('id, user_id, user_name, content, created_at, users:user_id(photo_url)')
+      .select('id, user_id, user_name, content, created_at, media_links, reply_to, users:user_id(photo_url)')
       .order('created_at', { ascending: false })
       .limit(limit)
 
@@ -33,11 +33,15 @@ export async function GET(request: NextRequest) {
       user_name: msg.user_name,
       content: msg.content,
       created_at: msg.created_at,
+      media_links: (msg.media_links as string[]) || [],
       user_photo_url: (msg.users as Record<string, unknown> | null)?.photo_url || null,
+      reply_to: (msg.reply_to as { id: string; author_name: string; excerpt: string } | null) || null,
     }))
 
+    // hasMore = we fetched a full page, so there may be older messages
     return NextResponse.json({
-      messages: flatMessages.reverse()
+      messages: flatMessages.reverse(),
+      hasMore: flatMessages.length === limit
     })
   } catch (error) {
     console.error('Conversation fetch error:', error)
@@ -70,8 +74,10 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json()
     const content = (body.content || '').trim()
+    const mediaLinks: string[] = Array.isArray(body.mediaLinks) ? body.mediaLinks.slice(0, 3) : []
+    const replyTo: { id: string; author_name: string; excerpt: string } | null = body.replyTo || null
 
-    if (!content) {
+    if (!content && mediaLinks.length === 0) {
       return NextResponse.json(
         { error: 'Сообщение не может быть пустым' },
         { status: 400 }
@@ -83,6 +89,52 @@ export async function POST(request: NextRequest) {
         { error: `Максимальная длина сообщения ${MESSAGE_MAX_LENGTH} символов` },
         { status: 400 }
       )
+    }
+
+    // Check if user is banned from chat
+    const { data: activeBan } = await supabaseAdmin
+      .from('chat_user_bans')
+      .select('id, reason, expires_at')
+      .eq('user_id', payload.id)
+      .eq('is_active', true)
+      .limit(1)
+      .maybeSingle()
+
+    if (activeBan) {
+      // Check if temporary ban has expired
+      if (activeBan.expires_at && new Date(activeBan.expires_at) < new Date()) {
+        // Auto-deactivate expired ban
+        await supabaseAdmin
+          .from('chat_user_bans')
+          .update({ is_active: false })
+          .eq('id', activeBan.id)
+      } else {
+        const reason = activeBan.reason ? `: ${activeBan.reason}` : ''
+        return NextResponse.json(
+          { error: `Вы заблокированы в чате${reason}` },
+          { status: 403 }
+        )
+      }
+    }
+
+    // Check content against word blacklist
+    if (content) {
+      const { data: blacklistedWords } = await supabaseAdmin
+        .from('chat_word_blacklist')
+        .select('word')
+
+      if (blacklistedWords && blacklistedWords.length > 0) {
+        const contentLower = content.toLowerCase()
+        const foundWord = blacklistedWords.find(({ word }) =>
+          contentLower.includes(word.toLowerCase().trim())
+        )
+        if (foundWord) {
+          return NextResponse.json(
+            { error: 'Сообщение содержит запрещённое слово' },
+            { status: 400 }
+          )
+        }
+      }
     }
 
     // Anti-spam: allow up to MAX_CONSECUTIVE_MESSAGES consecutive messages.
@@ -120,9 +172,11 @@ export async function POST(request: NextRequest) {
       .insert({
         user_id: payload.id,
         user_name: userName,
-        content
+        content: content || '',
+        media_links: mediaLinks,
+        reply_to: replyTo,
       })
-      .select('id, user_id, user_name, content, created_at')
+      .select('id, user_id, user_name, content, created_at, media_links, reply_to')
       .single()
 
     if (error) throw error
@@ -130,7 +184,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       message: {
         ...message,
+        media_links: message.media_links || [],
         user_photo_url: user?.photo_url || null,
+        reply_to: message.reply_to || null,
       }
     })
   } catch (error) {

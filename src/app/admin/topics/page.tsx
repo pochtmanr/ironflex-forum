@@ -11,7 +11,7 @@ interface Topic {
   userName: string
   userEmail: string
   title: string
-  content: string
+  content: string | null
   mediaLinks: string[]
   views: number
   likes: number
@@ -95,7 +95,7 @@ export default function AdminTopics() {
   const startEdit = (topic: Topic) => {
     setEditingTopic(topic.id)
     setEditTitle(topic.title)
-    setEditContent(topic.content)
+    setEditContent(topic.content || '')
   }
 
   const cancelEdit = () => {
@@ -178,7 +178,7 @@ export default function AdminTopics() {
 
   const filteredTopics = topics.filter(topic =>
     topic.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    topic.content.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (topic.content || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
     topic.userName.toLowerCase().includes(searchTerm.toLowerCase()) ||
     topic.categoryName?.toLowerCase().includes(searchTerm.toLowerCase())
   )
@@ -284,9 +284,11 @@ export default function AdminTopics() {
                         >
                           {topic.title}
                         </Link>
-                        <p className="text-xs text-gray-600 mt-1 line-clamp-2">
-                          {topic.content}
-                        </p>
+                        {topic.content && (
+                          <p className="text-xs text-gray-600 mt-1 line-clamp-2">
+                            {topic.content}
+                          </p>
+                        )}
                         {topic.mediaLinks && topic.mediaLinks.length > 0 && (
                           <div className="mt-1">
                             <span className="text-xs text-blue-600">📎 {topic.mediaLinks.length} attachment(s)</span>

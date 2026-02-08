@@ -9,6 +9,8 @@ import { LoginPrompt } from '@/components/UI/LoginPrompt';
 import { PaginationButton, ImageLightbox } from '@/components/UI';
 import { TopicHeader, PostsList, ReplyForm, EditTopicModal, EditPostModal } from '@/components/Topic';
 import { FlagModal } from '@/components/UI/FlagModal';
+import type { QuotedMessage } from '@/components/UI/QuoteChip';
+
 interface Post {
   id: number | string;
   content: string;
@@ -21,12 +23,14 @@ interface Post {
   dislikes: number;
   media_links: string[];
   is_author: boolean;
+  reply_to_post_id?: string | null;
+  reply_to_excerpt?: { author_name: string; excerpt: string } | null;
 }
 
 interface Topic {
   id: number | string;
   title: string;
-  content: string;
+  content: string | null;
   user_name: string;
   user_email: string;
   user_id: string;
@@ -43,6 +47,9 @@ interface Topic {
   is_locked: boolean;
   media_links: string[];
   is_author: boolean;
+  average_rating?: number;
+  rating_count?: number;
+  user_rating?: number | null;
 }
 
 const TopicViewPage: React.FC = () => {
@@ -58,14 +65,19 @@ const TopicViewPage: React.FC = () => {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   
-  const [sortOrder, setSortOrder] = useState('recent');
+  const [sortOrder, setSortOrder] = useState('oldest');
   const [replyContent, setReplyContent] = useState('');
   const [submittingReply, setSubmittingReply] = useState(false);
   
   // Vote tracking
   const [topicVote, setTopicVote] = useState<'like' | 'dislike' | null>(null);
   const [postVotes, setPostVotes] = useState<Record<string, 'like' | 'dislike' | null>>({});
-  
+
+  // Rating tracking
+  const [averageRating, setAverageRating] = useState<number>(0);
+  const [ratingCount, setRatingCount] = useState<number>(0);
+  const [userRating, setUserRating] = useState<number | null>(null);
+
   // Image lightbox
   const [lightboxState, setLightboxState] = useState<{ images: string[]; index: number } | null>(null);
   
@@ -79,6 +91,10 @@ const TopicViewPage: React.FC = () => {
   const [isFlagModalOpen, setIsFlagModalOpen] = useState(false);
   const [flaggingPostId, setFlaggingPostId] = useState<string | null>(null);
   const [flaggingPostAuthor, setFlaggingPostAuthor] = useState<string>('');
+
+  // Quote/reply-to state
+  const [quotedPost, setQuotedPost] = useState<QuotedMessage | null>(null);
+  const replyFormRef = useRef<HTMLDivElement>(null);
 
   // Track if we've already counted a view for this topic in this session
   // Use ref to persist across React Strict Mode double renders
@@ -161,7 +177,12 @@ const TopicViewPage: React.FC = () => {
       if (response.topic.user_vote) {
         setTopicVote(response.topic.user_vote);
       }
-      
+
+      // Set initial rating state from backend
+      setAverageRating(response.topic.average_rating || 0);
+      setRatingCount(response.topic.rating_count || 0);
+      setUserRating(response.topic.user_rating || null);
+
       // Set is_author and vote state based on current user for each post
       const postsData = response.posts.map(post => {
         // Convert both to strings for comparison to ensure consistency
@@ -260,6 +281,53 @@ const TopicViewPage: React.FC = () => {
         setTopic(previousTopic);
       }
       const errorMessage = error instanceof Error ? error.message : 'Ошибка при голосовании';
+      setError(errorMessage);
+    }
+  };
+
+  const handleRateTopic = async (rating: number) => {
+    if (!currentUser) {
+      router.push('/login');
+      return;
+    }
+
+    // Store previous state for rollback
+    const previousRating = userRating;
+    const previousAverage = averageRating;
+    const previousCount = ratingCount;
+
+    // Optimistic UI update
+    setUserRating(rating);
+    // Simple optimistic average calculation
+    if (previousRating === null) {
+      // New rating
+      const newCount = ratingCount + 1;
+      const newSum = averageRating * ratingCount + rating;
+      setRatingCount(newCount);
+      setAverageRating(newSum / newCount);
+    } else {
+      // Update existing rating
+      const newSum = averageRating * ratingCount - previousRating + rating;
+      setAverageRating(newSum / ratingCount);
+    }
+
+    try {
+      const response = await forumAPI.rateTopic(topicId, rating) as {
+        averageRating: number;
+        ratingCount: number;
+        userRating: number;
+      };
+
+      // Update with actual server response
+      setAverageRating(response.averageRating);
+      setRatingCount(response.ratingCount);
+      setUserRating(response.userRating);
+    } catch (error: unknown) {
+      // Rollback on error
+      setUserRating(previousRating);
+      setAverageRating(previousAverage);
+      setRatingCount(previousCount);
+      const errorMessage = error instanceof Error ? error.message : 'Ошибка при оценке темы';
       setError(errorMessage);
     }
   };
@@ -545,6 +613,40 @@ const TopicViewPage: React.FC = () => {
   };
 
 
+  const handleQuotePost = useCallback((post: Post) => {
+    // Strip markdown for plain excerpt
+    const plainExcerpt = post.content
+      .replace(/!\[.*?\]\(.*?\)/g, '[Изображение]')
+      .replace(/\[([^\]]*)\]\(.*?\)/g, '$1')
+      .replace(/[*_~`#>]/g, '')
+      .replace(/&nbsp;/g, ' ')
+      .trim()
+      .slice(0, 150);
+
+    setQuotedPost({
+      id: post.id.toString(),
+      authorName: post.user_name,
+      authorId: post.user_id,
+      excerpt: plainExcerpt || '[Изображение]',
+      timestamp: post.created_at
+    });
+
+    // Scroll to the reply form
+    setTimeout(() => {
+      replyFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 100);
+  }, []);
+
+  const handleScrollToPost = useCallback((postId: string) => {
+    const el = document.querySelector(`[data-post-id="${postId}"]`);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      // Brief highlight flash
+      el.classList.add('quote-highlight');
+      setTimeout(() => el.classList.remove('quote-highlight'), 1500);
+    }
+  }, []);
+
   const handleSubmitReply = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -558,8 +660,9 @@ const TopicViewPage: React.FC = () => {
 
     try {
       // Images are now embedded in the markdown content, no separate media links needed
-      await forumAPI.createPost(topicId, replyContent.trim());
+      await forumAPI.createPost(topicId, replyContent.trim(), undefined, quotedPost?.id || null);
       setReplyContent('');
+      setQuotedPost(null);
       loadTopicData(); // Reload to show new post
     } catch (error: unknown) {
       console.error('Post creation error:', error);
@@ -568,7 +671,7 @@ const TopicViewPage: React.FC = () => {
     } finally {
       setSubmittingReply(false);
     }
-  }, [replyContent, topicId]);
+  }, [replyContent, topicId, quotedPost]);
 
   // Handle image upload for RichTextEditor
   const handleEditorImageUpload = useCallback(async (file: File): Promise<string> => {
@@ -799,6 +902,10 @@ const TopicViewPage: React.FC = () => {
         onImageClick={handleImageClick}
         canEdit={canEditTopic(topic.created_at)}
         remainingEditTime={getRemainingEditTime(topic.created_at)}
+        averageRating={averageRating}
+        ratingCount={ratingCount}
+        userRating={userRating}
+        onRateTopic={handleRateTopic}
       />
 
       {/* Error Display */}
@@ -821,8 +928,9 @@ const TopicViewPage: React.FC = () => {
             onChange={(e) => setSortOrder(e.target.value)}
             className="text-sm text-gray-900/70 bg-white border border-gray-300 rounded px-2 py-1 focus:outline-none focus:border-blue-500"
           >
-            <option value="recent" className="text-sm text-gray-900/70">Самые новые</option>
-            <option value="popular" className="text-sm text-gray-900/70">Самые популярные</option>
+            <option value="oldest">Сначала старые</option>
+            <option value="newest">Сначала новые</option>
+            <option value="popular">Популярные</option>
           </select>
         </div>
       </div>
@@ -838,21 +946,28 @@ const TopicViewPage: React.FC = () => {
         onFlagPost={handleFlagPost}
         formatDate={formatDate}
         currentUser={currentUser}
-        isTopicAuthor={topic.is_author}
+        isCurrentUserTopicAuthor={topic.is_author}
+        topicAuthorId={topic.user_id}
         canEditPost={canEditTopic}
         getRemainingEditTime={getRemainingEditTime}
         onImageClick={handleImageClick}
+        onQuotePost={handleQuotePost}
+        onScrollToPost={handleScrollToPost}
       />
 
       {/* Reply Form */}
       {currentUser && !topic.is_locked && (
-        <ReplyForm
-          replyContent={replyContent}
-          setReplyContent={setReplyContent}
-          submittingReply={submittingReply}
-          onSubmit={handleSubmitReply}
-          onImageUpload={handleEditorImageUpload}
-        />
+        <div ref={replyFormRef}>
+          <ReplyForm
+            replyContent={replyContent}
+            setReplyContent={setReplyContent}
+            submittingReply={submittingReply}
+            onSubmit={handleSubmitReply}
+            onImageUpload={handleEditorImageUpload}
+            quotedPost={quotedPost}
+            onDismissQuote={() => setQuotedPost(null)}
+          />
+        </div>
       )}
 
       {/* Login Prompt for Non-Authenticated Users */}
@@ -905,7 +1020,7 @@ const TopicViewPage: React.FC = () => {
           onSave={handleSaveEdit}
           onImageUpload={handleEditorImageUpload}
           initialTitle={topic.title}
-          initialContent={topic.content}
+          initialContent={topic.content || ''}
         />
       )}
 

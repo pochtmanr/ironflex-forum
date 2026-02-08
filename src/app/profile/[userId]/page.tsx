@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext'
 import ClientOnly from '@/components/ClientOnly';
+import { optimizeImage, isImage } from '@/lib/imageOptimizer';
 
 interface User {
   id: string;
@@ -24,6 +25,13 @@ interface User {
   createdAt: string;
   updatedAt: string;
   lastLogin?: string;
+  // Social links
+  telegramLink?: string | null;
+  vkLink?: string | null;
+  viberLink?: string | null;
+  telegramVisible?: boolean;
+  vkVisible?: boolean;
+  viberVisible?: boolean;
   topicCount: number;
   postCount: number;
   recentTopics: Array<{
@@ -61,11 +69,21 @@ const UserProfile: React.FC = () => {
     city: '',
     country: ''
   });
+
+  const [socialData, setSocialData] = useState({
+    telegramLink: '',
+    vkLink: '',
+    viberLink: '',
+    telegramVisible: false,
+    vkVisible: false,
+    viberVisible: false,
+  });
   
   // Photo upload states
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [uploadStatus, setUploadStatus] = useState<string>('');
   
   // Modal states
   const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
@@ -92,13 +110,26 @@ const UserProfile: React.FC = () => {
         city: user.city || '',
         country: user.country || ''
       });
+      setSocialData({
+        telegramLink: user.telegramLink || '',
+        vkLink: user.vkLink || '',
+        viberLink: user.viberLink || '',
+        telegramVisible: user.telegramVisible ?? false,
+        vkVisible: user.vkVisible ?? false,
+        viberVisible: user.viberVisible ?? false,
+      });
     }
   }, [user]);
 
   const loadUserProfile = async () => {
     try {
       console.log('Loading user profile for userId:', userId);
-      const response = await fetch(`/api/users/${userId}`);
+      const accessToken = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
+      const headers: Record<string, string> = {};
+      if (accessToken) {
+        headers['Authorization'] = `Bearer ${accessToken}`;
+      }
+      const response = await fetch(`/api/users/${userId}`, { headers });
       const data = await response.json();
       
       if (!response.ok) {
@@ -199,102 +230,117 @@ const UserProfile: React.FC = () => {
   const handlePhotoUpload = async () => {
     const freshToken = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
     const tokenToUse = freshToken || token;
-    
+
     if (!selectedFile || !tokenToUse || !canEdit) {
-      setModalError('Authentication required. Please log in again.');
+      setModalError('Требуется авторизация. Войдите снова.');
+      return;
+    }
+
+    // Validate file size (max 10MB raw)
+    if (selectedFile.size > 10 * 1024 * 1024) {
+      setModalError('Файл слишком большой. Максимум 10 МБ.');
       return;
     }
 
     setUploadingPhoto(true);
+    setUploadStatus('Оптимизация изображения...');
     setModalError('');
     setModalMessage('');
 
     try {
-      const formData = new FormData();
-      formData.append('file', selectedFile);
+      // Step 1: Optimize image client-side before upload
+      let fileToUpload: File = selectedFile;
+      if (isImage(selectedFile) && !selectedFile.type.includes('svg')) {
+        try {
+          fileToUpload = await optimizeImage(selectedFile, {
+            maxWidth: 800,
+            maxHeight: 800,
+            quality: 0.85,
+            format: 'webp'
+          });
+          console.log(`Photo optimized: ${(selectedFile.size / 1024).toFixed(0)}KB → ${(fileToUpload.size / 1024).toFixed(0)}KB`);
+        } catch (optError) {
+          console.warn('Image optimization failed, uploading original:', optError);
+          fileToUpload = selectedFile;
+        }
+      }
+
+      // Step 2: Upload to storage
+      setUploadStatus('Загрузка фото...');
+      const uploadFormData = new FormData();
+      uploadFormData.append('file', fileToUpload);
 
       const uploadResponse = await fetch('/api/upload', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${tokenToUse}`,
         },
-        body: formData,
+        body: uploadFormData,
       });
 
       const uploadData = await uploadResponse.json();
 
       if (!uploadResponse.ok) {
-        throw new Error(uploadData.error || 'Failed to upload image');
+        throw new Error(uploadData.error || 'Ошибка загрузки изображения');
       }
 
       const photoURL = uploadData.url || uploadData.file_url;
+      if (!photoURL) {
+        throw new Error('Сервер не вернул URL загруженного файла');
+      }
       console.log('Photo uploaded successfully:', photoURL);
 
+      // Step 3: Update user profile with new photo URL
+      setUploadStatus('Обновление профиля...');
       let updateResponse = await fetch(`/api/users/${userId}`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${tokenToUse}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          photoURL: photoURL
-        }),
+        body: JSON.stringify({ photoURL }),
       });
 
       let updateData = await updateResponse.json();
 
       if (updateResponse.status === 401 && updateData.error === 'Unauthorized') {
-        console.log('Token expired, refreshing for photo update...');
         const newToken = await refreshAccessToken();
-        
         if (newToken) {
-          console.log('Token refreshed, retrying photo profile update...');
           updateResponse = await fetch(`/api/users/${userId}`, {
             method: 'PUT',
             headers: {
               'Authorization': `Bearer ${newToken}`,
               'Content-Type': 'application/json',
             },
-            body: JSON.stringify({
-              photoURL: photoURL
-            }),
+            body: JSON.stringify({ photoURL }),
           });
-          
           updateData = await updateResponse.json();
         } else {
-          setModalError('Session expired. Please log in again.');
+          setModalError('Сессия истекла. Войдите снова.');
           return;
         }
       }
 
       if (updateResponse.ok) {
-        console.log('Photo profile updated successfully:', updateData.user?.photoURL);
-        setModalMessage('Photo uploaded successfully!');
+        setModalMessage('Фото успешно загружено!');
         setSelectedFile(null);
         setPhotoPreview(null);
-        
+
         if (currentUser && currentUser.id === userId && updateData.user) {
-          const updatedUser = {
-            ...currentUser,
-            photoURL: updateData.user.photoURL
-          };
+          const updatedUser = { ...currentUser, photoURL: updateData.user.photoURL };
           localStorage.setItem('user', JSON.stringify(updatedUser));
         }
-        
-        console.log('Reloading user profile...');
+
         await loadUserProfile();
-        
-        setTimeout(() => {
-          setModalMessage('');
-        }, 2000);
+        setTimeout(() => setModalMessage(''), 2000);
       } else {
-        console.error('Failed to update photo profile:', updateData.error);
-        setModalError(updateData.error || 'Failed to update profile photo');
+        setModalError(updateData.error || 'Ошибка обновления фото профиля');
       }
     } catch (error) {
-      setModalError(error instanceof Error ? error.message : 'Failed to upload photo');
+      setModalError(error instanceof Error ? error.message : 'Ошибка загрузки фото');
     } finally {
       setUploadingPhoto(false);
+      setUploadStatus('');
     }
   };
 
@@ -348,7 +394,13 @@ const UserProfile: React.FC = () => {
         bio: formData.bio.trim() || null,
         city: formData.city.trim() || null,
         country: formData.country.trim() || null,
-        photoURL: user?.photoURL
+        photoURL: user?.photoURL,
+        telegramLink: socialData.telegramLink.trim() || null,
+        vkLink: socialData.vkLink.trim() || null,
+        viberLink: socialData.viberLink.trim() || null,
+        telegramVisible: socialData.telegramVisible,
+        vkVisible: socialData.vkVisible,
+        viberVisible: socialData.viberVisible,
       };
       
       console.log('Updating profile:', {
@@ -388,7 +440,7 @@ const UserProfile: React.FC = () => {
           data = await retryResponse.json();
           
           if (retryResponse.ok) {
-            setModalMessage('Profile updated successfully!');
+            setModalMessage('Профиль успешно обновлён!');
             setIsEditing(false);
             
             if (currentUser && currentUser.id === userId && data.user) {
@@ -409,17 +461,17 @@ const UserProfile: React.FC = () => {
             }, 2000);
             return;
           } else {
-            setModalError(data.error || 'Failed to update profile');
+            setModalError(data.error || 'Ошибка обновления профиля');
             return;
           }
         } else {
-          setModalError('Session expired. Please log in again.');
+          setModalError('Сессия истекла. Войдите снова.');
           return;
         }
       }
 
       if (response.ok) {
-        setModalMessage('Profile updated successfully!');
+        setModalMessage('Профиль успешно обновлён!');
         setIsEditing(false);
         
         if (currentUser && currentUser.id === userId && data.user) {
@@ -432,10 +484,10 @@ const UserProfile: React.FC = () => {
           setModalMessage('');
         }, 1500);
       } else {
-        setModalError(data.error || 'Failed to update profile');
+        setModalError(data.error || 'Ошибка обновления профиля');
       }
     } catch (error) {
-      setModalError('Network error. Please try again.');
+      setModalError('Ошибка сети. Пожалуйста, попробуйте снова.');
     } finally {
       setModalLoading(false);
     }
@@ -445,7 +497,7 @@ const UserProfile: React.FC = () => {
   const handleChangePassword = async () => {
     let tokenToUse = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
     if (!tokenToUse || !currentPassword || !newPassword || !confirmPassword) {
-      setModalError('Please fill in all fields');
+      setModalError('Пожалуйста, заполните все поля');
       return;
     }
 
@@ -612,8 +664,17 @@ const UserProfile: React.FC = () => {
                     <p className="text-xs text-gray-600 mb-2">
                       {selectedFile.name} ({(selectedFile.size / 1024).toFixed(1)} KB)
                     </p>
+                    {uploadStatus && (
+                      <p className="text-xs text-blue-600 mb-2 flex items-center gap-1">
+                        <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                        </svg>
+                        {uploadStatus}
+                      </p>
+                    )}
                     <div className="flex gap-2">
-                      <button 
+                      <button
                         type="button"
                         onClick={handlePhotoUpload}
                         disabled={uploadingPhoto}
@@ -621,13 +682,14 @@ const UserProfile: React.FC = () => {
                       >
                         {uploadingPhoto ? 'Загрузка...' : 'Загрузить'}
                       </button>
-                      <button 
+                      <button
                         type="button"
                         onClick={() => {
                           setSelectedFile(null);
                           setPhotoPreview(null);
                         }}
-                        className="px-3 py-1.5 bg-gray-200 text-gray-700 text-xs font-medium rounded hover:bg-gray-300"
+                        disabled={uploadingPhoto}
+                        className="px-3 py-1.5 bg-gray-200 text-gray-700 text-xs font-medium rounded hover:bg-gray-300 disabled:opacity-50"
                       >
                         Отменить
                       </button>
@@ -685,6 +747,45 @@ const UserProfile: React.FC = () => {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                           </svg>
                           {[user.city, user.country].filter(Boolean).join(', ')}
+                        </div>
+                      )}
+
+                      {/* Social link badges */}
+                      {(user?.telegramLink || user?.vkLink || user?.viberLink) && (
+                        <div className="mt-3 flex items-center gap-2 flex-wrap">
+                          {user.telegramLink && (
+                            <a
+                              href={user.telegramLink.startsWith('http') ? user.telegramLink : `https://t.me/${user.telegramLink.replace('@', '')}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-sky-100 text-sky-700 hover:bg-sky-200 transition-colors"
+                            >
+                              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
+                              Telegram
+                            </a>
+                          )}
+                          {user.vkLink && (
+                            <a
+                              href={user.vkLink.startsWith('http') ? user.vkLink : `https://vk.com/${user.vkLink}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700 hover:bg-blue-200 transition-colors"
+                            >
+                              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M15.684 0H8.316C1.592 0 0 1.592 0 8.316v7.368C0 22.408 1.592 24 8.316 24h7.368C22.408 24 24 22.408 24 15.684V8.316C24 1.592 22.391 0 15.684 0zm3.692 17.123h-1.744c-.66 0-.864-.525-2.05-1.727-1.033-1-1.49-1.135-1.744-1.135-.356 0-.458.102-.458.593v1.575c0 .424-.135.678-1.253.678-1.846 0-3.896-1.118-5.335-3.202C4.624 10.857 4.03 8.57 4.03 8.096c0-.254.102-.491.593-.491h1.744c.44 0 .61.203.78.677.863 2.49 2.303 4.675 2.896 4.675.22 0 .322-.102.322-.66V9.721c-.068-1.186-.695-1.287-.695-1.71 0-.204.17-.407.44-.407h2.744c.373 0 .508.203.508.643v3.473c0 .372.17.508.271.508.22 0 .407-.136.813-.542 1.254-1.406 2.151-3.574 2.151-3.574.119-.254.322-.491.763-.491h1.744c.525 0 .644.27.525.643-.22 1.017-2.354 4.031-2.354 4.031-.186.305-.254.44 0 .78.186.254.796.779 1.203 1.253.745.847 1.32 1.558 1.473 2.05.17.49-.085.744-.576.744z"/></svg>
+                              VK
+                            </a>
+                          )}
+                          {user.viberLink && (
+                            <a
+                              href={user.viberLink.startsWith('http') ? user.viberLink : `viber://chat?number=${user.viberLink.replace(/[^0-9+]/g, '')}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-700 hover:bg-purple-200 transition-colors"
+                            >
+                              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M11.398.002C9.473.028 5.331.344 3.014 2.467 1.294 4.187.518 6.77.378 9.996.238 13.222.018 19.276 5.095 20.67h.005l-.005 2.263s-.038.917.567 1.102c.731.226 1.16-.471 1.862-1.221.384-.413.914-.994 1.312-1.445 3.612.313 6.39-.389 6.706-.497.73-.252 4.863-.766 5.54-6.256.699-5.66-.333-9.232-2.177-10.853l-.001-.001c-.555-.49-2.393-1.795-6.644-1.797 0 0-.396-.025-.861-.018zm.218 1.931c.389-.004.708.014.708.014 3.545.001 5.085 1.06 5.555 1.472l.001.001c1.56 1.373 2.322 4.572 1.728 9.41-.56 4.553-3.995 4.838-4.601 5.046-.263.09-2.657.68-5.663.485 0 0-2.243 2.705-2.943 3.412-.111.113-.247.159-.338.138-.127-.029-.162-.166-.161-.367l.02-3.7c-4.203-1.168-3.957-6.217-3.84-8.89.118-2.673.76-4.89 2.215-6.323C5.88 2.06 9.29 1.942 11.616 1.933zm.294 2.333a.426.426 0 0 0-.43.42.426.426 0 0 0 .43.422c1.167.018 2.148.413 2.953 1.163a4.123 4.123 0 0 1 1.228 2.854.426.426 0 0 0 .43.42h.016a.426.426 0 0 0 .413-.438 5.01 5.01 0 0 0-1.485-3.45c-.972-.908-2.14-1.381-3.547-1.391h-.008zm-3.71 1.31c-.17-.005-.345.07-.493.238-.546.587-1.107 1.31-.998 2.099.027.198.088.39.18.573l.012.022c.493 1.072 1.151 2.065 1.95 2.991l.023.027c1.088 1.224 2.377 2.236 3.834 3.011l.033.016c.64.34 1.335.605 2.06.79l.045.01c.247.06.494.008.712-.108.606-.334 1.014-.908 1.186-1.302a.515.515 0 0 0-.043-.476c-.3-.453-1.064-1.005-1.553-1.303a.512.512 0 0 0-.545.017l-.573.425c-.22.155-.511.145-.511.145l-.007.002c-2.585-.636-3.264-3.275-3.264-3.275s-.01-.29.145-.511l.424-.574a.513.513 0 0 0 .017-.544c-.298-.49-.85-1.253-1.303-1.553a.52.52 0 0 0-.33-.1zm5.083.568a.426.426 0 0 0-.008.852c1.455.074 2.543 1.118 2.604 2.592a.426.426 0 0 0 .842-.034c-.078-1.89-1.454-3.218-3.43-3.41a.416.416 0 0 0-.008 0zm.053 1.651a.426.426 0 0 0-.024.852c.672.04 1.05.373 1.09 1.013a.426.426 0 0 0 .85-.05c-.063-1.019-.717-1.78-1.9-1.815a.431.431 0 0 0-.016 0z"/></svg>
+                              Viber
+                            </a>
+                          )}
                         </div>
                       )}
                     </div>
@@ -789,6 +890,93 @@ const UserProfile: React.FC = () => {
                   </div>
                 </div>
 
+                {/* Social Links */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-3">Социальные сети</label>
+                  <div className="space-y-3">
+                    {/* Telegram */}
+                    <div className="flex items-center gap-3">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <svg className="w-4 h-4 text-sky-500" viewBox="0 0 24 24" fill="currentColor"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
+                          <span className="text-sm text-gray-600">Telegram</span>
+                        </div>
+                        <input
+                          type="text"
+                          value={socialData.telegramLink}
+                          onChange={(e) => setSocialData(prev => ({ ...prev, telegramLink: e.target.value }))}
+                          maxLength={200}
+                          placeholder="@username или ссылка"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                        />
+                      </div>
+                      <label className="flex items-center gap-2 cursor-pointer pt-6">
+                        <input
+                          type="checkbox"
+                          checked={socialData.telegramVisible}
+                          onChange={(e) => setSocialData(prev => ({ ...prev, telegramVisible: e.target.checked }))}
+                          className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                        />
+                        <span className="text-xs text-gray-500 whitespace-nowrap">Виден всем</span>
+                      </label>
+                    </div>
+
+                    {/* VK */}
+                    <div className="flex items-center gap-3">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <svg className="w-4 h-4 text-blue-600" viewBox="0 0 24 24" fill="currentColor"><path d="M15.684 0H8.316C1.592 0 0 1.592 0 8.316v7.368C0 22.408 1.592 24 8.316 24h7.368C22.408 24 24 22.408 24 15.684V8.316C24 1.592 22.391 0 15.684 0zm3.692 17.123h-1.744c-.66 0-.864-.525-2.05-1.727-1.033-1-1.49-1.135-1.744-1.135-.356 0-.458.102-.458.593v1.575c0 .424-.135.678-1.253.678-1.846 0-3.896-1.118-5.335-3.202C4.624 10.857 4.03 8.57 4.03 8.096c0-.254.102-.491.593-.491h1.744c.44 0 .61.203.78.677.863 2.49 2.303 4.675 2.896 4.675.22 0 .322-.102.322-.66V9.721c-.068-1.186-.695-1.287-.695-1.71 0-.204.17-.407.44-.407h2.744c.373 0 .508.203.508.643v3.473c0 .372.17.508.271.508.22 0 .407-.136.813-.542 1.254-1.406 2.151-3.574 2.151-3.574.119-.254.322-.491.763-.491h1.744c.525 0 .644.27.525.643-.22 1.017-2.354 4.031-2.354 4.031-.186.305-.254.44 0 .78.186.254.796.779 1.203 1.253.745.847 1.32 1.558 1.473 2.05.17.49-.085.744-.576.744z"/></svg>
+                          <span className="text-sm text-gray-600">VK</span>
+                        </div>
+                        <input
+                          type="text"
+                          value={socialData.vkLink}
+                          onChange={(e) => setSocialData(prev => ({ ...prev, vkLink: e.target.value }))}
+                          maxLength={200}
+                          placeholder="ID или ссылка на профиль"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                        />
+                      </div>
+                      <label className="flex items-center gap-2 cursor-pointer pt-6">
+                        <input
+                          type="checkbox"
+                          checked={socialData.vkVisible}
+                          onChange={(e) => setSocialData(prev => ({ ...prev, vkVisible: e.target.checked }))}
+                          className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                        />
+                        <span className="text-xs text-gray-500 whitespace-nowrap">Виден всем</span>
+                      </label>
+                    </div>
+
+                    {/* Viber */}
+                    <div className="flex items-center gap-3">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <svg className="w-4 h-4 text-purple-600" viewBox="0 0 24 24" fill="currentColor"><path d="M11.398.002C9.473.028 5.331.344 3.014 2.467 1.294 4.187.518 6.77.378 9.996.238 13.222.018 19.276 5.095 20.67h.005l-.005 2.263s-.038.917.567 1.102c.731.226 1.16-.471 1.862-1.221.384-.413.914-.994 1.312-1.445 3.612.313 6.39-.389 6.706-.497.73-.252 4.863-.766 5.54-6.256.699-5.66-.333-9.232-2.177-10.853l-.001-.001c-.555-.49-2.393-1.795-6.644-1.797 0 0-.396-.025-.861-.018zm.218 1.931c.389-.004.708.014.708.014 3.545.001 5.085 1.06 5.555 1.472l.001.001c1.56 1.373 2.322 4.572 1.728 9.41-.56 4.553-3.995 4.838-4.601 5.046-.263.09-2.657.68-5.663.485 0 0-2.243 2.705-2.943 3.412-.111.113-.247.159-.338.138-.127-.029-.162-.166-.161-.367l.02-3.7c-4.203-1.168-3.957-6.217-3.84-8.89.118-2.673.76-4.89 2.215-6.323C5.88 2.06 9.29 1.942 11.616 1.933zm.294 2.333a.426.426 0 0 0-.43.42.426.426 0 0 0 .43.422c1.167.018 2.148.413 2.953 1.163a4.123 4.123 0 0 1 1.228 2.854.426.426 0 0 0 .43.42h.016a.426.426 0 0 0 .413-.438 5.01 5.01 0 0 0-1.485-3.45c-.972-.908-2.14-1.381-3.547-1.391h-.008zm-3.71 1.31c-.17-.005-.345.07-.493.238-.546.587-1.107 1.31-.998 2.099.027.198.088.39.18.573l.012.022c.493 1.072 1.151 2.065 1.95 2.991l.023.027c1.088 1.224 2.377 2.236 3.834 3.011l.033.016c.64.34 1.335.605 2.06.79l.045.01c.247.06.494.008.712-.108.606-.334 1.014-.908 1.186-1.302a.515.515 0 0 0-.043-.476c-.3-.453-1.064-1.005-1.553-1.303a.512.512 0 0 0-.545.017l-.573.425c-.22.155-.511.145-.511.145l-.007.002c-2.585-.636-3.264-3.275-3.264-3.275s-.01-.29.145-.511l.424-.574a.513.513 0 0 0 .017-.544c-.298-.49-.85-1.253-1.303-1.553a.52.52 0 0 0-.33-.1zm5.083.568a.426.426 0 0 0-.008.852c1.455.074 2.543 1.118 2.604 2.592a.426.426 0 0 0 .842-.034c-.078-1.89-1.454-3.218-3.43-3.41a.416.416 0 0 0-.008 0zm.053 1.651a.426.426 0 0 0-.024.852c.672.04 1.05.373 1.09 1.013a.426.426 0 0 0 .85-.05c-.063-1.019-.717-1.78-1.9-1.815a.431.431 0 0 0-.016 0z"/></svg>
+                          <span className="text-sm text-gray-600">Viber</span>
+                        </div>
+                        <input
+                          type="text"
+                          value={socialData.viberLink}
+                          onChange={(e) => setSocialData(prev => ({ ...prev, viberLink: e.target.value }))}
+                          maxLength={200}
+                          placeholder="Номер телефона"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                        />
+                      </div>
+                      <label className="flex items-center gap-2 cursor-pointer pt-6">
+                        <input
+                          type="checkbox"
+                          checked={socialData.viberVisible}
+                          onChange={(e) => setSocialData(prev => ({ ...prev, viberVisible: e.target.checked }))}
+                          className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                        />
+                        <span className="text-xs text-gray-500 whitespace-nowrap">Виден всем</span>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
                 {/* Save/Cancel Buttons */}
                 <div className="flex gap-3 pt-4">
                   <button 
@@ -799,7 +987,7 @@ const UserProfile: React.FC = () => {
                   >
                     {modalLoading ? 'Сохранение...' : 'Сохранить'}
                   </button>
-                  <button 
+                  <button
                     type="button"
                     onClick={() => {
                       setIsEditing(false);
@@ -811,6 +999,14 @@ const UserProfile: React.FC = () => {
                           email: user.email || '',
                           city: user.city || '',
                           country: user.country || ''
+                        });
+                        setSocialData({
+                          telegramLink: user.telegramLink || '',
+                          vkLink: user.vkLink || '',
+                          viberLink: user.viberLink || '',
+                          telegramVisible: user.telegramVisible ?? false,
+                          vkVisible: user.vkVisible ?? false,
+                          viberVisible: user.viberVisible ?? false,
                         });
                       }
                     }}

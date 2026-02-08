@@ -2,10 +2,15 @@
 
 import React, { useEffect, useState, useRef, useCallback } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
-import { forumAPI } from '../../services/api'
+import { forumAPI, uploadAPI } from '../../services/api'
 import { supabase } from '@/lib/supabase'
-import { SendIcon, Loader2Icon, LockIcon } from 'lucide-react'
+import { SendIcon, Loader2Icon, LockIcon, ImageIcon, XIcon, Trash2Icon, ReplyIcon } from 'lucide-react'
 import Link from 'next/link'
+import { ImageLightbox } from '@/components/UI/ImageLightbox'
+import { QuoteChip } from '@/components/UI/QuoteChip'
+import { QuoteBlock } from '@/components/UI/QuoteBlock'
+import type { QuotedMessage } from '@/components/UI/QuoteChip'
+import { optimizeImage, isImage } from '@/lib/imageOptimizer'
 
 interface ConversationMessage {
   id: string
@@ -13,7 +18,9 @@ interface ConversationMessage {
   user_name: string
   user_photo_url: string | null
   content: string
+  media_links: string[]
   created_at: string
+  reply_to?: { id: string; author_name: string; excerpt: string } | null
 }
 
 function getUserColor(userId: string): string {
@@ -70,6 +77,9 @@ function UserAvatar({ name, photoUrl, size = 24 }: { name: string; photoUrl: str
   )
 }
 
+const MAX_IMAGES = 3
+const PAGE_SIZE = 50
+
 const EMOJIS = [
   '😀', '😃', '😄', '😁', '😆', '😅', '😂', '🤣',
   '😊', '😇', '🙂', '🙃', '😉', '😌', '😍', '🥰',
@@ -106,11 +116,26 @@ const ConversationHub: React.FC<ConversationHubProps> = ({ className = '' }) => 
   const [sending, setSending] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [hasMore, setHasMore] = useState(false)
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const { currentUser } = useAuth()
+  const isAdmin = currentUser?.isAdmin === true
+
+  // Image upload state
+  const [pendingImages, setPendingImages] = useState<{ file: File; preview: string }[]>([])
+  const [uploadingImages, setUploadingImages] = useState(false)
+
+  // Lightbox state
+  const [lightbox, setLightbox] = useState<{ images: string[]; index: number } | null>(null)
+
+  // Quote/reply state
+  const [quotedMessage, setQuotedMessage] = useState<QuotedMessage | null>(null)
 
   const scrollToBottom = useCallback(() => {
     const container = messagesContainerRef.current
@@ -119,10 +144,13 @@ const ConversationHub: React.FC<ConversationHubProps> = ({ className = '' }) => 
     }
   }, [])
 
+  // Initial load
   useEffect(() => {
     loadMessages()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // Realtime: listen for INSERT and DELETE events
   useEffect(() => {
     const channel = supabase
       .channel('conversation_hub')
@@ -136,15 +164,25 @@ const ConversationHub: React.FC<ConversationHubProps> = ({ className = '' }) => 
         (payload) => {
           const newMsg = payload.new as ConversationMessage
           setMessages((prev) => {
-            // Skip if already present (from optimistic update replaced by server response)
             if (prev.some((m) => m.id === newMsg.id)) return prev
-            // If this is our own message, it was already added optimistically — skip
             if (prev.some((m) => m.id.startsWith('temp-') && m.user_id === newMsg.user_id && m.content === newMsg.content)) {
               return prev
             }
-            return [...prev, newMsg]
+            return [...prev, { ...newMsg, media_links: newMsg.media_links || [], reply_to: newMsg.reply_to || null }]
           })
           setTimeout(scrollToBottom, 100)
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'conversation_messages'
+        },
+        (payload) => {
+          const deletedId = (payload.old as { id: string }).id
+          setMessages((prev) => prev.filter((m) => m.id !== deletedId))
         }
       )
       .subscribe()
@@ -156,8 +194,9 @@ const ConversationHub: React.FC<ConversationHubProps> = ({ className = '' }) => 
 
   const loadMessages = async () => {
     try {
-      const response = await forumAPI.getConversationMessages(50) as { messages: ConversationMessage[] }
-      setMessages(response.messages || [])
+      const response = await forumAPI.getConversationMessages(PAGE_SIZE) as { messages: ConversationMessage[]; hasMore: boolean }
+      setMessages((response.messages || []).map(m => ({ ...m, media_links: m.media_links || [] })))
+      setHasMore(response.hasMore ?? false)
       setTimeout(scrollToBottom, 100)
     } catch (err) {
       console.error('Failed to load conversation messages:', err)
@@ -166,12 +205,171 @@ const ConversationHub: React.FC<ConversationHubProps> = ({ className = '' }) => 
     }
   }
 
+  // Load older messages (infinite scroll up)
+  const loadOlderMessages = useCallback(async () => {
+    if (loadingMore || !hasMore || messages.length === 0) return
+
+    const oldestMessage = messages[0]
+    if (!oldestMessage) return
+
+    setLoadingMore(true)
+    const container = messagesContainerRef.current
+    const prevScrollHeight = container?.scrollHeight || 0
+
+    try {
+      const response = await forumAPI.getConversationMessages(PAGE_SIZE, oldestMessage.created_at) as { messages: ConversationMessage[]; hasMore: boolean }
+      const olderMessages = (response.messages || []).map(m => ({ ...m, media_links: m.media_links || [] }))
+      setHasMore(response.hasMore ?? false)
+
+      if (olderMessages.length > 0) {
+        setMessages((prev) => [...olderMessages, ...prev])
+        // Restore scroll position after prepending
+        requestAnimationFrame(() => {
+          if (container) {
+            container.scrollTop = container.scrollHeight - prevScrollHeight
+          }
+        })
+      }
+    } catch (err) {
+      console.error('Failed to load older messages:', err)
+    } finally {
+      setLoadingMore(false)
+    }
+  }, [loadingMore, hasMore, messages])
+
+  // Scroll handler for infinite scroll (scroll up to load older)
+  const handleScroll = useCallback(() => {
+    const container = messagesContainerRef.current
+    if (!container) return
+    // When scrolled near top (within 50px), load older
+    if (container.scrollTop < 50 && hasMore && !loadingMore) {
+      loadOlderMessages()
+    }
+  }, [hasMore, loadingMore, loadOlderMessages])
+
+  useEffect(() => {
+    const container = messagesContainerRef.current
+    if (!container) return
+    container.addEventListener('scroll', handleScroll)
+    return () => container.removeEventListener('scroll', handleScroll)
+  }, [handleScroll])
+
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || [])
+    if (files.length === 0) return
+
+    const remaining = MAX_IMAGES - pendingImages.length
+    const toAdd = files.slice(0, remaining).filter(f => f.type.startsWith('image/'))
+
+    toAdd.forEach(file => {
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        setPendingImages(prev => {
+          if (prev.length >= MAX_IMAGES) return prev
+          return [...prev, { file, preview: reader.result as string }]
+        })
+      }
+      reader.readAsDataURL(file)
+    })
+
+    // Reset input so same file can be re-selected
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
+  const removePendingImage = (index: number) => {
+    setPendingImages(prev => prev.filter((_, i) => i !== index))
+  }
+
+  const uploadImages = async (): Promise<string[]> => {
+    const urls: string[] = []
+    for (const { file } of pendingImages) {
+      let fileToUpload = file
+      // Optimize before upload
+      if (isImage(file) && !file.type.includes('svg')) {
+        try {
+          fileToUpload = await optimizeImage(file, {
+            maxWidth: 1200,
+            maxHeight: 1200,
+            quality: 0.85,
+            format: 'webp'
+          })
+        } catch {
+          // Fall back to original
+        }
+      }
+      const result = await uploadAPI.uploadFile(fileToUpload)
+      const url = result.url || result.file_url
+      if (url) urls.push(url)
+    }
+    return urls
+  }
+
+  // Admin: hard-delete a message
+  const handleDeleteMessage = async (messageId: string) => {
+    if (!isAdmin || deletingId) return
+    setDeletingId(messageId)
+    try {
+      await forumAPI.deleteConversationMessage(messageId)
+      // Optimistic removal (realtime DELETE will also fire)
+      setMessages((prev) => prev.filter((m) => m.id !== messageId))
+    } catch (err) {
+      console.error('Failed to delete message:', err)
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
+  const handleQuoteMessage = useCallback((msg: ConversationMessage) => {
+    setQuotedMessage({
+      id: msg.id,
+      authorName: msg.user_name,
+      authorId: msg.user_id,
+      excerpt: msg.content
+        ? msg.content.slice(0, 150)
+        : '[Изображение]',
+      timestamp: msg.created_at
+    })
+    textareaRef.current?.focus()
+  }, [])
+
+  const handleScrollToMessage = useCallback((messageId: string) => {
+    const container = messagesContainerRef.current
+    if (!container) return
+    const el = container.querySelector(`[data-message-id="${messageId}"]`)
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      el.classList.add('quote-highlight')
+      setTimeout(() => el.classList.remove('quote-highlight'), 1500)
+    }
+  }, [])
+
   const handleSend = async () => {
     const content = newMessage.trim()
-    if (!content || sending || !currentUser) return
+    const hasImages = pendingImages.length > 0
+    if ((!content && !hasImages) || sending || !currentUser) return
 
     setError(null)
     setSending(true)
+
+    // Upload images first if any
+    let mediaLinks: string[] = []
+    if (hasImages) {
+      setUploadingImages(true)
+      try {
+        mediaLinks = await uploadImages()
+      } catch (err) {
+        setError('Ошибка загрузки изображений')
+        setSending(false)
+        setUploadingImages(false)
+        return
+      }
+      setUploadingImages(false)
+    }
+
+    // Build reply_to payload for API
+    const replyToPayload = quotedMessage
+      ? { id: quotedMessage.id, author_name: quotedMessage.authorName, excerpt: quotedMessage.excerpt }
+      : null
 
     // Optimistic message with temp id
     const tempId = `temp-${Date.now()}`
@@ -181,24 +379,26 @@ const ConversationHub: React.FC<ConversationHubProps> = ({ className = '' }) => 
       user_name: currentUser.displayName || currentUser.username,
       user_photo_url: currentUser.photoURL || null,
       content,
+      media_links: mediaLinks,
       created_at: new Date().toISOString(),
+      reply_to: replyToPayload,
     }
 
     setMessages((prev) => [...prev, optimisticMsg])
     setNewMessage('')
+    setPendingImages([])
+    setQuotedMessage(null)
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto'
     }
     setTimeout(scrollToBottom, 50)
 
     try {
-      const response = await forumAPI.sendConversationMessage(content) as { message: ConversationMessage }
-      // Replace temp message with real one from server
+      const response = await forumAPI.sendConversationMessage(content, mediaLinks, replyToPayload) as { message: ConversationMessage }
       setMessages((prev) =>
-        prev.map((m) => (m.id === tempId ? { ...response.message } : m))
+        prev.map((m) => (m.id === tempId ? { ...response.message, media_links: response.message.media_links || [] } : m))
       )
     } catch (err) {
-      // Remove optimistic message on failure
       setMessages((prev) => prev.filter((m) => m.id !== tempId))
       const message = err instanceof Error ? err.message : 'Не удалось отправить'
       setError(message)
@@ -216,7 +416,6 @@ const ConversationHub: React.FC<ConversationHubProps> = ({ className = '' }) => 
 
   const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setNewMessage(e.target.value)
-    // Auto-resize textarea
     const ta = e.target
     ta.style.height = 'auto'
     ta.style.height = Math.min(ta.scrollHeight, 120) + 'px'
@@ -230,7 +429,6 @@ const ConversationHub: React.FC<ConversationHubProps> = ({ className = '' }) => 
       const before = newMessage.slice(0, start)
       const after = newMessage.slice(end)
       setNewMessage(before + emoji + after)
-      // Restore cursor position after emoji
       setTimeout(() => {
         ta.selectionStart = ta.selectionEnd = start + emoji.length
         ta.focus()
@@ -240,6 +438,12 @@ const ConversationHub: React.FC<ConversationHubProps> = ({ className = '' }) => 
     }
     setShowEmojiPicker(false)
   }
+
+  const openLightbox = (images: string[], index: number) => {
+    setLightbox({ images, index })
+  }
+
+  const hasContent = newMessage.trim().length > 0 || pendingImages.length > 0
 
   return (
     <div className={`bg-white rounded-sm overflow-hidden ${className}`}>
@@ -254,6 +458,14 @@ const ConversationHub: React.FC<ConversationHubProps> = ({ className = '' }) => 
         ref={messagesContainerRef}
         className="h-80 overflow-y-auto px-4 py-3 space-y-2 bg-gray-50 border-l border-r border-gray-100"
       >
+        {/* Loading older indicator */}
+        {loadingMore && (
+          <div className="flex items-center justify-center py-2 text-gray-400 text-xs">
+            <Loader2Icon className="w-4 h-4 animate-spin mr-1" />
+            Загрузка...
+          </div>
+        )}
+
         {loading ? (
           <div className="flex items-center justify-center h-full text-gray-400">
             <Loader2Icon className="w-5 h-5 animate-spin mr-2" />
@@ -266,12 +478,13 @@ const ConversationHub: React.FC<ConversationHubProps> = ({ className = '' }) => 
         ) : (
           messages.map((msg) => {
             const isOwn = currentUser?.id === msg.user_id
+            const images = msg.media_links || []
             return (
-              <div key={msg.id} className={`flex gap-2 text-sm items-start rounded px-2 py-1 ${isOwn ? 'bg-blue-50' : ''}`}>
+              <div key={msg.id} data-message-id={msg.id} className={`group flex gap-2 text-sm items-start rounded px-2 py-1 ${isOwn ? 'bg-blue-50' : ''}`}>
                 <Link href={`/profile/${msg.user_id}`} className="flex-shrink-0 mt-0.5">
                   <UserAvatar name={msg.user_name} photoUrl={msg.user_photo_url} size={24} />
                 </Link>
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
                   <span className="flex-shrink-0">
                     <Link
                       href={`/profile/${msg.user_id}`}
@@ -284,12 +497,70 @@ const ConversationHub: React.FC<ConversationHubProps> = ({ className = '' }) => 
                       {formatTime(msg.created_at)}
                     </span>
                   </span>
-                  <p className="text-gray-800 break-words whitespace-pre-wrap">{msg.content}</p>
+                  {/* Quoted message block */}
+                  {msg.reply_to && (
+                    <QuoteBlock
+                      authorName={msg.reply_to.author_name}
+                      excerpt={msg.reply_to.excerpt}
+                      sourceId={msg.reply_to.id}
+                      onClickSource={handleScrollToMessage}
+                    />
+                  )}
+                  {msg.content && (
+                    <p className="text-gray-800 break-words whitespace-pre-wrap">{msg.content}</p>
+                  )}
+                  {/* Image thumbnails */}
+                  {images.length > 0 && (
+                    <div className="flex gap-1.5 mt-1.5">
+                      {images.map((url, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => openLightbox(images, idx)}
+                          className="flex-shrink-0 w-16 h-16 rounded overflow-hidden border border-gray-200 hover:border-blue-400 hover:opacity-90 transition-all cursor-pointer"
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={url}
+                            alt=""
+                            className="w-full h-full object-cover"
+                          />
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
+                {/* Reply button */}
+                {currentUser && !msg.id.startsWith('temp-') && (
+                  <button
+                    type="button"
+                    onClick={() => handleQuoteMessage(msg)}
+                    className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-blue-100 text-gray-400 hover:text-blue-500"
+                    title="Ответить"
+                    aria-label={`Ответить на сообщение ${msg.user_name}`}
+                  >
+                    <ReplyIcon className="w-3.5 h-3.5" />
+                  </button>
+                )}
+                {/* Admin delete button */}
+                {isAdmin && !msg.id.startsWith('temp-') && (
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteMessage(msg.id)}
+                    disabled={deletingId === msg.id}
+                    className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-red-100 text-gray-400 hover:text-red-500"
+                    title="Удалить сообщение"
+                  >
+                    {deletingId === msg.id ? (
+                      <Loader2Icon className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <Trash2Icon className="w-3.5 h-3.5" />
+                    )}
+                  </button>
+                )}
               </div>
             )
           })
-
         )}
         <div ref={messagesEndRef} />
       </div>
@@ -298,6 +569,47 @@ const ConversationHub: React.FC<ConversationHubProps> = ({ className = '' }) => 
       <div className="border border-gray-100 px-4 py-3">
         {currentUser ? (
           <div>
+            {/* Pending image previews */}
+            {pendingImages.length > 0 && (
+              <div className="flex gap-2 mb-2">
+                {pendingImages.map((img, idx) => (
+                  <div key={idx} className="relative w-14 h-14 rounded overflow-hidden border border-gray-200">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={img.preview} alt="" className="w-full h-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => removePendingImage(idx)}
+                      className="absolute -top-0.5 -right-0.5 bg-red-500 text-white rounded-full w-4 h-4 flex items-center justify-center hover:bg-red-600"
+                    >
+                      <XIcon className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))}
+                {pendingImages.length < MAX_IMAGES && (
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="w-14 h-14 rounded border-2 border-dashed border-gray-300 flex items-center justify-center text-gray-400 hover:border-blue-400 hover:text-blue-500 transition-colors"
+                  >
+                    <ImageIcon className="w-5 h-5" />
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* Quote chip preview */}
+            {quotedMessage && (
+              <QuoteChip quote={quotedMessage} onDismiss={() => setQuotedMessage(null)} compact />
+            )}
+
+            {/* Upload progress */}
+            {uploadingImages && (
+              <div className="flex items-center gap-2 text-xs text-blue-600 mb-2">
+                <Loader2Icon className="w-3 h-3 animate-spin" />
+                Загрузка изображений...
+              </div>
+            )}
+
             <div className="flex gap-2 items-center">
               <div className="flex-1 relative">
                 <textarea
@@ -312,6 +624,27 @@ const ConversationHub: React.FC<ConversationHubProps> = ({ className = '' }) => 
                   disabled={sending}
                   style={{ minHeight: '38px' }}
                 />
+              </div>
+
+              {/* Image upload button */}
+              <div>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={handleImageSelect}
+                  className="hidden"
+                />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={sending || pendingImages.length >= MAX_IMAGES}
+                  className="p-2 hover:bg-gray-100 rounded transition-colors text-gray-500 hover:text-gray-700 disabled:opacity-40 disabled:cursor-not-allowed"
+                  title={pendingImages.length >= MAX_IMAGES ? `Максимум ${MAX_IMAGES} изображения` : 'Прикрепить изображение'}
+                >
+                  <ImageIcon className="w-5 h-5" />
+                </button>
               </div>
 
               {/* Emoji button */}
@@ -353,7 +686,7 @@ const ConversationHub: React.FC<ConversationHubProps> = ({ className = '' }) => 
               <button
                 type="button"
                 onClick={handleSend}
-                disabled={sending || !newMessage.trim()}
+                disabled={sending || !hasContent}
                 className="bg-blue-600 text-white px-4 py-2 rounded text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-1 flex-shrink-0"
               >
                 {sending ? (
@@ -379,6 +712,15 @@ const ConversationHub: React.FC<ConversationHubProps> = ({ className = '' }) => 
           </div>
         )}
       </div>
+
+      {/* Fullscreen Image Lightbox */}
+      {lightbox && (
+        <ImageLightbox
+          images={lightbox.images}
+          initialIndex={lightbox.index}
+          onClose={() => setLightbox(null)}
+        />
+      )}
     </div>
   )
 }

@@ -127,11 +127,31 @@ export async function GET(
       }
     }
 
+    // Get topic rating data
+    const ratingSum = topic.rating_sum || 0;
+    const ratingCount = topic.rating_count || 0;
+    const averageRating = ratingCount > 0 ? ratingSum / ratingCount : 0;
+
+    // Get user's rating if authenticated
+    let userRating: number | null = null;
+    if (currentUserId) {
+      const { data: rating } = await supabaseAdmin
+        .from('topic_ratings')
+        .select('rating')
+        .eq('topic_id', topicId)
+        .eq('user_id', currentUserId)
+        .single();
+
+      if (rating) {
+        userRating = rating.rating;
+      }
+    }
+
     // Format the response with current user data
     const formattedTopic = {
       id: topic.id,
       title: topic.title,
-      content: topic.content,
+      content: topic.content || null,
       user_name: topicAuthor?.display_name || topicAuthor?.username || 'Unknown',
       user_email: topicAuthor?.email || '',
       user_id: topic.user_id || '',
@@ -148,7 +168,11 @@ export async function GET(
       is_pinned: topic.is_pinned || false,
       is_locked: topic.is_locked || false,
       media_links: topic.media_links || [],
-      is_author: currentUserId ? topic.user_id === currentUserId : false
+      is_author: currentUserId ? topic.user_id === currentUserId : false,
+      // Rating data
+      average_rating: Math.round(averageRating * 10) / 10,
+      rating_count: ratingCount,
+      user_rating: userRating
     };
 
     // Determine user's votes on posts
@@ -192,7 +216,9 @@ export async function GET(
         dislikes: post.dislikes || 0,
         user_vote: postUserVote,
         media_links: post.media_links || [],
-        is_author: currentUserId ? post.user_id === currentUserId : false
+        is_author: currentUserId ? post.user_id === currentUserId : false,
+        reply_to_post_id: post.reply_to_post_id || null,
+        reply_to_excerpt: post.reply_to_excerpt || null
       };
     });
 
@@ -223,10 +249,14 @@ export async function POST(
   try {
     const { topicId } = await params;
     const body = await request.json();
-    const { content, mediaLinks } = body;
-    console.log('Received post creation request:', { content, mediaLinks });
+    const { content, mediaLinks, replyToPostId } = body;
+    console.log('Received post creation request:', { content, mediaLinks, replyToPostId });
 
-    if (!content || !content.trim()) {
+    // Strip rich-text "empty" content: &nbsp;, whitespace, empty HTML tags
+    const cleanedContent = content
+      ? content.replace(/&nbsp;/g, '').replace(/<[^>]*>/g, '').trim()
+      : '';
+    if (!cleanedContent) {
       return NextResponse.json(
         { error: 'Content is required' },
         { status: 400 }
@@ -287,6 +317,39 @@ export async function POST(
       );
     }
 
+    // Build reply-to excerpt if quoting another post
+    let replyToExcerpt: { author_name: string; excerpt: string } | null = null;
+    if (replyToPostId) {
+      const { data: sourcePost } = await supabaseAdmin
+        .from('posts')
+        .select('id, content, user_id')
+        .eq('id', replyToPostId)
+        .eq('topic_id', topicId)
+        .single();
+
+      if (sourcePost) {
+        // Get source post author name
+        const { data: sourceUser } = await supabaseAdmin
+          .from('users')
+          .select('username, display_name')
+          .eq('id', sourcePost.user_id)
+          .single();
+
+        const plainExcerpt = (sourcePost.content || '')
+          .replace(/!\[.*?\]\(.*?\)/g, '[Изображение]')
+          .replace(/\[([^\]]*)\]\(.*?\)/g, '$1')
+          .replace(/[*_~`#>]/g, '')
+          .replace(/&nbsp;/g, ' ')
+          .trim()
+          .slice(0, 150);
+
+        replyToExcerpt = {
+          author_name: sourceUser?.display_name || sourceUser?.username || 'Unknown',
+          excerpt: plainExcerpt
+        };
+      }
+    }
+
     // Create new post
     const { data: createdPost, error: postError } = await supabaseAdmin
       .from('posts')
@@ -296,7 +359,9 @@ export async function POST(
         user_name: user.username,
         user_email: user.email,
         content: content.trim(),
-        media_links: mediaLinks || []
+        media_links: mediaLinks || [],
+        reply_to_post_id: replyToPostId || null,
+        reply_to_excerpt: replyToExcerpt
       })
       .select()
       .single();
@@ -328,7 +393,9 @@ export async function POST(
       likes: createdPost.likes || 0,
       dislikes: createdPost.dislikes || 0,
       media_links: createdPost.media_links || [],
-      is_author: true
+      is_author: true,
+      reply_to_post_id: createdPost.reply_to_post_id || null,
+      reply_to_excerpt: createdPost.reply_to_excerpt || null
     };
 
     return NextResponse.json({
@@ -415,6 +482,12 @@ export async function DELETE(
     // Delete topic votes
     await supabaseAdmin
       .from('topic_votes')
+      .delete()
+      .eq('topic_id', topicId);
+
+    // Delete topic ratings
+    await supabaseAdmin
+      .from('topic_ratings')
       .delete()
       .eq('topic_id', topicId);
 

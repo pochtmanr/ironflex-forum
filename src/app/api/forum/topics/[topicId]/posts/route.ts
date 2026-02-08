@@ -8,8 +8,8 @@ export async function POST(
   try {
     const { topicId } = await params;
     const body = await request.json();
-    const { content, mediaLinks, userData } = body;
-    console.log('Received post creation request:', { content, mediaLinks, userData });
+    const { content, mediaLinks, userData, replyToPostId } = body;
+    console.log('Received post creation request:', { content, mediaLinks, userData, replyToPostId });
 
     if (!content || !content.trim()) {
       return NextResponse.json(
@@ -79,6 +79,38 @@ export async function POST(
       );
     }
 
+    // Build reply-to excerpt if quoting another post
+    let replyToExcerpt: { author_name: string; excerpt: string } | null = null;
+    if (replyToPostId) {
+      const { data: sourcePost } = await supabaseAdmin
+        .from('posts')
+        .select('id, content, user_id')
+        .eq('id', replyToPostId)
+        .eq('topic_id', topicId)
+        .single();
+
+      if (sourcePost) {
+        const { data: sourceUser } = await supabaseAdmin
+          .from('users')
+          .select('username, display_name')
+          .eq('id', sourcePost.user_id)
+          .single();
+
+        const plainExcerpt = (sourcePost.content || '')
+          .replace(/!\[.*?\]\(.*?\)/g, '[Изображение]')
+          .replace(/\[([^\]]*)\]\(.*?\)/g, '$1')
+          .replace(/[*_~`#>]/g, '')
+          .replace(/&nbsp;/g, ' ')
+          .trim()
+          .slice(0, 150);
+
+        replyToExcerpt = {
+          author_name: sourceUser?.display_name || sourceUser?.username || 'Unknown',
+          excerpt: plainExcerpt
+        };
+      }
+    }
+
     // Create new post
     const { data: createdPost, error: postError } = await supabaseAdmin
       .from('posts')
@@ -88,7 +120,9 @@ export async function POST(
         user_name: user.display_name || user.username,
         user_email: user.email,
         content: content.trim(),
-        media_links: mediaLinks || []
+        media_links: mediaLinks || [],
+        reply_to_post_id: replyToPostId || null,
+        reply_to_excerpt: replyToExcerpt
       })
       .select()
       .single();
@@ -120,7 +154,9 @@ export async function POST(
       likes: createdPost.likes || 0,
       dislikes: createdPost.dislikes || 0,
       media_links: createdPost.media_links || [],
-      is_author: true
+      is_author: true,
+      reply_to_post_id: createdPost.reply_to_post_id || null,
+      reply_to_excerpt: createdPost.reply_to_excerpt || null
     };
 
     return NextResponse.json({

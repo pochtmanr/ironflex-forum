@@ -106,20 +106,16 @@ const CreateTopicContent: React.FC = () => {
       return;
     }
     
-    if (!content.trim()) {
-      setError('Введите содержимое темы');
-      return;
-    }
-
     setLoading(true);
     setError('');
 
     try {
-      // Images are now embedded in the markdown content
+      // Content is optional — topic can be created with just a title
+      const trimmedContent = content.trim();
       await forumAPI.createTopic({
         categoryId: selectedCategoryId,
         title: title.trim(),
-        content: content.trim()
+        ...(trimmedContent ? { content: trimmedContent } : {})
       });
 
       // Redirect to the category page
@@ -229,7 +225,7 @@ const CreateTopicContent: React.FC = () => {
           {/* Content */}
           <div>
             <label htmlFor="content" className="block text-sm font-medium text-gray-900/70 mb-2">
-              Содержимое *
+              Первый комментарий (необязательно)
             </label>
             <RichTextEditor
               value={content}

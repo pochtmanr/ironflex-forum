@@ -3,15 +3,22 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { contentAPI } from '../../services/api';
+import { forumAPI } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import SkeletonLoader from '../UI/SkeletonLoader';
 import { NewDiscussionButton, PaginationButton } from '@/components/UI';
 
+interface LastPost {
+  id: string;
+  content: string;
+  author: string;
+  date: string;
+}
+
 interface Topic {
   id: number | string;
   title: string;
-  content: string;
+  content: string | null;
   user_name: string;
   user_email: string;
   user_id: string;
@@ -23,6 +30,7 @@ interface Topic {
   last_post_at: string;
   is_pinned: boolean;
   is_locked: boolean;
+  last_post: LastPost | null;
 }
 
 interface Category {
@@ -48,7 +56,7 @@ const CategoryView: React.FC = () => {
     try {
       setLoading(true);
       
-      const response = await contentAPI.getCategory(categoryId, page) as { 
+      const response = await forumAPI.getCategory(categoryId, page) as { 
         category: unknown; 
         topics: unknown[]; 
         pagination: { pages: number } 
@@ -74,15 +82,42 @@ const CategoryView: React.FC = () => {
     loadCategoryData();
   }, [loadCategoryData]);
 
+  // Format date with relative time for recent dates
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleString('ru-RU', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / (1000 * 60));
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    // Less than 1 hour ago
+    if (diffMins < 60) {
+      if (diffMins < 1) return 'Только что';
+      if (diffMins === 1) return '1 минуту назад';
+      if (diffMins < 5) return `${diffMins} минуты назад`;
+      return `${diffMins} минут назад`;
+    }
+
+    // Less than 24 hours ago
+    if (diffHours < 24) {
+      if (diffHours === 1) return '1 час назад';
+      if (diffHours < 5) return `${diffHours} часа назад`;
+      return `${diffHours} часов назад`;
+    }
+
+    // Yesterday
+    if (diffDays === 1) return 'Вчера';
+
+    // 2-7 days ago
+    if (diffDays < 7) {
+      if (diffDays < 5) return `${diffDays} дня назад`;
+      return `${diffDays} дней назад`;
+    }
+
+    // Older than a week - show date
+    const months = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
+    return `${date.getDate().toString().padStart(2, '0')} ${months[date.getMonth()]} ${date.getFullYear()}`;
   };
 
   if (loading) {
@@ -136,35 +171,32 @@ const CategoryView: React.FC = () => {
           <div className="hidden sm:block overflow-x-auto rounded-b-sm border-b border-l border-r border-gray-100">
             <table className="w-full">
               <thead>
-                <tr className="bg-gray-100 text-gray-600 text-md">
-                  <th className="px-4 py-3 text-left font-medium">Тема</th>
-                  <th className="px-4 py-3 text-center font-medium w-32">Ответов</th>
-                  <th className="px-4 py-3 text-center font-medium w-32">Просмотров</th>
-                  <th className="px-4 py-3 text-center font-medium w-24">Рейтинг</th>
-                  <th className="px-4 py-3 text-left font-medium w-40">Последний</th>
+                <tr className="bg-gray-100 text-xs text-gray-500 uppercase">
+                  <th className="px-4 py-2 text-left font-medium">Тема</th>
+                  <th className="px-3 py-2 text-left font-medium hidden md:table-cell w-48">Последний комментарий</th>
+                  <th className="px-3 py-2 text-center font-medium w-20">Ответы</th>
+                  <th className="px-3 py-2 text-center font-medium w-24">Просмотры</th>
                 </tr>
               </thead>
               <tbody>
                 {Array.from({ length: 5 }).map((_, i) => (
-                  <tr key={i} className={`border-b border-gray-200 ${i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
-                    <td className="px-4 py-4">
-                      <div className="h-4 w-64 bg-gray-200 rounded animate-pulse mb-2" />
-                      <div className="flex items-center gap-2">
-                        <div className="h-3 w-20 bg-blue-100 rounded animate-pulse" />
-                        <div className="h-3 w-24 bg-gray-100 rounded animate-pulse" />
-                      </div>
+                  <tr key={i} className={`border-b border-gray-100 ${i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
+                    <td className="px-4 py-3">
+                      <div className="h-4 w-64 bg-gray-200 rounded animate-pulse mb-1" />
+                      <div className="h-3 w-40 bg-gray-100 rounded animate-pulse" />
                     </td>
-                    <td className="px-4 py-4 text-center">
-                      <div className="h-5 w-10 bg-gray-200 rounded animate-pulse mx-auto" />
+                    <td className="px-3 py-3 bg-gray-50/70 hidden md:table-cell">
+                      <div className="h-3 w-full bg-gray-200 rounded animate-pulse mb-1" />
+                      <div className="h-2 w-24 bg-gray-100 rounded animate-pulse mb-1" />
+                      <div className="h-2 w-16 bg-gray-100 rounded animate-pulse" />
                     </td>
-                    <td className="px-4 py-4 text-center">
-                      <div className="h-5 w-10 bg-gray-200 rounded animate-pulse mx-auto" />
+                    <td className="px-3 py-3 text-center">
+                      <div className="h-4 w-8 bg-gray-200 rounded animate-pulse mx-auto mb-1" />
+                      <div className="h-2 w-12 bg-gray-100 rounded animate-pulse mx-auto" />
                     </td>
-                    <td className="px-4 py-4 text-center">
-                      <div className="h-5 w-16 bg-gray-200 rounded animate-pulse mx-auto" />
-                    </td>
-                    <td className="px-4 py-4">
-                      <div className="h-4 w-28 bg-gray-100 rounded animate-pulse" />
+                    <td className="px-3 py-3 text-center">
+                      <div className="h-4 w-8 bg-gray-200 rounded animate-pulse mx-auto mb-1" />
+                      <div className="h-2 w-12 bg-gray-100 rounded animate-pulse mx-auto" />
                     </td>
                   </tr>
                 ))}
@@ -254,40 +286,23 @@ const CategoryView: React.FC = () => {
                 <Link
                   key={topic.id}
                   href={`/topic/${topic.id}`}
-                  className={`block border-b border-gray-200 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'} p-4 active:bg-blue-100 transition-colors`}
+                  className={`block border-b border-gray-100 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'} p-4 active:bg-blue-50 transition-colors`}
                 >
-                  <div className="flex items-start justify-between mb-2">
-                    <h3 className="text-blue-600 font-semibold text-base leading-tight flex-1 pr-2">
-                      {topic.title}
-                    </h3>
-                    <div className="flex items-center space-x-2 flex-shrink-0">
-                      <span className="text-xs text-green-600 font-medium">+{topic.likes}</span>
-                      <span className="text-xs text-red-600 font-medium">-{topic.dislikes}</span>
-                    </div>
-                  </div>
+                  <h3 className="text-blue-600 font-semibold text-sm leading-tight mb-1">
+                    {topic.title}
+                  </h3>
                   <div className="flex items-center text-xs text-gray-500 mb-2">
-                    <span className="font-medium text-blue-600">{topic.user_name}</span>
-                    <span className="mx-2">•</span>
-                    <span>{new Date(topic.created_at).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}</span>
+                    <span className="text-blue-600">{topic.user_name}</span>
+                    <span className="mx-1">•</span>
+                    <span>{formatDate(topic.created_at)}</span>
                   </div>
                   <div className="flex items-center justify-between text-xs text-gray-500">
-                    <div className="flex items-center space-x-3">
-                      <span className="flex items-center">
-                        <svg className="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                        </svg>
-                        {topic.reply_count}
-                      </span>
-                      <span className="flex items-center">
-                        <svg className="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                        </svg>
-                        {topic.views}
-                      </span>
+                    <div className="flex items-center gap-3">
+                      <span>{topic.reply_count} ответов</span>
+                      <span>{topic.views} просм.</span>
                     </div>
                     <span className="text-gray-400">
-                      {new Date(topic.last_post_at).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}
+                      {formatDate(topic.last_post_at)}
                     </span>
                   </div>
                 </Link>
@@ -298,52 +313,59 @@ const CategoryView: React.FC = () => {
             <div className="hidden sm:block overflow-x-auto rounded-b-sm border-b border-l border-r border-gray-100">
               <table className="w-full">
                 <thead>
-                  <tr className="bg-gray-100 text-gray-600 text-md">
-                    <th className="px-4 py-3 text-left font-medium">Тема</th>
-                    <th className="px-4 py-3 text-center font-medium w-32">Ответов</th>
-                    <th className="px-4 py-3 text-center font-medium w-32">Просмотров</th>
-                    <th className="px-4 py-3 text-center font-medium w-24">Рейтинг</th>
-                    <th className="px-4 py-3 text-left font-medium w-40">Последний</th>
+                  <tr className="bg-gray-100 text-xs text-gray-500 uppercase">
+                    <th className="px-4 py-2 text-left font-medium">Тема</th>
+                    <th className="px-3 py-2 text-left font-medium hidden md:table-cell w-48">Последний комментарий</th>
+                    <th className="px-3 py-2 text-center font-medium w-20">Ответы</th>
+                    <th className="px-3 py-2 text-center font-medium w-24">Просмотры</th>
                   </tr>
                 </thead>
                 <tbody>
                   {topics.map((topic, index) => (
-                    <tr key={topic.id} className={`border-b border-gray-200 hover:bg-blue-50 transition-colors ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
-                      <td className="px-4 py-4">
-                        <Link 
-                          href={`/topic/${topic.id}`}
-                          className="text-gray-900 text-base font-semibold hover:text-blue-700 block mb-1"
-                        >
-                          {topic.title}
+                    <tr key={topic.id} className={`border-b border-gray-100 hover:bg-blue-50 transition-colors ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
+                      {/* Topic title and author */}
+                      <td className="px-4 py-3">
+                        <Link href={`/topic/${topic.id}`} className="block">
+                          <h3 className="text-blue-600 font-semibold text-sm sm:text-base leading-tight hover:underline">
+                            {topic.title}
+                          </h3>
+                          <div className="text-xs text-gray-500 mt-0.5">
+                            <span className="text-blue-600">{topic.user_name}</span>
+                            <span className="mx-1">•</span>
+                            <span>{formatDate(topic.created_at)}</span>
+                          </div>
                         </Link>
-                        <div className="text-sm text-gray-500">
-                          <Link 
-                            href={`/profile/${topic.user_id}`}
-                            className="font-medium text-blue-600 hover:text-blue-700"
-                          >
-                            {topic.user_name}
-                          </Link>{' '}
-                          {new Date(topic.created_at).toLocaleDateString('ru-RU', {
-                            month: 'short',
-                            day: 'numeric',
-                            year: 'numeric',
-                          })}
-                        </div>
                       </td>
-                      <td className="px-4 py-4 text-center">
-                        <div className="text-base text-gray-800 font-medium">{topic.reply_count}</div>
+
+                      {/* Last comment - shows actual post content */}
+                      <td className="px-3 py-3 bg-gray-50/70 hidden md:table-cell max-w-[200px]">
+                        {topic.last_post ? (
+                          <Link href={`/topic/${topic.id}`} className="block">
+                            <div className="text-sm text-gray-800 font-medium line-clamp-1 hover:text-blue-600 hover:underline">
+                              {topic.last_post.content.replace(/<img[^>]*>/gi, '<фото>').replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').replace(/!\[[^\]]*\](\([^)]*\))?/g, '<фото>').trimStart().substring(0, 50)}...
+                            </div>
+                            <div className="text-xs text-gray-500 mt-0.5 truncate">
+                              Автор: {topic.last_post.author}
+                            </div>
+                            <div className="text-xs text-gray-400 mt-0.5">
+                              {formatDate(topic.last_post.date)}
+                            </div>
+                          </Link>
+                        ) : (
+                          <span className="text-xs text-gray-400 italic">Нет ответов</span>
+                        )}
                       </td>
-                      <td className="px-4 py-4 text-center">
-                        <div className="text-gray-600">{topic.views}</div>
+
+                      {/* Replies count */}
+                      <td className="px-3 py-3 text-center">
+                        <div className="text-sm font-medium text-gray-700">{topic.reply_count}</div>
+                        <div className="text-xs text-gray-400">Ответов</div>
                       </td>
-                      <td className="px-4 py-4 text-center">
-                        <div className="flex items-center justify-center space-x-2">
-                          <span className="text-green-600 text-sm font-medium">+{topic.likes}</span>
-                          <span className="text-red-600 text-sm font-medium">-{topic.dislikes}</span>
-                        </div>
-                      </td>
-                      <td className="px-4 py-4">
-                        <div className="text-sm text-gray-600">{formatDate(topic.last_post_at)}</div>
+
+                      {/* Views count */}
+                      <td className="px-3 py-3 text-center">
+                        <div className="text-sm font-medium text-gray-700">{topic.views}</div>
+                        <div className="text-xs text-gray-400">Просм.</div>
                       </td>
                     </tr>
                   ))}

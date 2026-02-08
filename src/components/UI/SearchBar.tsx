@@ -35,10 +35,6 @@ export interface SearchBarProps {
  * <SearchBar isMobile placeholder="Поиск..." />
  * 
  * @example
- * // Custom base path
- * <SearchBar basePath="/articles" placeholder="Поиск статей..." />
- * 
- * @example
  * // Custom callback
  * <SearchBar onSearch={(query) => console.log(query)} />
  */

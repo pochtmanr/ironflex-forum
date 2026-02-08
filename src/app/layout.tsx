@@ -17,8 +17,37 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "tarnovsky.ru Forum",
-  description: "Next.js + MongoDB Forum Platform",
+  title: {
+    default: 'Клинический Протокол Тарновского — Форум о бодибилдинге и фитнесе',
+    template: '%s | tarnovsky.ru',
+  },
+  description: 'Форум сообщества Клинический Протокол Тарновского — обсуждения бодибилдинга, фитнеса, тренировок, питания и здорового образа жизни.',
+  keywords: ['бодибилдинг', 'фитнес', 'тренировки', 'питание', 'форум', 'тарновский', 'протокол', 'здоровый образ жизни', 'спорт'],
+  authors: [{ name: 'tarnovsky.ru' }],
+  metadataBase: new URL('https://tarnovsky.ru'),
+  openGraph: {
+    type: 'website',
+    locale: 'ru_RU',
+    url: 'https://tarnovsky.ru',
+    siteName: 'Клинический Протокол Тарновского',
+    title: 'Клинический Протокол Тарновского — Форум о бодибилдинге и фитнесе',
+    description: 'Форум сообщества Клинический Протокол Тарновского — обсуждения бодибилдинга, фитнеса, тренировок, питания и здорового образа жизни.',
+    images: [{ url: '/images/4_logo1.png', width: 1200, height: 630, alt: 'Клинический Протокол Тарновского' }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Клинический Протокол Тарновского — Форум о бодибилдинге и фитнесе',
+    description: 'Форум сообщества — обсуждения бодибилдинга, фитнеса, тренировок, питания и ЗОЖ.',
+    images: ['/images/4_logo1.png'],
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
+  icons: {
+    icon: '/images/4_logo1.png',
+    apple: '/images/4_logo1.png',
+  },
 };
 
 export default function RootLayout({

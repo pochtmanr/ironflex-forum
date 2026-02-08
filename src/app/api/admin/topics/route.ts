@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
         userName: topic.user_name,
         userEmail: topic.user_email,
         title: topic.title,
-        content: topic.content,
+        content: topic.content || null,
         mediaLinks: topic.media_links,
         views: topic.views,
         likes: topic.likes,
