@@ -100,8 +100,8 @@ export const PostItem: React.FC<PostItemProps> = ({
           <div className="sm:hidden" />
 
           <div className="flex items-center gap-1">
-            {/* Edit and Delete buttons if post author */}
-            {currentUser && isPostAuthor && (
+            {/* Edit and Delete buttons if post author or admin */}
+            {currentUser && (isPostAuthor || currentUser.isAdmin) && (
               <>
                 {onEdit && (
                   <button

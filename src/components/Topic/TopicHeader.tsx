@@ -139,7 +139,7 @@ export const TopicHeader: React.FC<TopicHeaderProps> = ({
               <div className="sm:hidden" />
 
               {/* Edit and Delete buttons if author */}
-              {topic.is_author && (
+              {(topic.is_author || currentUser?.isAdmin) && (
                 <div className="flex items-center gap-1">
                   {onEditTopic && (
                     <button
@@ -240,7 +240,7 @@ export const TopicHeader: React.FC<TopicHeaderProps> = ({
               {formatDate(topic.created_at)}
             </div>
             <div className="flex items-center gap-2">
-              {topic.is_author && onEditTopic && (
+              {(topic.is_author || currentUser?.isAdmin) && onEditTopic && (
                 <button
                   onClick={onEditTopic}
                   disabled={!canEdit}
@@ -253,7 +253,7 @@ export const TopicHeader: React.FC<TopicHeaderProps> = ({
                   Изменить
                 </button>
               )}
-              {topic.is_author && (
+              {(topic.is_author || currentUser?.isAdmin) && (
                 <button
                   onClick={onDeleteTopic}
                   disabled={!canEdit}

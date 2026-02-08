@@ -403,16 +403,16 @@ const TopicViewPage: React.FC = () => {
   };
 
   const handleEditTopic = () => {
-    if (!currentUser || !topic?.is_author) {
+    if (!currentUser || (!topic?.is_author && !currentUser.isAdmin)) {
       return;
     }
-    
-    // Check if still within edit window
-    if (!canEditTopic(topic.created_at)) {
+
+    // Admins bypass the edit window; non-admins check 2-hour limit
+    if (!currentUser.isAdmin && !canEditTopic(topic!.created_at)) {
       setError('Время для редактирования темы истекло. Темы можно редактировать только в течение 2 часов после публикации.');
       return;
     }
-    
+
     setIsEditModalOpen(true);
   };
 
@@ -439,12 +439,12 @@ const TopicViewPage: React.FC = () => {
   };
 
   const handleDeleteTopic = async () => {
-    if (!currentUser || !topic?.is_author) {
+    if (!currentUser || (!topic?.is_author && !currentUser.isAdmin)) {
       return;
     }
 
-    // Check if still within edit window
-    if (!canEditTopic(topic.created_at)) {
+    // Admins bypass the edit window; non-admins check 2-hour limit
+    if (!currentUser.isAdmin && !canEditTopic(topic!.created_at)) {
       setError('Время для удаления темы истекло. Темы можно удалять только в течение 2 часов после публикации.');
       return;
     }
@@ -477,17 +477,18 @@ const TopicViewPage: React.FC = () => {
       return;
     }
 
-    // Check if user is the post author
-    const isPostAuthor = String(post.user_id) === String(currentUser.id);
-    if (!isPostAuthor) {
-      setError('Вы можете редактировать только свои комментарии');
-      return;
-    }
+    // Admins can edit any post; non-admins: ownership + 2-hour window
+    if (!currentUser.isAdmin) {
+      const isPostAuthor = String(post.user_id) === String(currentUser.id);
+      if (!isPostAuthor) {
+        setError('Вы можете редактировать только свои комментарии');
+        return;
+      }
 
-    // Check if still within edit window
-    if (!canEditTopic(post.created_at)) {
-      setError('Время для редактирования комментария истекло. Комментарии можно редактировать только в течение 2 часов после публикации.');
-      return;
+      if (!canEditTopic(post.created_at)) {
+        setError('Время для редактирования комментария истекло. Комментарии можно редактировать только в течение 2 часов после публикации.');
+        return;
+      }
     }
 
     setEditingPostId(postId);
@@ -582,18 +583,19 @@ const TopicViewPage: React.FC = () => {
       return;
     }
 
-    // Check if user is the post author
-    const isPostAuthor = String(post.user_id) === String(currentUser.id);
-    
-    if (!isPostAuthor) {
-      setError('Вы можете удалять только свои комментарии');
-      return;
-    }
-    
-    // Check if still within edit window
-    if (!canEditTopic(post.created_at)) {
-      setError('Время для удаления комментария истекло. Комментарии можно удалять только в течение 2 часов после публикации.');
-      return;
+    // Admins can delete any post; non-admins: ownership + 2-hour window
+    if (!currentUser.isAdmin) {
+      const isPostAuthor = String(post.user_id) === String(currentUser.id);
+
+      if (!isPostAuthor) {
+        setError('Вы можете удалять только свои комментарии');
+        return;
+      }
+
+      if (!canEditTopic(post.created_at)) {
+        setError('Время для удаления комментария истекло. Комментарии можно удалять только в течение 2 часов после публикации.');
+        return;
+      }
     }
 
     const confirmed = window.confirm('Вы уверены, что хотите удалить этот комментарий? Это действие нельзя отменить.');
@@ -725,15 +727,16 @@ const TopicViewPage: React.FC = () => {
     });
   };
 
-  // Check if topic can still be edited (within 2 hours of creation)
+  // Check if topic can still be edited (within 2 hours of creation, or always for admins)
   const canEditTopic = (createdAt: string) => {
+    if (currentUser?.isAdmin) return true;
     if (!createdAt) return false;
-    
+
     const createdDate = new Date(createdAt);
     const now = new Date();
     const twoHoursInMs = 2 * 60 * 60 * 1000; // 2 hours in milliseconds
     const timeSinceCreation = now.getTime() - createdDate.getTime();
-    
+
     return timeSinceCreation <= twoHoursInMs;
   };
 
