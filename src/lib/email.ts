@@ -43,6 +43,7 @@ const createTransporter = () => {
     
     return transporter
   } catch (error) {
+    console.error('[EMAIL] Failed to create transporter:', error instanceof Error ? error.message : error)
     return null
   }
 }
@@ -559,6 +560,7 @@ export const sendEmail = async (
 
     return true
   } catch (error) {
+    console.error('[EMAIL] Send failed:', error instanceof Error ? error.message : error)
     return false
   }
 }
@@ -665,6 +667,7 @@ export const sendEmailSecure = async (
 
     return true
   } catch (error) {
+    console.error('[EMAIL] Secure send failed:', error instanceof Error ? error.message : error)
     return false
   }
 }
