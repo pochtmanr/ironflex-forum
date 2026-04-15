@@ -1,7 +1,6 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  output: 'standalone',
   poweredByHeader: false,
   // Vercel-like optimizations for fast builds
   compiler: {
