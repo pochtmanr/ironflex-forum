@@ -1,6 +1,12 @@
 import nodemailer from 'nodemailer'
 import crypto from 'crypto'
 
+// Escape HTML special characters to prevent email template injection
+// via user-controlled fields (username, display_name, contact form data, etc.)
+function sanitize(s: string | undefined | null): string {
+  if (s === undefined || s === null) return ''
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!))
+}
 
 // Email configuration for Timeweb
 const SMTP_HOST = process.env.SMTP_HOST || 'smtp.timeweb.ru'
@@ -28,11 +34,6 @@ const createTransporter = () => {
       auth: {
         user: SMTP_USER,
         pass: SMTP_PASS,
-      },
-      // Additional options for better compatibility
-      tls: {
-        rejectUnauthorized: false, // Accept self-signed certificates
-        ciphers: 'SSLv3'
       },
       // Connection timeout
       connectionTimeout: 10000,
@@ -219,7 +220,7 @@ const getEmailTemplate = (type: string, data: Record<string, unknown>) => {
              
                 
                 <div class="email-content">
-                  <h2>Здравствуйте, ${data.username}!</h2>
+                  <h2>Здравствуйте, ${sanitize(data.username as string)}!</h2>
                   
                   <p>Мы получили запрос на сброс пароля для вашего аккаунта на <strong>${FROM_NAME}</strong>.</p>
                   
@@ -278,7 +279,7 @@ const getEmailTemplate = (type: string, data: Record<string, unknown>) => {
                 
                 
                 <div class="email-content">
-                  <h2>Здравствуйте, ${data.username}!</h2>
+                  <h2>Здравствуйте, ${sanitize(data.username as string)}!</h2>
                   
                   <p>Спасибо за регистрацию на <strong>${FROM_NAME}</strong>!</p>
                   
@@ -337,7 +338,7 @@ const getEmailTemplate = (type: string, data: Record<string, unknown>) => {
                
                 
                 <div class="email-content">
-                  <h2>Здравствуйте, ${data.username}!</h2>
+                  <h2>Здравствуйте, ${sanitize(data.username as string)}!</h2>
                   
                   <p>Поздравляем! Ваш email успешно подтвержден, и теперь у вас есть полный доступ к <strong>${FROM_NAME}</strong>.</p>
                   
@@ -393,7 +394,7 @@ const getEmailTemplate = (type: string, data: Record<string, unknown>) => {
                 </div>
 
                 <div class="email-content">
-                  <h2>Здравствуйте, ${data.username}!</h2>
+                  <h2>Здравствуйте, ${sanitize(data.username as string)}!</h2>
 
                   <p>Вы запросили смену email на <strong>${FROM_NAME}</strong>.</p>
 
@@ -450,7 +451,7 @@ const getEmailTemplate = (type: string, data: Record<string, unknown>) => {
                 </div>
 
                 <div class="email-content">
-                  <h2>Здравствуйте, ${data.username}!</h2>
+                  <h2>Здравствуйте, ${sanitize(data.username as string)}!</h2>
 
                   <p>Email адрес вашего аккаунта на <strong>${FROM_NAME}</strong> был изменён на новый адрес.</p>
 
@@ -495,17 +496,17 @@ const getEmailTemplate = (type: string, data: Record<string, unknown>) => {
                 </div>
 
                 <div class="email-content">
-                  <h2>${data.subject}</h2>
+                  <h2>${sanitize(data.subject as string)}</h2>
 
                   <div class="email-info-box">
                     <h3>Отправитель:</h3>
                     <ul>
-                      <li><strong>Имя:</strong> ${data.name}</li>
-                      <li><strong>Email:</strong> ${data.email}</li>
+                      <li><strong>Имя:</strong> ${sanitize(data.name as string)}</li>
+                      <li><strong>Email:</strong> ${sanitize(data.email as string)}</li>
                     </ul>
                   </div>
 
-                  <p style="white-space: pre-wrap;">${data.message}</p>
+                  <p style="white-space: pre-wrap;">${sanitize(data.message as string)}</p>
                 </div>
 
                 <div class="email-footer">

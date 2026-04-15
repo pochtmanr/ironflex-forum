@@ -36,19 +36,20 @@ function cleanupRateLimitMap() {
   }
 }
 
+const UNIFORM_MESSAGE = 'Если аккаунт с таким email существует, то ссылка для сброса пароля была отправлена.'
+
 export async function POST(request: NextRequest) {
   try {
     // Rate limiting
-    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
-      || request.headers.get('x-real-ip')
+    // Trust x-real-ip from our nginx; fallback to rightmost forwarded-for to avoid client spoofing
+    const ip = request.headers.get('x-real-ip')
+      || request.headers.get('x-forwarded-for')?.split(',').pop()?.trim()
       || 'unknown'
 
     cleanupRateLimitMap()
 
     if (!checkRateLimit(ip)) {
-      return NextResponse.json(
-        { message: 'Если аккаунт с таким email существует, то ссылка для сброса пароля была отправлена.' }
-      )
+      return NextResponse.json({ message: UNIFORM_MESSAGE })
     }
 
     const { email } = await request.json()
@@ -61,67 +62,59 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Find user by email
-    const { data: user } = await supabaseAdmin
-      .from('users')
-      .select('*')
-      .eq('email', email.toLowerCase())
-      .eq('is_active', true)
-      .single()
+    const normalizedEmail = String(email).toLowerCase()
 
-    // Always return success to prevent email enumeration attacks
-    if (!user) {
-      return NextResponse.json({
-        message: 'Если аккаунт с таким email существует, то ссылка для сброса пароля была отправлена.'
-      })
-    }
+    // Timing decoupling: respond uniformly BEFORE doing any DB writes or
+    // SMTP sends. We kick the actual work into a microtask so the response
+    // latency does not reveal whether the email is registered.
+    const respond = NextResponse.json({ message: UNIFORM_MESSAGE })
 
-    // Check if user has a password (not OAuth-only)
-    if (!user.password_hash) {
-      return NextResponse.json({
-        message: 'Если аккаунт с таким email существует, то ссылка для сброса пароля была отправлена.'
-      })
-    }
+    queueMicrotask(async () => {
+      try {
+        const { data: user } = await supabaseAdmin
+          .from('users')
+          .select('*')
+          .eq('email', normalizedEmail)
+          .eq('is_active', true)
+          .single()
 
-    // Delete any existing password reset tokens for this user
-    await supabaseAdmin
-      .from('reset_tokens')
-      .delete()
-      .eq('user_id', user.id)
-      .eq('type', 'password_reset')
+        if (!user || !user.password_hash) return
 
-    // Generate reset token
-    const resetToken = generateSecureToken()
-    const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString() // 1 hour
+        // Clear prior reset tokens for this user
+        await supabaseAdmin
+          .from('reset_tokens')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('type', 'password_reset')
 
-    // Save reset token
-    await supabaseAdmin
-      .from('reset_tokens')
-      .insert({
-        user_id: user.id,
-        token: resetToken,
-        type: 'password_reset',
-        expires_at: expiresAt
-      })
+        // Issue a new token
+        const resetToken = generateSecureToken()
+        const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString() // 1 hour
 
-    // Send reset email
-    const emailSent = await sendPasswordResetEmail(
-      user.email,
-      user.username || user.display_name || 'Пользователь',
-      resetToken
-    )
+        await supabaseAdmin
+          .from('reset_tokens')
+          .insert({
+            user_id: user.id,
+            token: resetToken,
+            type: 'password_reset',
+            expires_at: expiresAt,
+          })
 
-    if (!emailSent) {
-      console.error('Failed to send password reset email')
-      return NextResponse.json(
-        { error: 'Failed to send reset email. Please try again later.' },
-        { status: 500 }
-      )
-    }
+        const emailSent = await sendPasswordResetEmail(
+          user.email,
+          user.username || user.display_name || 'Пользователь',
+          resetToken
+        )
 
-    return NextResponse.json({
-      message: 'Если аккаунт с таким email существует, то ссылка для сброса пароля была отправлена.'
+        if (!emailSent) {
+          console.error('Failed to send password reset email for user', user.id)
+        }
+      } catch (err) {
+        console.error('reset flow error', err)
+      }
     })
+
+    return respond
 
   } catch (error) {
     console.error('Forgot password error:', error)

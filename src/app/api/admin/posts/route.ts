@@ -1,29 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyAccessToken } from '@/lib/auth';
+import { requireAdmin } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase';
+
+// Pagination defaults — mirrored from admin/contact-requests/route.ts.
+const DEFAULT_PAGE = 1;
+const DEFAULT_LIMIT = 50;
+const MAX_LIMIT = 200;
 
 export async function GET(request: NextRequest) {
   try {
-    // Verify authentication (no admin check - any user can access)
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
-      );
-    }
+    const guard = await requireAdmin(request);
+    if (guard instanceof NextResponse) return guard;
 
-    const token = authHeader.substring(7);
-    const userPayload = verifyAccessToken(token);
-    if (!userPayload) {
-      return NextResponse.json(
-        { error: 'Invalid token' },
-        { status: 401 }
-      );
-    }
+    const { searchParams } = new URL(request.url);
+    const page = Math.max(DEFAULT_PAGE, parseInt(searchParams.get('page') || String(DEFAULT_PAGE), 10) || DEFAULT_PAGE);
+    const rawLimit = parseInt(searchParams.get('limit') || String(DEFAULT_LIMIT), 10) || DEFAULT_LIMIT;
+    const limit = Math.min(MAX_LIMIT, Math.max(1, rawLimit));
+    const from = (page - 1) * limit;
+    const to = from + limit - 1;
 
-    // Get all posts with topic and category information
-    const { data: posts, error } = await supabaseAdmin
+    const { data: posts, error, count } = await supabaseAdmin
       .from('posts')
       .select(`
         id,
@@ -48,34 +44,43 @@ export async function GET(request: NextRequest) {
             name
           )
         )
-      `)
-      .order('created_at', { ascending: false });
+      `, { count: 'exact' })
+      .order('created_at', { ascending: false })
+      .range(from, to);
 
     if (error) {
       throw error;
     }
 
+    const items = (posts || []).map((post: any) => ({
+      id: post.id,
+      topicId: post.topic_id,
+      userId: post.user_id,
+      userName: post.user_name,
+      userEmail: post.user_email,
+      content: post.content,
+      mediaLinks: post.media_links,
+      likes: post.likes,
+      dislikes: post.dislikes,
+      isEdited: post.is_edited,
+      editedAt: post.edited_at,
+      isActive: post.is_active,
+      parentPostId: post.parent_post_id,
+      createdAt: post.created_at,
+      updatedAt: post.updated_at,
+      topicTitle: post.topics?.title ?? null,
+      categoryName: post.topics?.categories?.name ?? null
+    }));
+
     return NextResponse.json({
       message: 'Posts retrieved successfully',
-      posts: (posts || []).map((post: any) => ({
-        id: post.id,
-        topicId: post.topic_id,
-        userId: post.user_id,
-        userName: post.user_name,
-        userEmail: post.user_email,
-        content: post.content,
-        mediaLinks: post.media_links,
-        likes: post.likes,
-        dislikes: post.dislikes,
-        isEdited: post.is_edited,
-        editedAt: post.edited_at,
-        isActive: post.is_active,
-        parentPostId: post.parent_post_id,
-        createdAt: post.created_at,
-        updatedAt: post.updated_at,
-        topicTitle: post.topics?.title ?? null,
-        categoryName: post.topics?.categories?.name ?? null
-      }))
+      // Paginated shape. `posts` kept for backwards compat with any caller
+      // that hasn't migrated to `items` yet.
+      items,
+      posts: items,
+      total: count || 0,
+      page,
+      limit,
     });
 
   } catch (error) {

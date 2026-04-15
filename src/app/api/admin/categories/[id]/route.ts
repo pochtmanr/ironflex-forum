@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
+import { requireAdmin } from '@/lib/auth'
 
 // Update category
 export async function PUT(
@@ -7,13 +8,23 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { name, description, slug } = await request.json()
+    const guard = await requireAdmin(request)
+    if (guard instanceof NextResponse) return guard
+
+    const { name, description, slug, section } = await request.json()
     const { id } = await params
 
     // Validate required fields
     if (!name || !description || !slug) {
       return NextResponse.json(
         { error: 'Name, description, and slug are required' },
+        { status: 400 }
+      )
+    }
+
+    if (section !== 'medicine' && section !== 'sport') {
+      return NextResponse.json(
+        { error: 'Section must be either "medicine" or "sport"' },
         { status: 400 }
       )
     }
@@ -39,7 +50,8 @@ export async function PUT(
       .update({
         name,
         description,
-        slug
+        slug,
+        section
       })
       .eq('id', id)
       .select()
@@ -58,7 +70,8 @@ export async function PUT(
         id: category.id,
         name: category.name,
         description: category.description,
-        slug: category.slug
+        slug: category.slug,
+        section: category.section
       }
     })
 
@@ -77,6 +90,9 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const guard = await requireAdmin(request)
+    if (guard instanceof NextResponse) return guard
+
     const { id } = await params
 
     // Check if category exists

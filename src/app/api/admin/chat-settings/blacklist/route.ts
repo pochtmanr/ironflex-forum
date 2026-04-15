@@ -1,34 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
-import { verifyAccessToken } from '@/lib/auth'
-
-async function requireAdmin(request: NextRequest): Promise<{ userId: string } | Response> {
-  const authHeader = request.headers.get('authorization')
-  if (!authHeader?.startsWith('Bearer ')) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-  const token = authHeader.slice(7)
-  const payload = verifyAccessToken(token)
-  if (!payload) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-  const { data: user } = await supabaseAdmin
-    .from('users')
-    .select('is_admin')
-    .eq('id', payload.id)
-    .single()
-  if (!user?.is_admin) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-  }
-  return { userId: payload.id }
-}
+import { requireAdmin } from '@/lib/auth'
 
 // GET - list all blacklisted words
 export async function GET(request: NextRequest) {
   try {
     const result = await requireAdmin(request)
-    if (result instanceof Response) return result
-    const admin = result
+    if (result instanceof NextResponse) return result
 
     const { data, error } = await supabaseAdmin
       .from('chat_word_blacklist')
@@ -48,7 +26,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const result = await requireAdmin(request)
-    if (result instanceof Response) return result
+    if (result instanceof NextResponse) return result
     const admin = result
 
     const body = await request.json()
@@ -86,7 +64,7 @@ export async function POST(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   try {
     const result = await requireAdmin(request)
-    if (result instanceof Response) return result
+    if (result instanceof NextResponse) return result
 
     const { searchParams } = new URL(request.url)
     const id = searchParams.get('id')

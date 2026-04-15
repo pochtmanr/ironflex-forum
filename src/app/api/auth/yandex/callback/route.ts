@@ -107,7 +107,15 @@ export async function GET(request: NextRequest) {
       }
 
       if (linkedUser) {
-        // Link Yandex account to existing user
+        // Security: only auto-link if the local account has no password set.
+        // Otherwise a Yandex account with a spoofed email could take over an existing password-protected account.
+        if (linkedUser.password_hash) {
+          return NextResponse.redirect(
+            `${BASE_URL}/login?error=email_in_use`
+          );
+        }
+
+        // Link Yandex account to existing user (passwordless account)
         await supabaseAdmin
           .from('users')
           .update({
@@ -164,20 +172,31 @@ export async function GET(request: NextRequest) {
       .update({ refresh_token: tokens.refreshToken })
       .eq('id', user.id);
 
-    // Redirect to frontend with tokens
-    const userData = encodeURIComponent(JSON.stringify({
-      id: user.id,
-      email: user.email,
-      username: user.username,
-      displayName: user.display_name,
-      photoURL: user.photo_url,
-      isAdmin: user.is_admin,
-    }));
-
-    const redirectUrl = `${BASE_URL}/auth/callback?accessToken=${tokens.accessToken}&refreshToken=${tokens.refreshToken}&user=${userData}`;
-
-    const response = NextResponse.redirect(redirectUrl);
+    // Set tokens as httpOnly cookies instead of leaking them through the redirect URL
+    // (URLs end up in nginx access logs, browser history, and Referer headers).
+    //
+    // TODO: the client-side /auth/callback page currently reads accessToken,
+    // refreshToken, and user from the query string. It must be updated to either
+    // (a) call /api/auth/me to fetch user info now that cookies are set, or
+    // (b) rely on a new server endpoint that exchanges the refresh cookie for a
+    // response body containing the user payload. Do not merge this without
+    // coordinating the /auth/callback page change.
+    const response = NextResponse.redirect(`${BASE_URL}/auth/callback`);
     response.cookies.delete('yandex_oauth_state');
+    response.cookies.set('accessToken', tokens.accessToken, {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 60 * 15, // 15 minutes
+    });
+    response.cookies.set('refreshToken', tokens.refreshToken, {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 60 * 60 * 24 * 7, // 7 days
+    });
 
     return response;
   } catch (error) {

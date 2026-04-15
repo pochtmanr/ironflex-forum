@@ -98,10 +98,7 @@ export async function GET(
 
     // Increment view count only on page 1 and when incrementView is true
     if (page === 1 && incrementView) {
-      await supabaseAdmin
-        .from('topics')
-        .update({ views: (topic.views || 0) + 1 })
-        .eq('id', topicId);
+      await supabaseAdmin.rpc('increment_topic_views', { p_topic_id: topicId });
     }
 
     // Determine user's vote on this topic

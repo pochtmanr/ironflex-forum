@@ -1,29 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyAccessToken } from '@/lib/auth';
+import { requireAdmin } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase';
+
+// Pagination defaults — mirrored from admin/contact-requests/route.ts.
+const DEFAULT_PAGE = 1;
+const DEFAULT_LIMIT = 50;
+const MAX_LIMIT = 200;
 
 export async function GET(request: NextRequest) {
   try {
-    // Verify authentication (no admin check - any user can access)
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
-      );
-    }
+    const guard = await requireAdmin(request);
+    if (guard instanceof NextResponse) return guard;
 
-    const token = authHeader.substring(7);
-    const userPayload = verifyAccessToken(token);
-    if (!userPayload) {
-      return NextResponse.json(
-        { error: 'Invalid token' },
-        { status: 401 }
-      );
-    }
+    const { searchParams } = new URL(request.url);
+    const page = Math.max(DEFAULT_PAGE, parseInt(searchParams.get('page') || String(DEFAULT_PAGE), 10) || DEFAULT_PAGE);
+    const rawLimit = parseInt(searchParams.get('limit') || String(DEFAULT_LIMIT), 10) || DEFAULT_LIMIT;
+    const limit = Math.min(MAX_LIMIT, Math.max(1, rawLimit));
+    const from = (page - 1) * limit;
+    const to = from + limit - 1;
 
-    // Get all topics with category information
-    const { data: topics, error } = await supabaseAdmin
+    const { data: topics, error, count } = await supabaseAdmin
       .from('topics')
       .select(`
         id,
@@ -47,36 +43,45 @@ export async function GET(request: NextRequest) {
         categories (
           name
         )
-      `)
-      .order('created_at', { ascending: false });
+      `, { count: 'exact' })
+      .order('created_at', { ascending: false })
+      .range(from, to);
 
     if (error) {
       throw error;
     }
 
+    const items = (topics || []).map((topic: any) => ({
+      id: topic.id,
+      categoryId: topic.category_id,
+      userId: topic.user_id,
+      userName: topic.user_name,
+      userEmail: topic.user_email,
+      title: topic.title,
+      content: topic.content || null,
+      mediaLinks: topic.media_links,
+      views: topic.views,
+      likes: topic.likes,
+      dislikes: topic.dislikes,
+      isPinned: topic.is_pinned,
+      isLocked: topic.is_locked,
+      isActive: topic.is_active,
+      createdAt: topic.created_at,
+      updatedAt: topic.updated_at,
+      lastPostAt: topic.last_post_at,
+      replyCount: topic.reply_count,
+      categoryName: topic.categories?.name ?? null
+    }));
+
     return NextResponse.json({
       message: 'Topics retrieved successfully',
-      topics: (topics || []).map((topic: any) => ({
-        id: topic.id,
-        categoryId: topic.category_id,
-        userId: topic.user_id,
-        userName: topic.user_name,
-        userEmail: topic.user_email,
-        title: topic.title,
-        content: topic.content || null,
-        mediaLinks: topic.media_links,
-        views: topic.views,
-        likes: topic.likes,
-        dislikes: topic.dislikes,
-        isPinned: topic.is_pinned,
-        isLocked: topic.is_locked,
-        isActive: topic.is_active,
-        createdAt: topic.created_at,
-        updatedAt: topic.updated_at,
-        lastPostAt: topic.last_post_at,
-        replyCount: topic.reply_count,
-        categoryName: topic.categories?.name ?? null
-      }))
+      // Paginated shape. `topics` kept for backwards compat with any caller
+      // that hasn't migrated to `items` yet.
+      items,
+      topics: items,
+      total: count || 0,
+      page,
+      limit,
     });
 
   } catch (error) {

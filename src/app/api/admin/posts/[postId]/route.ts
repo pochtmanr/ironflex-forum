@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyAccessToken } from '@/lib/auth';
+import { verifyAccessToken, verifyToken } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase';
 
 export async function DELETE(
@@ -9,7 +9,7 @@ export async function DELETE(
   try {
     const { postId } = await params;
 
-    // Verify authentication (no admin check - any user can access)
+    // Verify authentication. Admins bypass ownership/time-window checks below.
     const authHeader = request.headers.get('authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return NextResponse.json(
@@ -41,8 +41,16 @@ export async function DELETE(
       );
     }
 
-    // Admins can delete any post; non-admins: ownership + 2-hour window
-    if (!userPayload.isAdmin) {
+    // Admins can delete any post; non-admins: ownership + 2-hour window.
+    // When the JWT claims admin, re-check against the DB (verifyToken) so a
+    // demoted admin's still-valid JWT can't keep destructive powers.
+    let isAdmin = false;
+    if (userPayload.isAdmin) {
+      const dbCheck = await verifyToken(token);
+      isAdmin = !!dbCheck?.isAdmin;
+    }
+
+    if (!isAdmin) {
       if (post.user_id !== userPayload.id) {
         return NextResponse.json(
           { error: 'You can only delete your own posts' },
@@ -101,7 +109,7 @@ export async function PATCH(
     const { postId } = await params;
     const { content } = await request.json();
 
-    // Verify authentication (no admin check - any user can access)
+    // Verify authentication. Admins bypass ownership/time-window checks below.
     const authHeader = request.headers.get('authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return NextResponse.json(
@@ -140,8 +148,15 @@ export async function PATCH(
       );
     }
 
-    // Admins can edit any post; non-admins: ownership + 2-hour window
-    if (!userPayload.isAdmin) {
+    // Admins can edit any post; non-admins: ownership + 2-hour window.
+    // DB-backed admin re-check (see DELETE handler above for rationale).
+    let isAdmin = false;
+    if (userPayload.isAdmin) {
+      const dbCheck = await verifyToken(token);
+      isAdmin = !!dbCheck?.isAdmin;
+    }
+
+    if (!isAdmin) {
       if (post.user_id !== userPayload.id) {
         return NextResponse.json(
           { error: 'You can only edit your own posts' },

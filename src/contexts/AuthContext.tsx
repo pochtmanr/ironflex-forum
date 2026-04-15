@@ -212,6 +212,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = async () => {
     try {
+      // Fire-and-forget server-side revocation: nulls the refresh_token so
+      // a stolen RT becomes useless. Don't await — local cleanup must not
+      // block on network.
+      const accessToken = localStorage.getItem('accessToken');
+      if (accessToken) {
+        void fetch('/api/auth/logout', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${accessToken}` }
+        }).catch(() => {});
+      }
+
       // Clear all localStorage data (like React app)
       localStorage.removeItem('accessToken');
       localStorage.removeItem('refreshToken');

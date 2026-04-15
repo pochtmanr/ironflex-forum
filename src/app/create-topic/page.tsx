@@ -67,8 +67,10 @@ const CreateTopicContent: React.FC = () => {
       const formData = new FormData();
       formData.append('file', file);
       
+      const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
       const response = await fetch('/api/upload', {
         method: 'POST',
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {},
         body: formData,
       });
       

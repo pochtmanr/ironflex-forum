@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
+import { verifyAccessToken } from '@/lib/auth'
 
 export async function GET(request: NextRequest) {
   try {
@@ -36,37 +37,47 @@ export async function GET(request: NextRequest) {
     const topics = topicsResult.data || []
     const total = countResult.count || 0
 
-    // Get user and category info for each topic
-    const formattedTopics = await Promise.all(
-      topics.map(async (topic) => {
-        const [userResult, categoryResult] = await Promise.all([
-          supabaseAdmin.from('users').select('photo_url').eq('id', topic.user_id).single(),
-          supabaseAdmin.from('categories').select('name, slug').eq('id', topic.category_id).single()
-        ])
+    // Batch-fetch users and categories to avoid N+1 queries
+    const userIds = Array.from(new Set(topics.map(t => t.user_id).filter(Boolean)))
+    const categoryIds = Array.from(new Set(topics.map(t => t.category_id).filter(Boolean)))
 
-        return {
-          id: topic.id,
-          title: topic.title,
-          content: topic.content || null,
-          user_name: topic.user_name,
-          user_email: topic.user_email,
-          user_id: topic.user_id,
-          user_photo_url: userResult.data?.photo_url || null,
-          category_id: topic.category_id,
-          category_name: categoryResult.data?.name || 'Unknown Category',
-          category_slug: categoryResult.data?.slug || topic.category_id,
-          reply_count: topic.reply_count,
-          views: topic.views,
-          likes: topic.likes,
-          dislikes: topic.dislikes,
-          created_at: topic.created_at,
-          last_post_at: topic.last_post_at,
-          is_pinned: topic.is_pinned,
-          is_locked: topic.is_locked,
-          media_links: Array.isArray(topic.media_links) ? topic.media_links.join('\n') : (topic.media_links || '')
-        }
-      })
-    )
+    const [usersResult, categoriesResult] = await Promise.all([
+      userIds.length > 0
+        ? supabaseAdmin.from('users').select('id, photo_url').in('id', userIds)
+        : Promise.resolve({ data: [] as Array<{ id: string; photo_url: string | null }> }),
+      categoryIds.length > 0
+        ? supabaseAdmin.from('categories').select('id, name, slug').in('id', categoryIds)
+        : Promise.resolve({ data: [] as Array<{ id: string; name: string; slug: string }> }),
+    ])
+
+    const userMap = new Map((usersResult.data || []).map(u => [u.id, u]))
+    const categoryMap = new Map((categoriesResult.data || []).map(c => [c.id, c]))
+
+    const formattedTopics = topics.map(topic => {
+      const u = userMap.get(topic.user_id)
+      const c = categoryMap.get(topic.category_id)
+      return {
+        id: topic.id,
+        title: topic.title,
+        content: topic.content || null,
+        user_name: topic.user_name,
+        user_email: topic.user_email,
+        user_id: topic.user_id,
+        user_photo_url: u?.photo_url || null,
+        category_id: topic.category_id,
+        category_name: c?.name || 'Unknown Category',
+        category_slug: c?.slug || topic.category_id,
+        reply_count: topic.reply_count,
+        views: topic.views,
+        likes: topic.likes,
+        dislikes: topic.dislikes,
+        created_at: topic.created_at,
+        last_post_at: topic.last_post_at,
+        is_pinned: topic.is_pinned,
+        is_locked: topic.is_locked,
+        media_links: Array.isArray(topic.media_links) ? topic.media_links.join('\n') : (topic.media_links || '')
+      }
+    })
 
     return NextResponse.json({
       topics: formattedTopics,
@@ -88,55 +99,32 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    // Get user data from request body (like React app approach)
-    const body = await request.json()
-    const { categoryId, title, content, mediaLinks, userData } = body
+    // Require Bearer token auth
+    const authHeader = request.headers.get('authorization')
+    if (!authHeader?.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
+    }
+    const payload = verifyAccessToken(authHeader.substring(7))
+    if (!payload) {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
+    }
+    const { data: user, error: userLookupError } = await supabaseAdmin
+      .from('users')
+      .select('id, email, username, display_name, photo_url')
+      .eq('id', payload.id)
+      .single()
+    if (userLookupError || !user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 401 })
+    }
 
+    const body = await request.json()
+    const { categoryId, title, content, mediaLinks } = body
 
     // Validation — content is now optional (topic can exist as description-only)
     if (!categoryId || !title) {
       return NextResponse.json(
         { error: 'Category ID and title are required' },
         { status: 400 }
-      )
-    }
-
-    // For now, let's use userData from the request or create a simple user
-    let user;
-    if (userData && userData.email) {
-      // Find or create user based on userData
-      const { data: existingUser } = await supabaseAdmin
-        .from('users')
-        .select('id, email, username, display_name, photo_url')
-        .eq('email', userData.email)
-        .single()
-
-      if (existingUser) {
-        user = existingUser
-      } else {
-        const username = userData.email.split('@')[0] + '_' + Math.random().toString(36).substr(2, 5)
-        const { data: newUser, error: createError } = await supabaseAdmin
-          .from('users')
-          .insert({
-            email: userData.email,
-            username,
-            display_name: userData.displayName || userData.name || userData.email.split('@')[0],
-            photo_url: userData.photoURL || userData.picture,
-            google_id: userData.id,
-            is_verified: true,
-            is_admin: false,
-            is_active: true
-          })
-          .select('id, email, username, display_name, photo_url')
-          .single()
-
-        if (createError) throw createError
-        user = newUser
-      }
-    } else {
-      return NextResponse.json(
-        { error: 'User data required' },
-        { status: 401 }
       )
     }
 

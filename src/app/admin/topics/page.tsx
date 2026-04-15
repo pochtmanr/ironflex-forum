@@ -35,23 +35,28 @@ export default function AdminTopics() {
   const [editTitle, setEditTitle] = useState('')
   const [editContent, setEditContent] = useState('')
   const [searchTerm, setSearchTerm] = useState('')
+  const [page, setPage] = useState(1)
+  const [limit] = useState(50)
+  const [total, setTotal] = useState(0)
 
   useEffect(() => {
     fetchTopics()
-  }, [])
+  }, [page, limit])
 
   const fetchTopics = async () => {
     try {
+      setLoading(true)
       const token = localStorage.getItem('accessToken')
-      const response = await fetch('/api/admin/topics', {
+      const response = await fetch(`/api/admin/topics?page=${page}&limit=${limit}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       })
-      
+
       if (response.ok) {
         const data = await response.json()
-        setTopics(data.topics || [])
+        setTopics(data.items || data.topics || [])
+        setTotal(typeof data.total === 'number' ? data.total : (data.items || data.topics || []).length)
       } else {
         console.error('Failed to fetch topics')
       }
@@ -198,7 +203,7 @@ export default function AdminTopics() {
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Управление темами</h1>
         <div className="text-sm text-gray-500">
-          Общее количество тем: {topics.length}
+          Общее количество тем: {total}
         </div>
       </div>
 
@@ -417,6 +422,27 @@ export default function AdminTopics() {
             {searchTerm ? 'Темы не найдены по вашему запросу.' : 'Темы не найдены.'}
           </div>
         )}
+      </div>
+
+      {/* Pagination */}
+      <div className="flex justify-center items-center space-x-3 mt-6">
+        <button
+          onClick={() => setPage(p => Math.max(1, p - 1))}
+          disabled={page === 1}
+          className="px-3 py-1 text-xs font-medium rounded bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          Назад
+        </button>
+        <span className="text-sm text-gray-600">
+          Страница {page} из {Math.max(1, Math.ceil(total / limit))}
+        </span>
+        <button
+          onClick={() => setPage(p => p + 1)}
+          disabled={page * limit >= total}
+          className="px-3 py-1 text-xs font-medium rounded bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          Вперёд
+        </button>
       </div>
     </div>
   )

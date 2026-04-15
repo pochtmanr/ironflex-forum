@@ -3,15 +3,23 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 
+type Section = 'medicine' | 'sport'
+
 interface Category {
   id: string
   name: string
   description: string
   slug: string
+  section: Section | null
   topic_count: number
   post_count: number
   last_activity: string
   isActive?: boolean
+}
+
+const SECTION_LABELS: Record<Section, string> = {
+  medicine: 'Медицина',
+  sport: 'Спорт',
 }
 
 export default function AdminCategories() {
@@ -20,10 +28,16 @@ export default function AdminCategories() {
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    name: string
+    description: string
+    slug: string
+    section: Section | ''
+  }>({
     name: '',
     description: '',
-    slug: ''
+    slug: '',
+    section: ''
   })
 
   useEffect(() => {
@@ -44,7 +58,12 @@ export default function AdminCategories() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
+    if (!formData.section) {
+      alert('Выберите раздел (Медицина или Спорт)')
+      return
+    }
+
     try {
       const url = editingId ? `/api/admin/categories/${editingId}` : '/api/admin/categories'
       const method = editingId ? 'PUT' : 'POST'
@@ -58,7 +77,7 @@ export default function AdminCategories() {
       })
 
       if (response.ok) {
-        setFormData({ name: '', description: '', slug: '' })
+        setFormData({ name: '', description: '', slug: '', section: '' })
         setShowForm(false)
         setEditingId(null)
         fetchCategories()
@@ -77,7 +96,8 @@ export default function AdminCategories() {
     setFormData({
       name: category.name,
       description: category.description,
-      slug: category.slug
+      slug: category.slug,
+      section: category.section ?? ''
     })
     setEditingId(category.id)
     setShowForm(true)
@@ -107,7 +127,7 @@ export default function AdminCategories() {
   }
 
   const handleCancelEdit = () => {
-    setFormData({ name: '', description: '', slug: '' })
+    setFormData({ name: '', description: '', slug: '', section: '' })
     setEditingId(null)
     setShowForm(false)
   }
@@ -185,6 +205,25 @@ export default function AdminCategories() {
                 required
               />
             </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Раздел
+              </label>
+              <select
+                value={formData.section}
+                onChange={(e) => setFormData({ ...formData, section: e.target.value as Section | '' })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                required
+              >
+                <option value="" disabled>Выберите раздел</option>
+                <option value="medicine">Медицина</option>
+                <option value="sport">Спорт</option>
+              </select>
+              <p className="text-xs text-gray-500 mt-1">
+                Категория появится на главной странице только в выбранном разделе.
+              </p>
+            </div>
             
             <div className="flex space-x-3">
               <button
@@ -218,6 +257,9 @@ export default function AdminCategories() {
                   Категория
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Раздел
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Темы
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -243,6 +285,17 @@ export default function AdminCategories() {
                         {category.description}
                       </div>
                     </div>
+                  </td>
+                  <td className="px-6 py-4 text-sm">
+                    {category.section ? (
+                      <span className="inline-block px-2 py-0.5 rounded bg-blue-50 text-blue-700 text-xs font-medium">
+                        {SECTION_LABELS[category.section]}
+                      </span>
+                    ) : (
+                      <span className="inline-block px-2 py-0.5 rounded bg-red-50 text-red-700 text-xs font-medium">
+                        не задан
+                      </span>
+                    )}
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-900">
                     {category.topic_count}

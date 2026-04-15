@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyAccessToken } from '@/lib/auth';
+import { verifyAccessToken, verifyToken } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase';
 
 export async function DELETE(
@@ -9,7 +9,7 @@ export async function DELETE(
   try {
     const { topicId } = await params;
 
-    // Verify authentication (no admin check - any user can access)
+    // Verify authentication. Admins bypass ownership/time-window checks below.
     const authHeader = request.headers.get('authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return NextResponse.json(
@@ -41,8 +41,16 @@ export async function DELETE(
       );
     }
 
-    // Admins can delete any topic; non-admins: ownership + 2-hour window
-    if (!userPayload.isAdmin) {
+    // Admins can delete any topic; non-admins: ownership + 2-hour window.
+    // When the JWT claims admin, re-check against the DB so a demoted admin
+    // cannot continue to delete using a still-valid JWT.
+    let isAdmin = false;
+    if (userPayload.isAdmin) {
+      const dbCheck = await verifyToken(token);
+      isAdmin = !!dbCheck?.isAdmin;
+    }
+
+    if (!isAdmin) {
       if (topic.user_id !== userPayload.id) {
         return NextResponse.json(
           { error: 'You can only delete your own topics' },
@@ -93,7 +101,7 @@ export async function PATCH(
     const { topicId } = await params;
     const { title, content } = await request.json();
 
-    // Verify authentication (no admin check - any user can access)
+    // Verify authentication. Admins bypass ownership/time-window checks below.
     const authHeader = request.headers.get('authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return NextResponse.json(
@@ -132,8 +140,15 @@ export async function PATCH(
       );
     }
 
-    // Admins can edit any topic; non-admins: ownership + 2-hour window
-    if (!userPayload.isAdmin) {
+    // Admins can edit any topic; non-admins: ownership + 2-hour window.
+    // DB-backed admin re-check (see DELETE handler for rationale).
+    let isAdmin = false;
+    if (userPayload.isAdmin) {
+      const dbCheck = await verifyToken(token);
+      isAdmin = !!dbCheck?.isAdmin;
+    }
+
+    if (!isAdmin) {
       if (topic.user_id !== userPayload.id) {
         return NextResponse.json(
           { error: 'You can only edit your own topics' },

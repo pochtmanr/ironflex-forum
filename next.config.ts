@@ -2,6 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   output: 'standalone',
+  poweredByHeader: false,
   // Vercel-like optimizations for fast builds
   compiler: {
     // Keep console logs for debugging email issues
@@ -17,21 +18,9 @@ const nextConfig: NextConfig = {
   images: {
     remotePatterns: [
       {
-        protocol: 'http',
-        hostname: 'localhost',
-        port: '3001',
-        pathname: '/uploads/**',
-      },
-      {
-        protocol: 'http',
-        hostname: 'fileserver',
-        port: '3001',
-        pathname: '/uploads/**',
-      },
-      {
         protocol: 'https',
         hostname: 'tarnovsky.ru',
-        pathname: '/uploads/**',
+        pathname: '/**',
       },
       {
         protocol: 'https',
@@ -47,15 +36,6 @@ const nextConfig: NextConfig = {
     // Disable image optimization entirely - just serve images as-is
     // This prevents Next.js from trying to optimize uploaded images
     unoptimized: true,
-  },
-  // Proxy /uploads/ requests to the fileserver API
-  async rewrites() {
-    return [
-      {
-        source: '/uploads/:path*',
-        destination: '/api/files/uploads/:path*',
-      },
-    ];
   },
 };
 

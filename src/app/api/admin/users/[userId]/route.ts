@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyAccessToken } from '@/lib/auth';
+import { requireAdmin } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase';
 
 export async function DELETE(
@@ -9,26 +9,11 @@ export async function DELETE(
   try {
     const { userId } = await params;
 
-    // Verify authentication (no admin check - any user can access)
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
-      );
-    }
+    const guard = await requireAdmin(request);
+    if (guard instanceof NextResponse) return guard;
 
-    const token = authHeader.substring(7);
-    const userPayload = verifyAccessToken(token);
-    if (!userPayload) {
-      return NextResponse.json(
-        { error: 'Invalid token' },
-        { status: 401 }
-      );
-    }
-
-    // Prevent users from deleting themselves
-    if (userPayload.id === userId) {
+    // Prevent admins from deleting themselves
+    if (guard.userId === userId) {
       return NextResponse.json(
         { error: 'Cannot delete your own account' },
         { status: 400 }
@@ -49,23 +34,43 @@ export async function DELETE(
       );
     }
 
-    // Delete user's posts
-    await supabaseAdmin
-      .from('posts')
-      .delete()
-      .eq('user_id', userId);
+    // TODO(Agent 4 — migration): add ON DELETE CASCADE to the FKs that
+    // reference users so this handler can become a single DELETE. Columns:
+    //   posts.user_id, topics.user_id, conversation_messages.user_id,
+    //   chat_user_bans.user_id, chat_user_bans.banned_by,
+    //   reset_tokens.user_id, flagged_posts.reviewed_by,
+    //   post_votes.user_id, topic_votes.user_id, topic_ratings.user_id
+    // Once the migration lands, drop the manual cascade below and just do
+    // a single `delete().eq('id', userId)` on users.
+    //
+    // Until then: do the three deletes in sequence and bail out loudly if
+    // any step fails, so we don't end up with orphaned content + a deleted
+    // user (or a user whose posts were deleted but the row persists).
+    try {
+      const { error: postsErr } = await supabaseAdmin
+        .from('posts')
+        .delete()
+        .eq('user_id', userId);
+      if (postsErr) throw new Error(`posts: ${postsErr.message}`);
 
-    // Delete user's topics
-    await supabaseAdmin
-      .from('topics')
-      .delete()
-      .eq('user_id', userId);
+      const { error: topicsErr } = await supabaseAdmin
+        .from('topics')
+        .delete()
+        .eq('user_id', userId);
+      if (topicsErr) throw new Error(`topics: ${topicsErr.message}`);
 
-    // Delete the user
-    await supabaseAdmin
-      .from('users')
-      .delete()
-      .eq('id', userId);
+      const { error: userErr } = await supabaseAdmin
+        .from('users')
+        .delete()
+        .eq('id', userId);
+      if (userErr) throw new Error(`users: ${userErr.message}`);
+    } catch (cascadeErr) {
+      console.error('User cascade delete failed mid-flight:', cascadeErr);
+      return NextResponse.json(
+        { error: 'Failed to fully delete user; partial deletion may have occurred. Check logs.' },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json({
       message: 'User and associated content deleted successfully'

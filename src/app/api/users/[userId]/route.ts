@@ -1,29 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
-import jwt from 'jsonwebtoken';
+import { verifyToken } from '@/lib/auth';
 
-// Verify JWT token
-interface TokenPayload {
-  id: string;
-  email: string;
-  username: string;
-  isAdmin: boolean;
-}
-
-function verifyTokenLocal(request: NextRequest): TokenPayload | null {
-  try {
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      return null;
-    }
-
-    const token = authHeader.substring(7);
-    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as TokenPayload;
-    return decoded;
-  } catch (error) {
-    console.error('Ошибка верификации токена:', error);
-    return null;
-  }
+// Wrapper that reads the Bearer token off the request and defers to the
+// shared verifyToken() helper, which now also rejects deactivated accounts.
+async function verifyRequest(request: NextRequest) {
+  const authHeader = request.headers.get('authorization');
+  if (!authHeader?.startsWith('Bearer ')) return null;
+  const token = authHeader.substring(7);
+  return verifyToken(token);
 }
 
 export async function GET(
@@ -34,7 +19,7 @@ export async function GET(
     const { userId } = await params;
 
     // Check if the requesting user is the profile owner
-    const tokenData = verifyTokenLocal(request);
+    const tokenData = await verifyRequest(request);
     const isOwner = tokenData?.id === userId;
 
     // Find user by ID
@@ -152,8 +137,9 @@ export async function PUT(
   try {
     const { userId } = await params;
 
-    // Verify authentication
-    const tokenData = verifyTokenLocal(request);
+    // Verify authentication (uses shared verifyToken, which also rejects
+    // deactivated accounts).
+    const tokenData = await verifyRequest(request);
     if (!tokenData) {
       return NextResponse.json(
         { error: 'Не авторизован' },
@@ -161,20 +147,14 @@ export async function PUT(
       );
     }
 
-    // Check if user is updating their own profile or is an admin
-    if (tokenData.id !== userId) {
-      const { data: requestingUser } = await supabaseAdmin
-        .from('users')
-        .select('is_admin')
-        .eq('id', tokenData.id)
-        .single();
-
-      if (!requestingUser?.is_admin) {
-        return NextResponse.json(
-          { error: 'Запрещено: Вы можете обновить только свой профиль' },
-          { status: 403 }
-        );
-      }
+    // Admin-bypass: owners can always edit their own profile; admins can
+    // edit anyone. verifyToken() already sourced isAdmin from the DB, so
+    // no need for a second query.
+    if (tokenData.id !== userId && !tokenData.isAdmin) {
+      return NextResponse.json(
+        { error: 'Запрещено: Вы можете обновить только свой профиль' },
+        { status: 403 }
+      );
     }
 
     // Get the request body

@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useRef, useCallback } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
-import { forumAPI, uploadAPI } from '../../services/api'
+import { forumAPI } from '../../services/api'
 import { supabase } from '@/lib/supabase'
 import { SendIcon, Loader2Icon, LockIcon, ImageIcon, XIcon, Trash2Icon, ReplyIcon } from 'lucide-react'
 import Link from 'next/link'
@@ -297,7 +297,16 @@ const ConversationHub: React.FC<ConversationHubProps> = ({ className = '' }) => 
           // Fall back to original
         }
       }
-      const result = await uploadAPI.uploadFile(fileToUpload)
+      const formData = new FormData()
+      formData.append('file', fileToUpload)
+      const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null
+      const resp = await fetch('/api/upload', {
+        method: 'POST',
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+        body: formData
+      })
+      if (!resp.ok) throw new Error('Upload failed')
+      const result = await resp.json()
       const url = result.url || result.file_url
       if (url) urls.push(url)
     }

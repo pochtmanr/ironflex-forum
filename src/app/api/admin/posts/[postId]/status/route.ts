@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyAccessToken } from '@/lib/auth';
+import { requireAdmin } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase';
 
 export async function PATCH(
@@ -10,23 +10,8 @@ export async function PATCH(
     const { postId } = await params;
     const { isActive } = await request.json();
 
-    // Verify authentication (no admin check - any user can access)
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
-      );
-    }
-
-    const token = authHeader.substring(7);
-    const userPayload = verifyAccessToken(token);
-    if (!userPayload) {
-      return NextResponse.json(
-        { error: 'Invalid token' },
-        { status: 401 }
-      );
-    }
+    const guard = await requireAdmin(request);
+    if (guard instanceof NextResponse) return guard;
 
     if (typeof isActive !== 'boolean') {
       return NextResponse.json(

@@ -1,64 +1,47 @@
 #!/usr/bin/env node
 
 /**
- * Make a user admin by email
+ * Make a user admin by email (Supabase).
  * Usage: node make-admin.js <email>
+ * Reads NEXT_PUBLIC_SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY from .env.local
  */
 
-const { MongoClient } = require('mongodb');
+const { createClient } = require('@supabase/supabase-js')
+require('dotenv').config({ path: '.env.local' })
 
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/ironblog';
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
 
-async function makeAdmin(email) {
-  if (!email) {
-    console.error('❌ Error: Email is required');
-    process.exit(1);
-  }
-
-  const client = new MongoClient(MONGODB_URI);
-
-  try {
-    await client.connect();
-
-    const db = client.db('ironblog');
-    const users = db.collection('users');
-
-    // Find the user
-    const user = await users.findOne({ email });
-
-    if (!user) {
-      console.error(`❌ User not found with email: ${email}`);
-      process.exit(1);
-    }
-
-    if (user.isAdmin) {
-      process.exit(0);
-    }
-
-    // Update the user to admin
-    const result = await users.updateOne(
-      { email },
-      { 
-        $set: { 
-          isAdmin: true,
-          isVerified: true // Also verify the user
-        } 
-      }
-    );
-
-    if (result.modifiedCount > 0) {
-    } else {
-      process.exit(1);
-    }
-
-  } catch (error) {
-    process.exit(1);
-  } finally {
-    await client.close();
-  }
+if (!SUPABASE_URL || !SUPABASE_KEY) {
+  console.error('Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY')
+  process.exit(1)
 }
 
-// Get email from command line arguments
-const email = process.argv[2];
-makeAdmin(email);
+const email = process.argv[2]
+if (!email) {
+  console.error('Usage: node make-admin.js <email>')
+  process.exit(1)
+}
 
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
+  auth: { persistSession: false }
+})
+
+;(async () => {
+  const { data, error } = await supabase
+    .from('users')
+    .update({ is_admin: true, is_verified: true })
+    .eq('email', email)
+    .select('id, email, is_admin')
+    .single()
+
+  if (error) {
+    console.error('Update failed:', error.message)
+    process.exit(1)
+  }
+  if (!data) {
+    console.error('User not found:', email)
+    process.exit(1)
+  }
+  console.log('User is now admin:', data)
+})()

@@ -27,7 +27,10 @@ function sanitize(str: string): string {
 
 export async function POST(request: NextRequest) {
   try {
-    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
+    // Trust x-real-ip from our nginx; fallback to rightmost forwarded-for to avoid client spoofing
+    const ip = request.headers.get('x-real-ip')
+      || request.headers.get('x-forwarded-for')?.split(',').pop()?.trim()
+      || 'unknown'
 
     if (isRateLimited(ip)) {
       return NextResponse.json(

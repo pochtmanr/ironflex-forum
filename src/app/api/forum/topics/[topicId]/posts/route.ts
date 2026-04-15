@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
+import { verifyAccessToken } from '@/lib/auth';
 
 export async function POST(
   request: NextRequest,
@@ -8,7 +9,7 @@ export async function POST(
   try {
     const { topicId } = await params;
     const body = await request.json();
-    const { content, mediaLinks, userData, replyToPostId } = body;
+    const { content, mediaLinks, replyToPostId } = body;
 
     if (!content || !content.trim()) {
       return NextResponse.json(
@@ -17,42 +18,22 @@ export async function POST(
       );
     }
 
-    // Get or create user based on userData (like topics)
-    let user;
-    if (userData && userData.email) {
-      const { data: existingUser } = await supabaseAdmin
-        .from('users')
-        .select('id, email, username, display_name, photo_url')
-        .eq('email', userData.email)
-        .single();
-
-      if (existingUser) {
-        user = existingUser;
-      } else {
-        const username = userData.email.split('@')[0] + '_' + Math.random().toString(36).substr(2, 5);
-        const { data: newUser, error: createError } = await supabaseAdmin
-          .from('users')
-          .insert({
-            email: userData.email,
-            username,
-            display_name: userData.displayName || userData.name || userData.email.split('@')[0],
-            photo_url: userData.photoURL || userData.picture,
-            google_id: userData.id,
-            is_verified: true,
-            is_admin: false,
-            is_active: true
-          })
-          .select('id, email, username, display_name, photo_url')
-          .single();
-
-        if (createError) throw createError;
-        user = newUser;
-      }
-    } else {
-      return NextResponse.json(
-        { error: 'User data required' },
-        { status: 401 }
-      );
+    // Require Bearer token auth
+    const authHeader = request.headers.get('authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+    }
+    const payload = verifyAccessToken(authHeader.substring(7));
+    if (!payload) {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+    }
+    const { data: user, error: userLookupError } = await supabaseAdmin
+      .from('users')
+      .select('id, email, username, display_name, photo_url')
+      .eq('id', payload.id)
+      .single();
+    if (userLookupError || !user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 401 });
     }
 
     // Verify topic exists

@@ -1,14 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
+import { requireAdmin } from '@/lib/auth'
 
 export async function POST(request: NextRequest) {
   try {
-    const { name, description, slug } = await request.json()
+    const guard = await requireAdmin(request)
+    if (guard instanceof NextResponse) return guard
+
+    const { name, description, slug, section } = await request.json()
 
     // Validate required fields
     if (!name || !description || !slug) {
       return NextResponse.json(
         { error: 'Name, description, and slug are required' },
+        { status: 400 }
+      )
+    }
+
+    if (section !== 'medicine' && section !== 'sport') {
+      return NextResponse.json(
+        { error: 'Section must be either "medicine" or "sport"' },
         { status: 400 }
       )
     }
@@ -34,6 +45,7 @@ export async function POST(request: NextRequest) {
         name,
         description,
         slug,
+        section,
         is_active: true,
         order_index: 0
       })
@@ -50,7 +62,8 @@ export async function POST(request: NextRequest) {
         id: category.id,
         name: category.name,
         description: category.description,
-        slug: category.slug
+        slug: category.slug,
+        section: category.section
       }
     })
 
